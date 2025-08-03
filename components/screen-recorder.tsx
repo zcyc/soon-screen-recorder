@@ -58,7 +58,7 @@ export default function ScreenRecorder() {
   const [quality, setQuality] = useState<RecordingQuality>('720p');
   const [source, setSource] = useState<RecordingSource>('screen');
   const [screenSource, setScreenSource] = useState<ScreenSourceType>('monitor');
-  const [includeAudio, setIncludeAudio] = useState(true);
+  const [includeAudio, setIncludeAudio] = useState(false);
   const [includeCamera, setIncludeCamera] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [videoTitle, setVideoTitle] = useState('');
@@ -1028,7 +1028,22 @@ export default function ScreenRecorder() {
               </div>
               <Switch
                 checked={includeAudio}
-                onCheckedChange={setIncludeAudio}
+                onCheckedChange={async (checked) => {
+                  if (checked) {
+                    // 用户开启麦克风时立即申请权限
+                    try {
+                      await navigator.mediaDevices.getUserMedia({ audio: true });
+                      setIncludeAudio(true);
+                      showToast(t.recording.microphonePermissionGranted || '麦克风权限已获取');
+                    } catch (error) {
+                      console.error('麦克风权限申请失败:', error);
+                      showToast(t.recording.microphonePermissionDenied || '麦克风权限被拒绝');
+                      setIncludeAudio(false);
+                    }
+                  } else {
+                    setIncludeAudio(false);
+                  }
+                }}
               />
             </div>
             
@@ -1054,12 +1069,28 @@ export default function ScreenRecorder() {
               </div>
               <Switch
                 checked={includeCamera}
-                onCheckedChange={(checked) => {
+                onCheckedChange={async (checked) => {
                   // 当选择仅录制摄像头时，不允许关闭摄像头
                   if (source === 'camera-only' && !checked) {
                     return; // 不允许关闭
                   }
-                  setIncludeCamera(checked);
+                  
+                  if (checked) {
+                    // 用户开启摄像头时立即申请权限
+                    try {
+                      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                      // 立即停止测试流，实际流将在startCameraPreview中获取
+                      stream.getTracks().forEach(track => track.stop());
+                      setIncludeCamera(true);
+                      showToast(t.recording.cameraPermissionGranted || '摄像头权限已获取');
+                    } catch (error) {
+                      console.error('摄像头权限申请失败:', error);
+                      showToast(t.recording.cameraPermissionDenied || '摄像头权限被拒绝');
+                      setIncludeCamera(false);
+                    }
+                  } else {
+                    setIncludeCamera(false);
+                  }
                 }}
                 disabled={
                   source === 'camera-only' || // 仅录制摄像头时禁用切换

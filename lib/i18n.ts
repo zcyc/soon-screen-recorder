@@ -111,6 +111,11 @@ export interface Translations {
     timeLimitWarning: string;
     timeLimitReached: string;
     recordingWillStopAt: string;
+    // Permission related
+    microphonePermissionGranted: string;
+    microphonePermissionDenied: string;
+    cameraPermissionGranted: string;
+    cameraPermissionDenied: string;
   };
   
   // Authentication
@@ -326,6 +331,11 @@ export const translations: Record<Locale, Translations> = {
       timeLimitWarning: 'Recording will stop at 2:00',
       timeLimitReached: 'Recording stopped: Time limit reached (2 minutes)',
       recordingWillStopAt: '⚠️ Recording will automatically stop at 2:00',
+      // Permission related
+      microphonePermissionGranted: 'Microphone permission granted',
+      microphonePermissionDenied: 'Microphone permission denied',
+      cameraPermissionGranted: 'Camera permission granted',
+      cameraPermissionDenied: 'Camera permission denied',
     },
     auth: {
       signInToSoon: 'Sign in to soon',
@@ -529,6 +539,11 @@ export const translations: Record<Locale, Translations> = {
       timeLimitWarning: '录制将在 2:00 停止',
       timeLimitReached: '录制已停止：达到时间限制（2分钟）',
       recordingWillStopAt: '⚠️ 录制将在 2:00 自动停止',
+      // Permission related
+      microphonePermissionGranted: '麦克风权限已获取',
+      microphonePermissionDenied: '麦克风权限被拒绝',
+      cameraPermissionGranted: '摄像头权限已获取',
+      cameraPermissionDenied: '摄像头权限被拒绝',
     },
     auth: {
       signInToSoon: '登录 soon',
