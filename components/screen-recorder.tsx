@@ -1179,11 +1179,7 @@ export default function ScreenRecorder() {
               </div>
               
               <div className="text-center">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={startNewRecording}
-                >
+                <Button onClick={startNewRecording}>
                   {t.recording.startNewRecording}
                 </Button>
               </div>
