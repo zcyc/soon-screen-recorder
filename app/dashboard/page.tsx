@@ -55,11 +55,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Recent Recordings Section */}
-      <Card>
-        <CardContent className="pt-6">
-          <VideoGalleryWrapper />
-        </CardContent>
-      </Card>
+      <VideoGalleryWrapper />
     </div>
   );
 }

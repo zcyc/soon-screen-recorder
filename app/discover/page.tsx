@@ -1,6 +1,6 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
 import { Video } from 'lucide-react';
 import VideoGalleryWrapper from '@/components/video-gallery-wrapper';
 
@@ -17,14 +17,7 @@ export default function DiscoverPage() {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Public Recordings</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <VideoGalleryWrapper showPublic={true} />
-        </CardContent>
-      </Card>
+      <VideoGalleryWrapper showPublic={true} />
     </div>
   );
 }
