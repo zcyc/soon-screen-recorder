@@ -383,8 +383,10 @@ export default function ScreenRecorder() {
         ...constraints,
         frameRate: { ideal: 30, max: 60 }
       },
-      audio: includeAudio
+      audio: includeAudio // 支持独立的音频控制
     };
+    
+    console.log('屏幕音频状态:', includeAudio ? '开启' : '关闭');
 
     // Add source-specific constraints using proper MediaTrackConstraints
     if (screenSource === 'window') {
@@ -463,16 +465,40 @@ export default function ScreenRecorder() {
     }
   };
 
-  const getCameraStream = async (): Promise<MediaStream> => {
+  const getCameraStream = async (audioOnly: boolean = false): Promise<MediaStream> => {
     const constraints = getQualityConstraints(quality);
     
+    // 如果只需要音频，则不请求视频流
     return await navigator.mediaDevices.getUserMedia({
-      video: {
+      video: audioOnly ? false : {
         ...constraints,
         facingMode: 'user'
       },
-      audio: includeAudio && (source === 'camera' || source === 'both' || source === 'camera-only')
+      audio: includeAudio // 独立控制音频
     });
+  };
+  
+  // 只获取音频流（当不需要摄像头视频但需要音频时）
+  const getAudioOnlyStream = async (): Promise<MediaStream | null> => {
+    if (!includeAudio) return null; // 如果不包含音频，直接返回null
+    
+    try {
+      console.log('获取独立音频流...');
+      const audioStream = await navigator.mediaDevices.getUserMedia({
+        video: false,
+        audio: true
+      });
+      
+      console.log('音频流获取成功:', {
+        id: audioStream.id,
+        audioTracks: audioStream.getAudioTracks().length
+      });
+      
+      return audioStream;
+    } catch (error) {
+      console.error('音频流获取失败:', error);
+      return null;
+    }
   };
 
   const combineStreams = (streams: MediaStream[]): MediaStream => {
@@ -483,6 +509,7 @@ export default function ScreenRecorder() {
     })));
     
     const combinedStream = new MediaStream();
+    const isScreenRecording = source === 'screen' || source === 'both';
     
     streams.forEach((stream, index) => {
       const videoTracks = stream.getVideoTracks();
@@ -495,15 +522,22 @@ export default function ScreenRecorder() {
         audioEnabled: audioTracks.map(t => t.enabled)
       });
       
-      // Add all video tracks
-      videoTracks.forEach(track => {
-        if (track.readyState === 'live') {
-          combinedStream.addTrack(track);
-          console.log(`Added video track from stream ${index}:`, track.label);
-        }
-      });
+      // 在屏幕录制模式下，只使用第一个流（屏幕流）的视频
+      const shouldAddVideo = !isScreenRecording || index === 0;
       
-      // Add all audio tracks 
+      // Add video tracks (screen video only in screen recording mode)
+      if (shouldAddVideo) {
+        videoTracks.forEach(track => {
+          if (track.readyState === 'live') {
+            combinedStream.addTrack(track);
+            console.log(`Added video track from stream ${index}:`, track.label);
+          }
+        });
+      } else {
+        console.log(`Skipped video tracks from stream ${index} (using screen video with PiP)`);
+      }
+      
+      // Add all audio tracks from all streams
       audioTracks.forEach(track => {
         if (track.readyState === 'live') {
           combinedStream.addTrack(track);
@@ -588,10 +622,39 @@ export default function ScreenRecorder() {
         }
       }
       
-      // 对于屏幕录制或屏幕+摄像头录制，摄像头通过画中画显示在屏幕上
-      if ((source === 'screen' || source === 'both') && includeCamera) {
-        console.log('摄像头将通过画中画在屏幕录制中显示');
-        // 不需要添加摄像头流到录制流中，画中画会作为屏幕内容被录制
+      // 对于屏幕录制模式，根据摄像头开启状态决定使用哪种模式获取音频
+      if ((source === 'screen' || source === 'both')) {
+        if (includeCamera) {
+          // 如果开启了摄像头，使用摄像头流获取音频和画中画视频
+          console.log('添加摄像头流以获取音频（画中画提供视频）');
+          try {
+            const cameraStream = await getCameraStream();
+            cameraStreamRef.current = cameraStream;
+            streams.push(cameraStream);
+            console.log('摄像头流添加成功，包含音频轨道:', {
+              videoTracks: cameraStream.getVideoTracks().length,
+              audioTracks: cameraStream.getAudioTracks().length,
+              active: cameraStream.active
+            });
+          } catch (error: any) {
+            console.error('摄像头音频获取失败:', error);
+            console.warn('将继续屏幕录制，但没有摄像头音频');
+          }
+        } else if (includeAudio) {
+          // 如果关闭了摄像头但开启了音频，获取独立音频流
+          console.log('获取独立音频流...');
+          try {
+            const audioStream = await getAudioOnlyStream();
+            if (audioStream) {
+              streams.push(audioStream);
+              console.log('独立音频流添加成功:', {
+                audioTracks: audioStream.getAudioTracks().length
+              });
+            }
+          } catch (error) {
+            console.error('独立音频获取失败:', error);
+          }
+        }
       }
 
       if (streams.length === 0) {
@@ -919,7 +982,12 @@ export default function ScreenRecorder() {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 {includeAudio ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-                <Label>{t.recording.includeAudio}</Label>
+                <div>
+                  <Label>{t.recording.includeAudio}</Label>
+                  <p className="text-xs text-muted-foreground">
+                    独立录制声音，不受摄像头开关影响
+                  </p>
+                </div>
               </div>
               <Switch
                 checked={includeAudio}
