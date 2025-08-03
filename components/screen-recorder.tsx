@@ -1155,12 +1155,41 @@ export default function ScreenRecorder() {
         ]
       );
       console.log('File uploaded successfully:', fileResponse);
+      
+      // Upload subtitle file if subtitles were generated
+      let subtitleFileId: string | null = null;
+      if (subtitleState.segments.length > 0) {
+        try {
+          console.log('Uploading subtitle file...');
+          const vttContent = generateVTTContent();
+          const subtitleBlob = new Blob([vttContent], { type: 'text/vtt;charset=utf-8' });
+          const subtitleFile = new File([subtitleBlob], `${timestamp}-subtitles.vtt`, { type: 'text/vtt' });
+          
+          const subtitleResponse = await storage.createFile(
+            config.bucketId,
+            ID.unique(),
+            subtitleFile,
+            [
+              Permission.read(Role.user(user.$id)),
+              Permission.delete(Role.user(user.$id)),
+              ...(isVideoPublic ? [Permission.read(Role.any())] : [])
+            ]
+          );
+          
+          subtitleFileId = subtitleResponse.$id;
+          console.log('Subtitle file uploaded successfully:', subtitleResponse);
+        } catch (subtitleError) {
+          console.error('Failed to upload subtitle file:', subtitleError);
+          // Don't fail the entire upload if subtitle upload fails
+        }
+      }
 
       // Create database record - try minimal structure first
       const finalTitle = videoTitle.trim() || getDefaultTitle();
       
       console.log('Before creating record. Title:', finalTitle);
       console.log('User info:', { id: user.$id, name: user.name, email: user.email });
+      console.log('Subtitle file ID:', subtitleFileId);
       
       // Create complete video record with all required fields
       const videoRecord = {
@@ -1172,7 +1201,8 @@ export default function ScreenRecorder() {
         duration: Number(recordingState.duration),
         views: Number(0), // Default to 0 views
         isPublic: Boolean(isVideoPublic), // Use user's choice
-        thumbnailUrl: String('') // Optional field, empty string
+        thumbnailUrl: String(''), // Optional field, empty string
+        subtitleFileId: subtitleFileId ? String(subtitleFileId) : null // Subtitle file ID
       };
       
       console.log('Minimal video record to test:', videoRecord);

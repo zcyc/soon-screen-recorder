@@ -135,6 +135,8 @@ export interface Translations {
     recognitionStartFailed: string;
     noSubtitlesToExport: string;
     subtitlesExported: string;
+    showSubtitles: string;
+    hideSubtitles: string;
   };
   
   // Authentication
@@ -372,6 +374,8 @@ export const translations: Record<Locale, Translations> = {
       recognitionStartFailed: 'Failed to start speech recognition',
       noSubtitlesToExport: 'No subtitles to export',
       subtitlesExported: 'Subtitles exported successfully',
+      showSubtitles: 'Show Subtitles',
+      hideSubtitles: 'Hide Subtitles',
     },
     auth: {
       signInToSoon: 'Sign in to soon',
@@ -597,6 +601,8 @@ export const translations: Record<Locale, Translations> = {
       recognitionStartFailed: '语音识别启动失败',
       noSubtitlesToExport: '没有字幕可以导出',
       subtitlesExported: '字幕导出成功',
+      showSubtitles: '显示字幕',
+      hideSubtitles: '隐藏字幕',
     },
     auth: {
       signInToSoon: '登录 soon',

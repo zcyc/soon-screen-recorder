@@ -14,6 +14,7 @@ export interface VideoRecord {
   views: number;
   isPublic: boolean;
   thumbnailUrl: string;
+  subtitleFileId: string | null;
 }
 
 export interface VideoReaction {

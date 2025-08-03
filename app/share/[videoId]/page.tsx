@@ -34,6 +34,8 @@ export default function SharePage() {
   const [reactions, setReactions] = useState<VideoReaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null);
+  const [showSubtitles, setShowSubtitles] = useState(true);
 
   const emojis = [
     // 正面反馈
@@ -62,6 +64,15 @@ export default function SharePage() {
       DatabaseService.incrementViews(video.$id);
     }
   }, [video]);
+  
+  // Control subtitle display
+  useEffect(() => {
+    const video = document.querySelector('video');
+    if (video && video.textTracks && video.textTracks.length > 0) {
+      const track = video.textTracks[0];
+      track.mode = showSubtitles ? 'showing' : 'hidden';
+    }
+  }, [showSubtitles, subtitleUrl]);
 
   const loadVideo = async () => {
     try {
@@ -71,6 +82,18 @@ export default function SharePage() {
         return;
       }
       setVideo(videoData);
+      
+      // Load subtitle file if available
+      if (videoData.subtitleFileId) {
+        try {
+          const subtitleUrl = getSubtitleUrl(videoData.subtitleFileId);
+          setSubtitleUrl(subtitleUrl);
+          console.log('Subtitle file loaded:', subtitleUrl);
+        } catch (subtitleError) {
+          console.error('Failed to load subtitle file:', subtitleError);
+          // Don't fail the entire video loading if subtitles fail
+        }
+      }
     } catch (error) {
       console.error('Failed to load video:', error);
       setError(t.share.videoNotFoundDesc);
@@ -107,6 +130,10 @@ export default function SharePage() {
   };
 
   const getVideoUrl = (fileId: string) => {
+    return `${config.endpoint}/storage/buckets/${config.bucketId}/files/${fileId}/view?project=${config.projectId}`;
+  };
+  
+  const getSubtitleUrl = (fileId: string) => {
     return `${config.endpoint}/storage/buckets/${config.bucketId}/files/${fileId}/view?project=${config.projectId}`;
   };
 
@@ -181,7 +208,18 @@ export default function SharePage() {
                 controls
                 poster="/api/placeholder/800/450"
                 src={getVideoUrl(video.fileId)}
-              />
+                crossOrigin="anonymous"
+              >
+                {subtitleUrl && (
+                  <track
+                    kind="subtitles"
+                    src={subtitleUrl}
+                    srcLang={video.subtitleFileId ? 'auto' : 'zh-CN'}
+                    label="字幕"
+                  />
+                )}
+                您的浏览器不支持视频播放。
+              </video>
             </CardContent>
           </Card>
 
@@ -190,10 +228,22 @@ export default function SharePage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-2xl">{video.title}</CardTitle>
-                <Button variant="outline" onClick={handleDownload}>
-                  <Download className="h-4 w-4 mr-2" />
-                  {t.share.download}
-                </Button>
+                <div className="flex space-x-2">
+                  {subtitleUrl && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setShowSubtitles(!showSubtitles)}
+                    >
+                      <span className="text-xs font-bold mr-2">CC</span>
+                      {showSubtitles ? t.subtitles?.hideSubtitles || '隐藏字幕' : t.subtitles?.showSubtitles || '显示字幕'}
+                    </Button>
+                  )}
+                  <Button variant="outline" onClick={handleDownload}>
+                    <Download className="h-4 w-4 mr-2" />
+                    {t.share.download}
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -214,6 +264,12 @@ export default function SharePage() {
                   {formatDate(video.$createdAt)}
                 </div>
                 <Badge variant="secondary">{video.quality}</Badge>
+                {subtitleUrl && (
+                  <Badge variant="outline" className="flex items-center space-x-1">
+                    <span className="text-xs font-bold">CC</span>
+                    <span>{t.subtitles?.enableSubtitles || '字幕'}</span>
+                  </Badge>
+                )}
               </div>
 
               {/* Reactions */}
