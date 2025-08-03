@@ -17,8 +17,6 @@ export interface Translations {
     heroDescription: string;
     startRecording: string;
     signIn: string;
-    setupNotice: string;
-    setupLink: string;
     featuresTitle: string;
     featuresSubtitle: string;
     screenRecordingTitle: string;
@@ -230,11 +228,9 @@ export const translations: Record<Locale, Translations> = {
     home: {
       heroTitle: 'Screen Recording',
       heroSubtitle: 'Made Simple',
-      heroDescription: 'Record your screen, camera, and audio with Soon - the simple and powerful screen recording tool.',
+      heroDescription: 'Record your screen, camera, and audio with soon - the simple and powerful screen recording tool.',
       startRecording: 'Start Recording',
       signIn: 'Sign In',
-      setupNotice: '🚀 First time setup:',
-      setupLink: 'After signing up, visit /setup to initialize your database collections.',
       featuresTitle: 'Everything You Need to Record',
       featuresSubtitle: 'Professional-quality recordings with just a few clicks',
       screenRecordingTitle: 'Screen Recording',
@@ -244,7 +240,7 @@ export const translations: Record<Locale, Translations> = {
       audioRecordingTitle: 'Audio Recording',
       audioRecordingDesc: 'Capture system audio and microphone input for complete recording experience.',
       ctaTitle: 'Ready to Start Recording?',
-      ctaDescription: 'Join Soon today and start creating amazing screen recordings in minutes.',
+      ctaDescription: 'Join soon today and start creating amazing screen recordings in minutes.',
       getStarted: 'Get Started for Free',
     },
     dashboard: {
@@ -322,8 +318,8 @@ export const translations: Record<Locale, Translations> = {
       unsupportedBrowserShare: 'Your browser does not support sharing, please use the copy link button',
     },
     auth: {
-      signInToSoon: 'Sign in to Soon',
-      createSoonAccount: 'Create your Soon account',
+      signInToSoon: 'Sign in to soon',
+      createSoonAccount: 'Create your soon account',
       welcomeBack: 'Welcome back! Please sign in to continue.',
       signInDescription: 'Welcome back! Please sign in to continue.',
       signUpDescription: 'Start recording and sharing your screen instantly.',
@@ -339,7 +335,7 @@ export const translations: Record<Locale, Translations> = {
       orContinueWith: 'Or continue with',
       continueWithGitHub: 'Continue with GitHub',
       connectingToGitHub: 'Connecting to GitHub...',
-      newToSoon: 'New to Soon?',
+      newToSoon: 'New to soon?',
       alreadyHaveAccount: 'Already have an account?',
       createAccount: 'Create an account',
       signInToExistingAccount: 'Sign in to existing account',
@@ -430,11 +426,9 @@ export const translations: Record<Locale, Translations> = {
     home: {
       heroTitle: '屏幕录制',
       heroSubtitle: '简单易用',
-      heroDescription: '使用 Soon 轻松录制屏幕、摄像头和音频 - 简单而强大的屏幕录制工具。',
+      heroDescription: '使用 soon 轻松录制屏幕、摄像头和音频 - 简单而强大的屏幕录制工具。',
       startRecording: '开始录制',
       signIn: '登录',
-      setupNotice: '🚀 首次配置：',
-      setupLink: '注册后，访问 /setup 来初始化您的数据库集合。',
       featuresTitle: '满足您的录制需求',
       featuresSubtitle: '仅需几次点击就能获得专业品质的录制',
       screenRecordingTitle: '屏幕录制',
@@ -444,7 +438,7 @@ export const translations: Record<Locale, Translations> = {
       audioRecordingTitle: '音频录制',
       audioRecordingDesc: '捕获系统音频和麦克风输入，提供完整的录制体验。',
       ctaTitle: '准备开始录制了吗？',
-      ctaDescription: '立即加入 Soon，在几分钟内开始创建令人惊叹的屏幕录制。',
+      ctaDescription: '立即加入 soon，在几分钟内开始创建令人惊叹的屏幕录制。',
       getStarted: '免费开始使用',
     },
     dashboard: {
@@ -522,8 +516,8 @@ export const translations: Record<Locale, Translations> = {
       unsupportedBrowserShare: '您的浏览器不支持分享功能，请使用复制链接按钮',
     },
     auth: {
-      signInToSoon: '登录 Soon',
-      createSoonAccount: '创建您的 Soon 账户',
+      signInToSoon: '登录 soon',
+      createSoonAccount: '创建您的 soon 账户',
       welcomeBack: '欢迎回来！请登录以继续。',
       signInDescription: '欢迎回来！请登录以继续。',
       signUpDescription: '立即开始录制和分享您的屏幕。',
@@ -539,7 +533,7 @@ export const translations: Record<Locale, Translations> = {
       orContinueWith: '或继续使用',
       continueWithGitHub: '使用 GitHub 继续',
       connectingToGitHub: '正在连接到 GitHub...',
-      newToSoon: '初次使用 Soon?',
+      newToSoon: '初次使用 soon?',
       alreadyHaveAccount: '已有账户？',
       createAccount: '创建账户',
       signInToExistingAccount: '登录现有账户',

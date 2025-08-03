@@ -63,16 +63,6 @@ export default function HomePage() {
               </a>
             </Button>
           </div>
-          
-          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800 max-w-2xl mx-auto">
-            <p className="text-sm text-blue-700 dark:text-blue-300">
-              <span className="font-semibold">{t.home.setupNotice}</span> {t.home.setupLink.split('/setup')[0]}
-              <a href="/setup" className="underline font-medium">
-                /setup
-              </a>
-              {t.home.setupLink.split('/setup')[1]}
-            </p>
-          </div>
         </div>
       </section>
 

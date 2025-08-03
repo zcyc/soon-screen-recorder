@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, Settings } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import VideoGallery from './video-gallery';
 
 interface VideoGalleryWrapperProps {
@@ -50,17 +50,6 @@ export default function VideoGalleryWrapper({ showPublic = false }: VideoGallery
           </div>
           
           <div className="flex gap-2">
-            <Button 
-              asChild 
-              size="sm"
-              className="bg-amber-600 hover:bg-amber-700"
-            >
-              <a href="/setup">
-                <Settings className="h-4 w-4 mr-2" />
-                查看设置指南
-              </a>
-            </Button>
-            
             <Button 
               variant="outline" 
               size="sm"

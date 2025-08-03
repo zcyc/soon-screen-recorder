@@ -15,7 +15,7 @@
 - 点击左侧菜单 "Databases"
 - 点击 "Create Database"
 - 数据库 ID: `soon`
-- 数据库名称: `Soon Database`
+- 数据库名称: `soon Database`
 
 ### 3. 创建 Videos 集合
 - 在数据库中点击 "Create Collection"
