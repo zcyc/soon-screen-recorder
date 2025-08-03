@@ -14,8 +14,10 @@ import {
   Heart,
   Smile,
   ThumbsUp,
-  // Clap, // Not available in lucide-react
-  Star
+  ThumbsDown,
+  Star,
+  Frown,
+  Meh
 } from 'lucide-react';
 import { DatabaseService, VideoRecord, VideoReaction } from '@/lib/database';
 import { storage, config } from '@/lib/appwrite';
@@ -34,11 +36,17 @@ export default function SharePage() {
   const [error, setError] = useState<string | null>(null);
 
   const emojis = [
+    // 正面反馈
     { emoji: '👍', icon: ThumbsUp, label: t.share.like },
     { emoji: '❤️', icon: Heart, label: t.share.love },
     { emoji: '😊', icon: Smile, label: t.share.happy },
     { emoji: '👏', icon: ThumbsUp, label: t.share.applause },
     { emoji: '⭐', icon: Star, label: t.share.awesome },
+    // 负面反馈
+    { emoji: '👎', icon: ThumbsDown, label: t.share.dislike },
+    { emoji: '😕', icon: Frown, label: t.share.confused },
+    { emoji: '😴', icon: Meh, label: t.share.boring },
+    { emoji: '😞', icon: Frown, label: t.share.disappointed },
   ];
 
   useEffect(() => {
@@ -209,69 +217,70 @@ export default function SharePage() {
               </div>
 
               {/* Reactions */}
-              {user && (
-                <div className="border-t pt-4">
-                  <h3 className="text-lg font-semibold mb-3">{t.share.reactions}</h3>
-                  <div className="flex space-x-2 mb-4">
-                    {emojis.map(({ emoji, icon: Icon, label }) => {
-                      const count = getReactionCount(emoji);
-                      const hasReacted = hasUserReacted(emoji);
-                      
-                      return (
-                        <Button
-                          key={emoji}
-                          variant={hasReacted ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => handleReaction(emoji)}
-                          className="flex items-center space-x-1"
+              <div className="border-t pt-4">
+                <h3 className="text-lg font-semibold mb-3">{t.share.reactions}</h3>
+                <div className="flex space-x-2 mb-4">
+                  {emojis.map(({ emoji, icon: Icon, label }) => {
+                    const count = getReactionCount(emoji);
+                    const hasReacted = hasUserReacted(emoji);
+                    
+                    return (
+                      <Button
+                        key={emoji}
+                        variant={hasReacted ? "default" : "outline"}
+                        size="sm"
+                        onClick={user ? () => handleReaction(emoji) : undefined}
+                        disabled={!user}
+                        className="flex items-center space-x-1"
+                        title={user ? label : t.share.signInToReact}
+                      >
+                        <span>{emoji}</span>
+                        {count > 0 && <span className="text-xs">{count}</span>}
+                      </Button>
+                    );
+                  })}
+                </div>
+
+                {/* Recent Reactions */}
+                {reactions.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium mb-2">{t.share.recentReactions}</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {reactions.slice(0, 10).map((reaction) => (
+                        <div
+                          key={reaction.$id}
+                          className="flex items-center space-x-1 text-xs bg-muted px-2 py-1 rounded"
                         >
-                          <span>{emoji}</span>
-                          {count > 0 && <span className="text-xs">{count}</span>}
-                        </Button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Recent Reactions */}
-                  {reactions.length > 0 && (
-                    <div>
-                      <h4 className="text-sm font-medium mb-2">{t.share.recentReactions}</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {reactions.slice(0, 10).map((reaction) => (
-                          <div
-                            key={reaction.$id}
-                            className="flex items-center space-x-1 text-xs bg-muted px-2 py-1 rounded"
-                          >
-                            <span>{reaction.emoji}</span>
-                            <span>{reaction.userName}</span>
-                          </div>
-                        ))}
-                        {reactions.length > 10 && (
-                          <span className="text-xs text-muted-foreground">
-                            {t.share.andMore.replace('{count}', (reactions.length - 10).toString())}
-                          </span>
-                        )}
-                      </div>
+                          <span>{reaction.emoji}</span>
+                          <span>{reaction.userName}</span>
+                        </div>
+                      ))}
+                      {reactions.length > 10 && (
+                        <span className="text-xs text-muted-foreground">
+                          {t.share.andMore.replace('{count}', (reactions.length - 10).toString())}
+                        </span>
+                      )}
                     </div>
-                  )}
-                </div>
-              )}
-
-              {!user && (
-                <div className="border-t pt-4 text-center">
-                  <p className="text-muted-foreground mb-4">
-                    {t.share.signInToReact}
-                  </p>
-                  <div className="space-x-2">
-                    <Button asChild variant="outline">
-                      <a href="/sign-in">{t.share.signIn}</a>
-                    </Button>
-                    <Button asChild>
-                      <a href="/sign-up">{t.share.signUp}</a>
-                    </Button>
                   </div>
-                </div>
-              )}
+                )}
+
+                {/* Sign in prompt for non-logged in users */}
+                {!user && (
+                  <div className="mt-4 p-3 bg-muted/50 rounded-lg text-center">
+                    <p className="text-sm text-muted-foreground mb-3">
+                      {t.share.signInToReact}
+                    </p>
+                    <div className="space-x-2">
+                      <Button asChild variant="outline" size="sm">
+                        <a href="/sign-in">{t.share.signIn}</a>
+                      </Button>
+                      <Button asChild size="sm">
+                        <a href="/sign-up">{t.share.signUp}</a>
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>

@@ -171,6 +171,10 @@ export interface Translations {
     happy: string;
     applause: string;
     awesome: string;
+    dislike: string;
+    confused: string;
+    boring: string;
+    disappointed: string;
   };
   
   // Common
@@ -342,10 +346,10 @@ export const translations: Record<Locale, Translations> = {
       backToHome: 'Back to Home',
       download: 'Download',
       views: 'views',
-      reactions: 'Reactions',
-      recentReactions: 'Recent reactions:',
+      reactions: 'Feedback',
+      recentReactions: 'Recent feedback:',
       andMore: 'and {count} more...',
-      signInToReact: 'Sign in to react to this video',
+      signInToReact: 'Sign in to give feedback on this video',
       signIn: 'Sign In',
       signUp: 'Sign Up',
       like: 'Like',
@@ -353,6 +357,10 @@ export const translations: Record<Locale, Translations> = {
       happy: 'Happy',
       applause: 'Applause',
       awesome: 'Awesome',
+      dislike: 'Dislike',
+      confused: 'Confused',
+      boring: 'Boring',
+      disappointed: 'Disappointed',
     },
     common: {
       loading: 'Loading...',
@@ -518,10 +526,10 @@ export const translations: Record<Locale, Translations> = {
       backToHome: '返回首页',
       download: '下载',
       views: '次观看',
-      reactions: '反应',
-      recentReactions: '最近的反应：',
+      reactions: '反馈',
+      recentReactions: '最近的反馈：',
       andMore: '还有 {count} 个...',
-      signInToReact: '登录以对此视频做出反应',
+      signInToReact: '登录以对此视频给出反馈',
       signIn: '登录',
       signUp: '注册',
       like: '点赞',
@@ -529,6 +537,10 @@ export const translations: Record<Locale, Translations> = {
       happy: '开心',
       applause: '鼓掌',
       awesome: '精彩',
+      dislike: '不喜欢',
+      confused: '困惑',
+      boring: '无聊',
+      disappointed: '失望',
     },
     common: {
       loading: '加载中...',
