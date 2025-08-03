@@ -44,6 +44,12 @@ export interface Translations {
     welcomeDescription: string;
   };
   
+  // Discover
+  discover: {
+    title: string;
+    description: string;
+  };
+  
   // Recording
   recording: {
     recordingQuality: string;
@@ -287,6 +293,10 @@ export const translations: Record<Locale, Translations> = {
       welcomeBack: 'Welcome back',
       welcomeDescription: 'Start recording your screen or manage your existing recordings.',
     },
+    discover: {
+      title: 'Discover Recordings',
+      description: 'Browse public recordings shared by the Soon community.',
+    },
     recording: {
       recordingQuality: 'Recording Quality',
       recordingSource: 'Recording Source',
@@ -514,6 +524,10 @@ export const translations: Record<Locale, Translations> = {
       noPublicVideos: '暂无公共视频',
       welcomeBack: '欢迎回来',
       welcomeDescription: '开始录制您的屏幕或管理您现有的录制内容。',
+    },
+    discover: {
+      title: '发现视频',
+      description: '浏览 Soon 社区分享的公开录像。',
     },
     recording: {
       recordingQuality: '录制质量',
