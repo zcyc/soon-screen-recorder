@@ -19,6 +19,7 @@ export interface Translations {
     signIn: string;
     featuresTitle: string;
     featuresSubtitle: string;
+    timeLimitNotice: string;
     screenRecordingTitle: string;
     screenRecordingDesc: string;
     cameraRecordingTitle: string;
@@ -106,6 +107,10 @@ export interface Translations {
     microphoneEnabled: string;
     cameraEnabled: string;
     unsupportedBrowserShare: string;
+    // Time limit related
+    timeLimitWarning: string;
+    timeLimitReached: string;
+    recordingWillStopAt: string;
   };
   
   // Authentication
@@ -233,6 +238,7 @@ export const translations: Record<Locale, Translations> = {
       signIn: 'Sign In',
       featuresTitle: 'Everything You Need to Record',
       featuresSubtitle: 'Professional-quality recordings with just a few clicks',
+      timeLimitNotice: '🕒 Free recordings are limited to 2 minutes',
       screenRecordingTitle: 'Screen Recording',
       screenRecordingDesc: 'Capture your entire screen or specific windows with crystal clear quality up to 1080p.',
       cameraRecordingTitle: 'Camera Recording',
@@ -316,6 +322,10 @@ export const translations: Record<Locale, Translations> = {
       microphoneEnabled: 'Microphone enabled',
       cameraEnabled: 'Camera picture-in-picture enabled',
       unsupportedBrowserShare: 'Your browser does not support sharing, please use the copy link button',
+      // Time limit related
+      timeLimitWarning: 'Recording will stop at 2:00',
+      timeLimitReached: 'Recording stopped: Time limit reached (2 minutes)',
+      recordingWillStopAt: '⚠️ Recording will automatically stop at 2:00',
     },
     auth: {
       signInToSoon: 'Sign in to soon',
@@ -431,6 +441,7 @@ export const translations: Record<Locale, Translations> = {
       signIn: '登录',
       featuresTitle: '满足您的录制需求',
       featuresSubtitle: '仅需几次点击就能获得专业品质的录制',
+      timeLimitNotice: '🕒 免费录制限制为 2 分钟',
       screenRecordingTitle: '屏幕录制',
       screenRecordingDesc: '捕获整个屏幕或特定窗口，提供高达 1080p 的清晰画质。',
       cameraRecordingTitle: '摄像头录制',
@@ -514,6 +525,10 @@ export const translations: Record<Locale, Translations> = {
       microphoneEnabled: '麦克风已开启',
       cameraEnabled: '摄像头画中画已启动',
       unsupportedBrowserShare: '您的浏览器不支持分享功能，请使用复制链接按钮',
+      // Time limit related
+      timeLimitWarning: '录制将在 2:00 停止',
+      timeLimitReached: '录制已停止：达到时间限制（2分钟）',
+      recordingWillStopAt: '⚠️ 录制将在 2:00 自动停止',
     },
     auth: {
       signInToSoon: '登录 soon',

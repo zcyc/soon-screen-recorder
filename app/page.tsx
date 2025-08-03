@@ -76,6 +76,9 @@ export default function HomePage() {
             <p className="text-xl text-muted-foreground">
               {t.home.featuresSubtitle}
             </p>
+            <p className="text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-lg inline-block">
+              {t.home.timeLimitNotice}
+            </p>
           </div>
           
           <div className="grid md:grid-cols-3 gap-8">

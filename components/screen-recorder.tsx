@@ -31,6 +31,7 @@ import { storage, config } from '@/lib/appwrite';
 import { DatabaseService } from '@/lib/database';
 import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/lib/i18n';
+import { recordingConfig } from '@/lib/config';
 import { ID, Permission, Role } from 'appwrite';
 
 type RecordingQuality = '720p' | '1080p';
@@ -66,6 +67,8 @@ export default function ScreenRecorder() {
   const [toastMessage, setToastMessage] = useState<string | null>(null); // Toast message state
   const [cameraPreviewStream, setCameraPreviewStream] = useState<MediaStream | null>(null); // Camera preview stream
   const [isMounted, setIsMounted] = useState(false); // Track component mount status
+  const [showTimeWarning, setShowTimeWarning] = useState(false); // Show time warning
+  const [isNearTimeLimit, setIsNearTimeLimit] = useState(false); // Near time limit state
   
   // Show toast message
   const showToast = (message: string) => {
@@ -90,6 +93,8 @@ export default function ScreenRecorder() {
     setIsVideoPublic(true);
     setUploadedVideo(null);
     setToastMessage(null);
+    setShowTimeWarning(false);
+    setIsNearTimeLimit(false);
   };
   
   const getShareUrl = (videoId: string) => {
@@ -196,7 +201,28 @@ export default function ScreenRecorder() {
 
   const startTimer = () => {
     timerRef.current = setInterval(() => {
-      setRecordingState(prev => ({ ...prev, duration: prev.duration + 1 }));
+      setRecordingState(prev => {
+        const newDuration = prev.duration + 1;
+        
+        // Check if time limit is enabled
+        if (recordingConfig.enableTimeLimit) {
+          // Show warning when approaching time limit
+          if (newDuration >= recordingConfig.timeWarningThreshold && !showTimeWarning) {
+            setShowTimeWarning(true);
+            setIsNearTimeLimit(true);
+            showToast(t.recording.timeLimitWarning);
+          }
+          
+          // Stop recording when time limit is reached
+          if (newDuration >= recordingConfig.maxDurationSeconds) {
+            stopRecording();
+            showToast(t.recording.timeLimitReached);
+            return prev; // Don't update duration as recording is stopping
+          }
+        }
+        
+        return { ...prev, duration: newDuration };
+      });
     }, 1000);
   };
 
@@ -763,6 +789,10 @@ export default function ScreenRecorder() {
         isPaused: false 
       }));
       
+      // Reset time warning states
+      setShowTimeWarning(false);
+      setIsNearTimeLimit(false);
+      
       // 录制结束后，如果摄像头仍然开启，重新启动预览
       setTimeout(() => {
         if (includeCamera) {
@@ -1062,34 +1092,71 @@ export default function ScreenRecorder() {
 
       {/* Recording Status */}
       {recordingState.isRecording && (
-        <Card className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
-          <CardContent className="flex items-center justify-between p-4">
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                <span className="font-medium">
-                  {recordingState.isPaused ? t.recording.paused : t.recording.recordingStatus}
+        <Card className={`border-2 transition-colors ${
+          isNearTimeLimit 
+            ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700' 
+            : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+        }`}>
+          <CardContent className="p-4 space-y-3">
+            {/* Main Status Row */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                  <span className="font-medium">
+                    {recordingState.isPaused ? t.recording.paused : t.recording.recordingStatus}
+                  </span>
+                </div>
+                <span className={`font-mono text-lg ${
+                  isNearTimeLimit ? 'text-orange-600 dark:text-orange-400 font-bold' : ''
+                }`}>
+                  {formatDuration(recordingState.duration)}
                 </span>
+                {recordingConfig.enableTimeLimit && (
+                  <span className="text-sm text-muted-foreground">
+                    / {formatDuration(recordingConfig.maxDurationSeconds)}
+                  </span>
+                )}
               </div>
-              <span className="font-mono text-lg">
-                {formatDuration(recordingState.duration)}
-              </span>
-            </div>
-            <div className="flex space-x-2">
-              {!recordingState.isPaused ? (
-                <Button size="sm" variant="outline" onClick={pauseRecording}>
-                  <Pause className="h-4 w-4" />
+              <div className="flex space-x-2">
+                {!recordingState.isPaused ? (
+                  <Button size="sm" variant="outline" onClick={pauseRecording}>
+                    <Pause className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="outline" onClick={resumeRecording}>
+                    <Play className="h-4 w-4" />
+                  </Button>
+                )}
+                <Button size="sm" onClick={stopRecording}>
+                  <StopCircle className="h-4 w-4 mr-1" />
+                  {t.recording.stop}
                 </Button>
-              ) : (
-                <Button size="sm" variant="outline" onClick={resumeRecording}>
-                  <Play className="h-4 w-4" />
-                </Button>
-              )}
-              <Button size="sm" onClick={stopRecording}>
-                <StopCircle className="h-4 w-4 mr-1" />
-                {t.recording.stop}
-              </Button>
+              </div>
             </div>
+            
+            {/* Progress Bar */}
+            {recordingConfig.enableTimeLimit && (
+              <div className="w-full">
+                <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full transition-all duration-300 ${
+                      isNearTimeLimit 
+                        ? 'bg-orange-500 dark:bg-orange-400' 
+                        : 'bg-red-500 dark:bg-red-400'
+                    }`}
+                    style={{
+                      width: `${Math.min((recordingState.duration / recordingConfig.maxDurationSeconds) * 100, 100)}%`
+                    }}
+                  ></div>
+                </div>
+                {isNearTimeLimit && (
+                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 text-center">
+                    {t.recording.recordingWillStopAt}
+                  </p>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
