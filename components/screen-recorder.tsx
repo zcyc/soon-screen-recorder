@@ -133,7 +133,7 @@ export default function ScreenRecorder() {
       }
     } else {
       // 浏览器不支持原生分享，显示提示消息
-      showToast('您的浏览器不支持分享功能，请使用复制链接按钮');
+      showToast(t.recording.unsupportedBrowserShare);
     }
   };
 
@@ -898,7 +898,7 @@ export default function ScreenRecorder() {
               <Label className="text-sm font-medium mb-3 block">{t.recording.recordingQuality}</Label>
               <Select value={quality} onValueChange={(value) => setQuality(value as RecordingQuality)}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="选择录制质量" />
+                  <SelectValue placeholder={t.recording.selectRecordingQuality} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="720p">720p (1280x720)</SelectItem>
@@ -908,7 +908,7 @@ export default function ScreenRecorder() {
             </div>
             
             <div>
-              <Label className="text-sm font-medium mb-3 block">录制源</Label>
+              <Label className="text-sm font-medium mb-3 block">{t.recording.recordingSource}</Label>
               <Select 
                 value={source === 'camera-only' ? 'camera-only' : screenSource} 
                 onValueChange={(value) => {
@@ -925,7 +925,7 @@ export default function ScreenRecorder() {
                 }}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="选择录制源" />
+                  <SelectValue placeholder={t.recording.selectRecordingSource} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="monitor">
@@ -965,10 +965,10 @@ export default function ScreenRecorder() {
                     <div>
                       <div className="flex items-center">
                         <Camera className="h-4 w-4 mr-2" />
-                        <span className="font-medium">仅录制摄像头</span>
+                        <span className="font-medium">{t.recording.cameraOnly}</span>
                       </div>
                       <div className="text-xs text-muted-foreground ml-6">
-                        仅使用摄像头进行录制，不包含屏幕内容
+                        {t.recording.cameraOnlyDesc}
                       </div>
                     </div>
                   </SelectItem>
@@ -983,16 +983,16 @@ export default function ScreenRecorder() {
               <div className="flex items-center space-x-2">
                 {includeAudio ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
                 <div className="flex flex-col">
-                  <Label>开启麦克风</Label>
+                  <Label>{t.recording.openMicrophone}</Label>
                   <p className="text-xs text-muted-foreground">
-                    独立录制声音，不受摄像头开关影响
+                    {t.recording.microphoneDescription}
                   </p>
                 </div>
                 {/* 麦克风状态指示器 */}
                 {includeAudio && (
                   <div 
                     className="w-2 h-2 bg-green-500 rounded-full animate-pulse"
-                    title='麦克风已开启'
+                    title={t.recording.microphoneEnabled}
                   ></div>
                 )}
               </div>
@@ -1006,11 +1006,11 @@ export default function ScreenRecorder() {
               <div className="flex items-center space-x-2">
                 {includeCamera ? <Camera className="h-4 w-4" /> : <CameraOff className="h-4 w-4" />}
                 <div className="flex flex-col">
-                  <Label>开启摄像头</Label>
+                  <Label>{t.recording.enableCamera}</Label>
                   {/* 不支持摄像头的提示 */}
                   {(screenSource === 'window' || screenSource === 'browser') && source !== 'camera-only' && (
                     <span className="text-xs text-muted-foreground">
-                      {screenSource === 'window' ? '应用窗口不支持摄像头' : '浏览器标签页不支持摄像头'}
+                      {screenSource === 'window' ? t.recording.windowNotSupportCamera : t.recording.browserTabNotSupportCamera}
                     </span>
                   )}
                 </div>
@@ -1018,7 +1018,7 @@ export default function ScreenRecorder() {
                 {includeCamera && cameraPreviewStream && (
                   <div 
                     className="w-2 h-2 bg-green-500 rounded-full animate-pulse"
-                    title='摄像头画中画已启动'
+                    title={t.recording.cameraEnabled}
                   ></div>
                 )}
               </div>

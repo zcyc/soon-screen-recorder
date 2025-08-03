@@ -76,6 +76,20 @@ export interface Translations {
     startFailed: string;
     noRecording: string;
     loginRequired: string;
+    // Additional UI elements
+    selectRecordingQuality: string;
+    selectRecordingSource: string;
+    recordingSource: string;
+    cameraOnly: string;
+    cameraOnlyDesc: string;
+    openMicrophone: string;
+    microphoneDescription: string;
+    enableCamera: string;
+    windowNotSupportCamera: string;
+    browserTabNotSupportCamera: string;
+    microphoneEnabled: string;
+    cameraEnabled: string;
+    unsupportedBrowserShare: string;
   };
   
   // Authentication
@@ -232,6 +246,20 @@ export const translations: Record<Locale, Translations> = {
       startFailed: 'Failed to start recording. Please check your permissions and try again.',
       noRecording: 'No recording to save!',
       loginRequired: 'Please sign in to save recordings.',
+      // Additional UI elements
+      selectRecordingQuality: 'Select recording quality',
+      selectRecordingSource: 'Select recording source',
+      recordingSource: 'Recording Source',
+      cameraOnly: 'Camera Only',
+      cameraOnlyDesc: 'Record using camera only, no screen content',
+      openMicrophone: 'Open Microphone',
+      microphoneDescription: 'Record audio independently, not affected by camera switch',
+      enableCamera: 'Enable Camera',
+      windowNotSupportCamera: 'Application window does not support camera',
+      browserTabNotSupportCamera: 'Browser tab does not support camera',
+      microphoneEnabled: 'Microphone enabled',
+      cameraEnabled: 'Camera picture-in-picture enabled',
+      unsupportedBrowserShare: 'Your browser does not support sharing, please use the copy link button',
     },
     auth: {
       signInToSoon: 'Sign in to Soon',
@@ -376,6 +404,20 @@ export const translations: Record<Locale, Translations> = {
       startFailed: '录制启动失败，请检查权限设置后重试。',
       noRecording: '没有可保存的录制！',
       loginRequired: '请登录后保存录制。',
+      // Additional UI elements
+      selectRecordingQuality: '选择录制质量',
+      selectRecordingSource: '选择录制源',
+      recordingSource: '录制源',
+      cameraOnly: '仅录制摄像头',
+      cameraOnlyDesc: '仅使用摄像头进行录制，不包含屏幕内容',
+      openMicrophone: '开启麦克风',
+      microphoneDescription: '独立录制声音，不受摄像头开关影响',
+      enableCamera: '开启摄像头',
+      windowNotSupportCamera: '应用窗口不支持摄像头',
+      browserTabNotSupportCamera: '浏览器标签页不支持摄像头',
+      microphoneEnabled: '麦克风已开启',
+      cameraEnabled: '摄像头画中画已启动',
+      unsupportedBrowserShare: '您的浏览器不支持分享功能，请使用复制链接按钮',
     },
     auth: {
       signInToSoon: '登录 Soon',
