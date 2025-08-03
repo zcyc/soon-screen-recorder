@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { VideoDeleteDialog } from '@/components/ui/confirm-dialog';
 import { 
   Search, 
   Eye, 
@@ -36,10 +37,18 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
 
   useEffect(() => {
     loadVideos();
   }, [showPublic, user]);
+
+  // Show toast message
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    setTimeout(() => setToastMessage(null), 3000); // Hide after 3 seconds
+  };
 
   const loadVideos = async () => {
     try {
@@ -117,14 +126,14 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
 
   const fallbackShare = (url: string) => {
     navigator.clipboard.writeText(url);
-    alert('链接已复制到剪贴板！');
+    showToast('链接已复制到剪贴板！');
   };
 
   const handleCopyShareLink = async (video: Video) => {
     const shareLink = `${window.location.origin}/share/${video.$id}`;
     try {
       await navigator.clipboard.writeText(shareLink);
-      alert(t.recording.linkCopied || '分享链接已复制！');
+      showToast(t.recording.linkCopied || '分享链接已复制！');
     } catch (error) {
       console.error('复制失败:', error);
       // 回退方法
@@ -134,7 +143,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
       textArea.select();
       document.execCommand('copy');
       document.body.removeChild(textArea);
-      alert(t.recording.linkCopied || '分享链接已复制！');
+      showToast(t.recording.linkCopied || '分享链接已复制！');
     }
   };
 
@@ -153,44 +162,35 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
   };
 
   const handleDelete = async (videoId: string, fileId: string) => {
-    // 找到要删除的视频信息
-    const videoToDelete = videos.find(v => v.$id === videoId);
-    console.log('Delete attempt:', {
-      videoId,
-      fileId,
-      currentUser: user?.$id,
-      videoOwner: videoToDelete?.userId,
-      isOwner: user?.$id === videoToDelete?.userId
-    });
-    
-    if (confirm('确定要删除这个视频吗？此操作无法撤销。')) {
-      try {
-        const result = await DatabaseService.deleteVideo(videoId, fileId);
-        
-        // Update video list immediately
-        setVideos(videos.filter(v => v.$id !== videoId));
-        
-        // Show appropriate success message
-        if (result && typeof result === 'object' && 'storageDeleteSuccess' in result) {
-          // New response format with detailed info
-          alert(result.message || '视频删除成功！');
-          if (!result.storageDeleteSuccess) {
-            console.warn('Storage file deletion failed but video removed from list');
-          }
-        } else {
-          // Legacy response or direct success
-          alert('视频已成功删除！');
+    try {
+      setDeletingVideoId(videoId);
+      const result = await DatabaseService.deleteVideo(videoId, fileId);
+      
+      // Update video list immediately
+      setVideos(videos.filter(v => v.$id !== videoId));
+      
+      // Show appropriate success message
+      if (result && typeof result === 'object' && 'storageDeleteSuccess' in result) {
+        // New response format with detailed info
+        showToast(result.message || '视频删除成功！');
+        if (!result.storageDeleteSuccess) {
+          console.warn('Storage file deletion failed but video removed from list');
         }
-      } catch (error: any) {
-        console.error('Error deleting video:', error);
-        console.error('Error details:', {
-          code: error.code,
-          message: error.message,
-          type: error.type
-        });
-        // 显示具体的错误信息
-        alert(error.message || '删除视频时出错，请重试。');
+      } else {
+        // Legacy response or direct success
+        showToast('视频已成功删除！');
       }
+    } catch (error: any) {
+      console.error('Error deleting video:', error);
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        type: error.type
+      });
+      // 显示具体的错误信息
+      showToast(error.message || '删除视频时出错，请重试。');
+    } finally {
+      setDeletingVideoId(null);
     }
   };
 
@@ -362,17 +362,22 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
                     >
                       <Download className="h-3 w-3" />
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 w-8 p-0 hover:bg-red-600 hover:text-white transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(video.$id, video.fileId);
-                      }}
+                    <VideoDeleteDialog
+                      videoTitle={video.title}
+                      onConfirm={() => handleDelete(video.$id, video.fileId)}
+                      isLoading={deletingVideoId === video.$id}
                     >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 hover:bg-red-600 hover:text-white transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </VideoDeleteDialog>
                   </div>
                 )}
                 
@@ -474,6 +479,13 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
               </div>
             </div>
           </div>
+        </div>
+      )}
+      
+      {/* Toast 消息 */}
+      {toastMessage && (
+        <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-md shadow-lg z-50 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          {toastMessage}
         </div>
       )}
     </div>

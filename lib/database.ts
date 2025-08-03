@@ -142,30 +142,52 @@ export class DatabaseService {
       
       // Try to delete the file from storage first
       if (fileId) {
-        try {
-          const { storage } = await import('./appwrite');
-          await storage.deleteFile(
-            process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID!,
-            fileId
-          );
-          console.log('Successfully deleted file from storage:', fileId);
-        } catch (storageError: any) {
-          console.error('Failed to delete file from storage:', storageError);
-          storageDeleteSuccess = false;
-          storageError = storageError;
-          
-          // Log detailed error for debugging
-          console.log('Storage deletion error details:', {
-            code: storageError.code,
-            message: storageError.message,
-            type: storageError.type,
+        // Check if this is likely an older video without proper permissions
+        const videoCreatedAt = new Date(video.$createdAt);
+        const cutoffDate = new Date('2024-12-22'); // Date when permission fixes were implemented
+        const isOlderVideo = videoCreatedAt < cutoffDate;
+        
+        if (isOlderVideo) {
+          // For older videos, don't attempt storage deletion to avoid 401 errors
+          console.info('Skipping storage file deletion for older video (before permission fixes):', {
             videoId,
-            fileId
+            fileId,
+            createdAt: video.$createdAt,
+            message: 'Storage file deletion not attempted due to legacy permissions'
           });
-          
-          // Continue with database deletion even if storage deletion fails
-          // This is important for orphaned records where storage file might not exist
-          // or have permission issues
+          storageDeleteSuccess = false;
+        } else {
+          // For newer videos with proper permissions, attempt storage deletion
+          try {
+            const { storage } = await import('./appwrite');
+            await storage.deleteFile(
+              process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID!,
+              fileId
+            );
+            console.log('Successfully deleted file from storage:', fileId);
+          } catch (storageError: any) {
+            storageDeleteSuccess = false;
+            
+            // Check if it's a permission issue (unexpected for newer videos)
+            if (storageError.code === 401 || storageError.type === 'user_unauthorized') {
+              console.warn('Unexpected permission error for newer video:', {
+                videoId,
+                fileId,
+                createdAt: video.$createdAt,
+                message: 'This should not happen for videos with proper permissions'
+              });
+            } else {
+              // Log other types of storage errors normally
+              console.error('Failed to delete file from storage:', storageError);
+              console.log('Storage deletion error details:', {
+                code: storageError.code,
+                message: storageError.message,
+                type: storageError.type,
+                videoId,
+                fileId
+              });
+            }
+          }
         }
       }
       
@@ -184,10 +206,26 @@ export class DatabaseService {
         console.warn('Video deleted from database but storage file deletion failed. This is usually due to permission issues with old videos.');
       }
       
+      // Determine appropriate success message based on storage deletion result
+      let successMessage;
+      if (storageDeleteSuccess) {
+        successMessage = '视频删除成功！';
+      } else {
+        const videoCreatedAt = new Date(video.$createdAt);
+        const cutoffDate = new Date('2024-12-22');
+        const isOlderVideo = videoCreatedAt < cutoffDate;
+        
+        if (isOlderVideo) {
+          successMessage = '视频已成功删除！（旧视频文件保留在存储中）';
+        } else {
+          successMessage = '视频已从列表中删除（文件删除遇到问题）';
+        }
+      }
+      
       return { 
         success: true, 
         storageDeleteSuccess,
-        message: storageDeleteSuccess ? '视频删除成功' : '视频已从列表中删除（文件删除遇到权限问题）'
+        message: successMessage
       };
     } catch (error: any) {
       console.error('Failed to delete video:', error);
