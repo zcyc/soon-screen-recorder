@@ -43,7 +43,11 @@ export default function ThemeControls() {
     return <div className="flex items-center space-x-2 h-9 w-18" />;
   }
 
-  const handleColorChange = (color: ThemeColor) => {
+  const handleColorChange = (color: ThemeColor, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     setThemeColor(color);
     setIsOpen(false);
   };
@@ -52,9 +56,15 @@ export default function ThemeControls() {
     <div className="flex items-center space-x-2">
       {/* Theme Mode Toggle */}
       <Button
+        type="button"
         variant="outline"
         size="sm"
-        onClick={toggleMode}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleMode();
+        }}
+        onMouseDown={(e) => e.preventDefault()}
         className="rounded-full p-2 h-9 w-9"
         title={mode === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
       >
@@ -66,23 +76,42 @@ export default function ThemeControls() {
       </Button>
 
       {/* Theme Color Picker */}
-      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenu 
+        open={isOpen} 
+        onOpenChange={(open) => {
+          setIsOpen(open);
+        }}
+        modal={false}
+      >
         <DropdownMenuTrigger asChild>
           <Button
+            type="button"
             variant="outline"
             size="sm"
             className="rounded-full p-2 h-9 w-9"
             title="Change theme color"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
           >
             <Palette className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuContent 
+          align="end" 
+          className="w-48 z-50"
+          sideOffset={5}
+          avoidCollisions={true}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
           {themeColors.map((color) => (
             <DropdownMenuItem
               key={color.value}
               className="cursor-pointer flex items-center justify-between"
-              onClick={() => handleColorChange(color)}
+              onClick={(e) => handleColorChange(color, e)}
+              onMouseDown={(e) => e.preventDefault()}
             >
               <div className="flex items-center space-x-2">
                 <div 

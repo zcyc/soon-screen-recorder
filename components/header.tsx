@@ -14,29 +14,56 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/auth-context';
+import ThemeControls from '@/components/theme-controls';
 
 
 function LanguageToggle() {
   const { locale, setLocale, t } = useI18n();
 
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="rounded-full">
+        <Button 
+          type="button"
+          variant="outline" 
+          size="sm" 
+          className="rounded-full p-2 h-9 w-9"
+          title="Change language"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        >
           <Languages className="h-4 w-4" />
-          <span className="ml-1 text-xs">{locale.toUpperCase()}</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent 
+        align="end"
+        className="z-50"
+        sideOffset={5}
+        avoidCollisions={true}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+      >
         <DropdownMenuItem 
-          onClick={() => setLocale('zh')}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setLocale('zh');
+          }}
+          onMouseDown={(e) => e.preventDefault()}
           className={`cursor-pointer ${locale === 'zh' ? 'bg-accent' : ''}`}
         >
           <span className="mr-2">🇨🇳</span>
           中文
         </DropdownMenuItem>
         <DropdownMenuItem 
-          onClick={() => setLocale('en')}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setLocale('en');
+          }}
+          onMouseDown={(e) => e.preventDefault()}
           className={`cursor-pointer ${locale === 'en' ? 'bg-accent' : ''}`}
         >
           <span className="mr-2">🇺🇸</span>
@@ -115,7 +142,7 @@ export default function Header() {
   const { user } = useAuth();
   const { t } = useI18n();
   return (
-    <header className="border-b border-border bg-background">
+    <header className="border-b border-border bg-background sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
         <Link href="/" className="flex items-center">
           <Video className="h-6 w-6 text-primary" />
@@ -144,7 +171,8 @@ export default function Header() {
               </Link>
             </nav>
           )}
-          <div className="header-user-menu">
+          <div className="header-user-menu flex items-center space-x-4">
+            <ThemeControls />
             <LanguageToggle />
             <UserMenu />
           </div>
