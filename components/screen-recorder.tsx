@@ -176,6 +176,8 @@ export default function ScreenRecorder() {
       isListening: false
     }));
     stopSpeechRecognition();
+    // 重置开始时间
+    recordingStartTimeRef.current = 0;
   };
   
   // Speech Recognition Functions
@@ -202,17 +204,23 @@ export default function ScreenRecorder() {
       let interimTranscript = '';
       let finalTranscript = '';
       
+      // 计算当前时间相对于录制开始的时间（秒）
+      const currentTime = recordingStartTimeRef.current > 0 
+        ? (Date.now() - recordingStartTimeRef.current) / 1000
+        : recordingState.duration;
+      
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
         const confidence = event.results[i][0].confidence;
         
         if (event.results[i].isFinal) {
           finalTranscript += transcript;
-          // Create subtitle segment
+          // Create subtitle segment with proper timing
+          const segmentDuration = Math.min(transcript.length * 0.1, 5); // 根据文本长度估算时长，最长5秒
           const segment: SubtitleSegment = {
             id: `subtitle-${Date.now()}-${i}`,
-            startTime: recordingState.duration,
-            endTime: recordingState.duration + 3, // 估算3秒持续时间
+            startTime: Math.max(0, currentTime - segmentDuration), 
+            endTime: currentTime,
             text: transcript.trim(),
             confidence: confidence || 0.8
           };
@@ -417,6 +425,7 @@ export default function ScreenRecorder() {
   // Speech recognition refs
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
   const recognitionIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const recordingStartTimeRef = useRef<number>(0);
 
   // 监听摄像头开启状态变化
   useEffect(() => {
@@ -1019,6 +1028,9 @@ export default function ScreenRecorder() {
       mediaRecorderRef.current.start(1000); // Record in 1-second chunks
       startTimer();
       
+      // 记录开始时间
+      recordingStartTimeRef.current = Date.now();
+      
       setRecordingState(prev => ({ 
         ...prev, 
         isRecording: true, 
@@ -1075,6 +1087,9 @@ export default function ScreenRecorder() {
       
       // Stop speech recognition
       stopSpeechRecognition();
+      
+      // 重置开始时间
+      recordingStartTimeRef.current = 0;
       
       // Reset time warning states
       setShowTimeWarning(false);
