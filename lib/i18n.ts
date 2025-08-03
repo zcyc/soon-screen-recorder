@@ -118,6 +118,25 @@ export interface Translations {
     cameraPermissionDenied: string;
   };
   
+  // Subtitles
+  subtitles: {
+    enableSubtitles: string;
+    subtitleDescription: string;
+    needMicrophoneForSubtitles: string;
+    listeningForSpeech: string;
+    microphoneRequiredForSubtitles: string;
+    subtitleLanguage: string;
+    subtitleInfo: string;
+    liveSubtitles: string;
+    listening: string;
+    waitingForSpeech: string;
+    speechNotSupported: string;
+    microphonePermissionNeeded: string;
+    recognitionStartFailed: string;
+    noSubtitlesToExport: string;
+    subtitlesExported: string;
+  };
+  
   // Authentication
   auth: {
     signInToSoon: string;
@@ -337,6 +356,23 @@ export const translations: Record<Locale, Translations> = {
       cameraPermissionGranted: 'Camera permission granted',
       cameraPermissionDenied: 'Camera permission denied',
     },
+    subtitles: {
+      enableSubtitles: 'Enable Subtitles',
+      subtitleDescription: 'Automatically generate subtitles from audio',
+      needMicrophoneForSubtitles: 'Enable microphone to generate subtitles',
+      listeningForSpeech: 'Listening for speech',
+      microphoneRequiredForSubtitles: 'Please enable microphone to use subtitle feature',
+      subtitleLanguage: 'Subtitle Language',
+      subtitleInfo: 'Subtitles will be generated in real-time during recording and can be exported afterwards.',
+      liveSubtitles: 'Live Subtitles',
+      listening: 'Listening',
+      waitingForSpeech: 'Waiting for speech input...',
+      speechNotSupported: 'Browser does not support speech recognition',
+      microphonePermissionNeeded: 'Microphone permission needed to generate subtitles',
+      recognitionStartFailed: 'Failed to start speech recognition',
+      noSubtitlesToExport: 'No subtitles to export',
+      subtitlesExported: 'Subtitles exported successfully',
+    },
     auth: {
       signInToSoon: 'Sign in to soon',
       createSoonAccount: 'Create your soon account',
@@ -544,6 +580,23 @@ export const translations: Record<Locale, Translations> = {
       microphonePermissionDenied: '麦克风权限被拒绝',
       cameraPermissionGranted: '摄像头权限已获取',
       cameraPermissionDenied: '摄像头权限被拒绝',
+    },
+    subtitles: {
+      enableSubtitles: '开启字幕',
+      subtitleDescription: '自动从音频生成字幕',
+      needMicrophoneForSubtitles: '需要开启麦克风才能生成字幕',
+      listeningForSpeech: '正在监听语音',
+      microphoneRequiredForSubtitles: '请先开启麦克风才能使用字幕功能',
+      subtitleLanguage: '字幕语言',
+      subtitleInfo: '字幕将在录制时实时生成，并可在录制结束后导出。',
+      liveSubtitles: '实时字幕',
+      listening: '监听中',
+      waitingForSpeech: '等待语音输入...',
+      speechNotSupported: '浏览器不支持语音识别功能',
+      microphonePermissionNeeded: '需要麦克风权限才能生成字幕',
+      recognitionStartFailed: '语音识别启动失败',
+      noSubtitlesToExport: '没有字幕可以导出',
+      subtitlesExported: '字幕导出成功',
     },
     auth: {
       signInToSoon: '登录 soon',

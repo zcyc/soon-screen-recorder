@@ -1,6 +1,53 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+
+// Web Speech API types
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
+  }
+}
+
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message?: string;
+}
+
+interface SpeechRecognitionResult {
+  readonly isFinal: boolean;
+  readonly [index: number]: SpeechRecognitionAlternative;
+}
+
+interface SpeechRecognitionAlternative {
+  readonly transcript: string;
+  readonly confidence: number;
+}
+
+interface SpeechRecognitionResultList {
+  readonly length: number;
+  item(index: number): SpeechRecognitionResult;
+  readonly [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  maxAlternatives: number;
+  start(): void;
+  stop(): void;
+  onstart: ((this: SpeechRecognition, ev: Event) => any) | null;
+  onend: ((this: SpeechRecognition, ev: Event) => any) | null;
+  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
+  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => any) | null;
+}
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -38,6 +85,22 @@ type RecordingQuality = '720p' | '1080p';
 type RecordingSource = 'screen' | 'camera' | 'both' | 'camera-only';
 type ScreenSourceType = 'monitor' | 'window' | 'browser';
 
+interface SubtitleSegment {
+  id: string;
+  startTime: number;
+  endTime: number;
+  text: string;
+  confidence: number;
+}
+
+interface SubtitleState {
+  isEnabled: boolean;
+  language: string;
+  segments: SubtitleSegment[];
+  currentText: string;
+  isListening: boolean;
+}
+
 interface RecordingState {
   isRecording: boolean;
   isPaused: boolean;
@@ -70,6 +133,16 @@ export default function ScreenRecorder() {
   const [showTimeWarning, setShowTimeWarning] = useState(false); // Show time warning
   const [isNearTimeLimit, setIsNearTimeLimit] = useState(false); // Near time limit state
   
+  // Subtitle states
+  const [subtitleState, setSubtitleState] = useState<SubtitleState>({
+    isEnabled: false,
+    language: 'zh-CN',
+    segments: [],
+    currentText: '',
+    isListening: false
+  });
+  const [showSubtitleSettings, setShowSubtitleSettings] = useState(false);
+  
   // Show toast message
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -95,6 +168,198 @@ export default function ScreenRecorder() {
     setToastMessage(null);
     setShowTimeWarning(false);
     setIsNearTimeLimit(false);
+    // Reset subtitle state
+    setSubtitleState(prev => ({
+      ...prev,
+      segments: [],
+      currentText: '',
+      isListening: false
+    }));
+    stopSpeechRecognition();
+  };
+  
+  // Speech Recognition Functions
+  const initializeSpeechRecognition = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      showToast(t.subtitles.speechNotSupported || '浏览器不支持语音识别功能');
+      return false;
+    }
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = subtitleState.language;
+    recognition.maxAlternatives = 1;
+    
+    recognition.onstart = () => {
+      console.log('语音识别已启动');
+      setSubtitleState(prev => ({ ...prev, isListening: true }));
+    };
+    
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let interimTranscript = '';
+      let finalTranscript = '';
+      
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        const confidence = event.results[i][0].confidence;
+        
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+          // Create subtitle segment
+          const segment: SubtitleSegment = {
+            id: `subtitle-${Date.now()}-${i}`,
+            startTime: recordingState.duration,
+            endTime: recordingState.duration + 3, // 估算3秒持续时间
+            text: transcript.trim(),
+            confidence: confidence || 0.8
+          };
+          
+          if (segment.text.length > 0) {
+            setSubtitleState(prev => ({
+              ...prev,
+              segments: [...prev.segments, segment],
+              currentText: ''
+            }));
+          }
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+      
+      if (interimTranscript) {
+        setSubtitleState(prev => ({ ...prev, currentText: interimTranscript }));
+      }
+    };
+    
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.error('语音识别错误:', event.error);
+      if (event.error === 'not-allowed') {
+        showToast(t.subtitles.microphonePermissionNeeded || '需要麦克风权限才能生成字幕');
+      } else if (event.error === 'no-speech') {
+        // 重新启动识别
+        setTimeout(() => {
+          if (subtitleState.isEnabled && recordingState.isRecording) {
+            startSpeechRecognition();
+          }
+        }, 1000);
+      }
+    };
+    
+    recognition.onend = () => {
+      console.log('语音识别结束');
+      setSubtitleState(prev => ({ ...prev, isListening: false }));
+      
+      // 如果字幕功能仍然启用且正在录制，重新启动识别
+      if (subtitleState.isEnabled && recordingState.isRecording && !recordingState.isPaused) {
+        setTimeout(() => {
+          startSpeechRecognition();
+        }, 500);
+      }
+    };
+    
+    speechRecognitionRef.current = recognition;
+    return true;
+  };
+  
+  const startSpeechRecognition = () => {
+    if (!subtitleState.isEnabled || !includeAudio) return;
+    
+    try {
+      if (!speechRecognitionRef.current) {
+        if (!initializeSpeechRecognition()) return;
+      }
+      
+      if (speechRecognitionRef.current && !subtitleState.isListening) {
+        speechRecognitionRef.current.start();
+      }
+    } catch (error) {
+      console.error('启动语音识别失败:', error);
+      showToast(t.subtitles.recognitionStartFailed || '语音识别启动失败');
+    }
+  };
+  
+  const stopSpeechRecognition = () => {
+    try {
+      if (speechRecognitionRef.current) {
+        speechRecognitionRef.current.stop();
+        speechRecognitionRef.current = null;
+      }
+      if (recognitionIntervalRef.current) {
+        clearInterval(recognitionIntervalRef.current);
+        recognitionIntervalRef.current = null;
+      }
+      setSubtitleState(prev => ({ ...prev, isListening: false }));
+    } catch (error) {
+      console.error('停止语音识别失败:', error);
+    }
+  };
+  
+  // Subtitle Export Functions
+  const formatTimeForSRT = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    const ms = Math.floor((seconds % 1) * 1000);
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
+  };
+  
+  const formatTimeForVTT = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    const ms = Math.floor((seconds % 1) * 1000);
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+  };
+  
+  const generateSRTContent = (): string => {
+    if (subtitleState.segments.length === 0) return '';
+    
+    return subtitleState.segments.map((segment, index) => {
+      const startTime = formatTimeForSRT(segment.startTime);
+      const endTime = formatTimeForSRT(segment.endTime);
+      return `${index + 1}\n${startTime} --> ${endTime}\n${segment.text}\n`;
+    }).join('\n');
+  };
+  
+  const generateVTTContent = (): string => {
+    if (subtitleState.segments.length === 0) return 'WEBVTT\n\n';
+    
+    const vttHeader = 'WEBVTT\n\n';
+    const vttContent = subtitleState.segments.map((segment, index) => {
+      const startTime = formatTimeForVTT(segment.startTime);
+      const endTime = formatTimeForVTT(segment.endTime);
+      return `${index + 1}\n${startTime} --> ${endTime}\n${segment.text}\n`;
+    }).join('\n');
+    
+    return vttHeader + vttContent;
+  };
+  
+  const downloadSubtitles = (format: 'srt' | 'vtt') => {
+    if (subtitleState.segments.length === 0) {
+      showToast(t.subtitles.noSubtitlesToExport || '没有字幕可以导出');
+      return;
+    }
+    
+    const content = format === 'srt' ? generateSRTContent() : generateVTTContent();
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    
+    const finalTitle = videoTitle.trim() || getDefaultTitle();
+    const cleanTitle = finalTitle.replace(/[<>:"/\|?*]/g, '-');
+    a.download = `${cleanTitle}.${format}`;
+    
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showToast(t.subtitles.subtitlesExported || `字幕已导出为 ${format.toUpperCase()} 格式`);
   };
   
   const getShareUrl = (videoId: string) => {
@@ -148,6 +413,10 @@ export default function ScreenRecorder() {
   const screenStreamRef = useRef<MediaStream | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const cameraPreviewRef = useRef<HTMLVideoElement | null>(null);
+  
+  // Speech recognition refs
+  const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // 监听摄像头开启状态变化
   useEffect(() => {
@@ -756,6 +1025,13 @@ export default function ScreenRecorder() {
         duration: 0,
         recordedBlob: null
       }));
+      
+      // Start speech recognition if subtitles enabled
+      if (subtitleState.isEnabled && includeAudio) {
+        setTimeout(() => {
+          startSpeechRecognition();
+        }, 1000); // 稍微延迟以确保音频流已经建立
+      }
 
     } catch (error) {
       console.error('Failed to start recording:', error);
@@ -768,6 +1044,8 @@ export default function ScreenRecorder() {
       mediaRecorderRef.current.pause();
       stopTimer();
       setRecordingState(prev => ({ ...prev, isPaused: true }));
+      // Stop speech recognition when paused
+      stopSpeechRecognition();
     }
   };
 
@@ -776,6 +1054,12 @@ export default function ScreenRecorder() {
       mediaRecorderRef.current.resume();
       startTimer();
       setRecordingState(prev => ({ ...prev, isPaused: false }));
+      // Restart speech recognition when resumed
+      if (subtitleState.isEnabled && includeAudio) {
+        setTimeout(() => {
+          startSpeechRecognition();
+        }, 500);
+      }
     }
   };
 
@@ -788,6 +1072,9 @@ export default function ScreenRecorder() {
         isRecording: false, 
         isPaused: false 
       }));
+      
+      // Stop speech recognition
+      stopSpeechRecognition();
       
       // Reset time warning states
       setShowTimeWarning(false);
@@ -1098,6 +1385,102 @@ export default function ScreenRecorder() {
                 }
               />
             </div>
+            
+            {/* 字幕设置 */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div className="w-5 h-5 flex items-center justify-center">
+                  {subtitleState.isEnabled ? (
+                    <span className="text-xs font-bold">CC</span>
+                  ) : (
+                    <span className="text-xs font-bold text-muted-foreground">CC</span>
+                  )}
+                </div>
+                <div className="flex flex-col">
+                  <Label>{t.subtitles.enableSubtitles || '开启字幕'}</Label>
+                  <p className="text-xs text-muted-foreground">
+                    {t.subtitles.subtitleDescription || '自动从音频生成字幕'}
+                  </p>
+                  {!includeAudio && (
+                    <span className="text-xs text-orange-600 dark:text-orange-400">
+                      {t.subtitles.needMicrophoneForSubtitles || '需要开启麦克风才能生成字幕'}
+                    </span>
+                  )}
+                </div>
+                {/* 字幕状态指示器 */}
+                {subtitleState.isListening && (
+                  <div 
+                    className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"
+                    title={t.subtitles.listeningForSpeech || '正在监听语音'}
+                  ></div>
+                )}
+              </div>
+              <div className="flex items-center space-x-2">
+                {subtitleState.isEnabled && includeAudio && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowSubtitleSettings(!showSubtitleSettings)}
+                  >
+                    <Settings className="h-3 w-3" />
+                  </Button>
+                )}
+                <Switch
+                  checked={subtitleState.isEnabled}
+                  onCheckedChange={(checked) => {
+                    if (checked && !includeAudio) {
+                      showToast(t.subtitles.microphoneRequiredForSubtitles || '请先开启麦克风才能使用字幕功能');
+                      return;
+                    }
+                    setSubtitleState(prev => ({ ...prev, isEnabled: checked }));
+                    if (!checked) {
+                      stopSpeechRecognition();
+                    }
+                  }}
+                  disabled={!includeAudio}
+                />
+              </div>
+            </div>
+            
+            {/* 字幕设置面板 */}
+            {showSubtitleSettings && subtitleState.isEnabled && includeAudio && (
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">
+                    {t.subtitles.subtitleLanguage || '字幕语言'}
+                  </Label>
+                  <Select
+                    value={subtitleState.language}
+                    onValueChange={(value) => {
+                      setSubtitleState(prev => ({ ...prev, language: value }));
+                      // 重新初始化语音识别以应用新语言
+                      if (subtitleState.isListening) {
+                        stopSpeechRecognition();
+                        setTimeout(() => {
+                          if (recordingState.isRecording && includeAudio) {
+                            startSpeechRecognition();
+                          }
+                        }, 500);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="zh-CN">中文</SelectItem>
+                      <SelectItem value="en-US">English</SelectItem>
+                      <SelectItem value="ja-JP">日本語</SelectItem>
+                      <SelectItem value="ko-KR">한국어</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="text-xs text-muted-foreground">
+                  {t.subtitles.subtitleInfo || '字幕将在录制时实时生成，并可在录制结束后导出。'}
+                </div>
+              </div>
+            )}
           </div>
 
 
@@ -1188,6 +1571,52 @@ export default function ScreenRecorder() {
                 )}
               </div>
             )}
+            
+            {/* 字幕实时显示 */}
+            {subtitleState.isEnabled && includeAudio && (
+              <div className="bg-black/80 rounded-lg p-3 min-h-[60px]">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-blue-400 font-medium">
+                    {t.subtitles.liveSubtitles || '实时字幕'}
+                  </span>
+                  {subtitleState.isListening && (
+                    <div className="flex items-center space-x-1">
+                      <div className="w-1 h-1 bg-blue-400 rounded-full animate-pulse"></div>
+                      <span className="text-xs text-blue-400">
+                        {t.subtitles.listening || '监听中'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="text-white text-sm leading-relaxed">
+                  {subtitleState.currentText && (
+                    <p className="text-gray-300 italic">
+                      {subtitleState.currentText}
+                    </p>
+                  )}
+                  
+                  {subtitleState.segments.slice(-3).map((segment, index) => (
+                    <p key={segment.id} className={`mb-1 ${
+                      index === subtitleState.segments.slice(-3).length - 1 
+                        ? 'text-white font-medium' 
+                        : 'text-gray-400'
+                    }`}>
+                      <span className="text-xs text-gray-500 mr-2">
+                        {formatDuration(segment.startTime)}
+                      </span>
+                      {segment.text}
+                    </p>
+                  ))}
+                  
+                  {!subtitleState.isListening && subtitleState.segments.length === 0 && !subtitleState.currentText && (
+                    <p className="text-gray-500 text-center text-xs">
+                      {t.subtitles.waitingForSpeech || '等待语音输入...'}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -1256,7 +1685,7 @@ export default function ScreenRecorder() {
                 />
               </div>
               
-              <div className="flex space-x-2 justify-center">
+              <div className="flex flex-wrap gap-2 justify-center">
                 <Button variant="outline" onClick={downloadRecording}>
                   <Download className="h-4 w-4 mr-2" />
                   {t.recording.download}
@@ -1274,6 +1703,26 @@ export default function ScreenRecorder() {
                     </>
                   )}
                 </Button>
+                
+                {/* 字幕下载按钮 */}
+                {subtitleState.segments.length > 0 && (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => downloadSubtitles('srt')}
+                    >
+                      SRT
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => downloadSubtitles('vtt')}
+                    >
+                      VTT
+                    </Button>
+                  </>
+                )}
               </div>
               
               <div className="text-center">
@@ -1329,7 +1778,7 @@ export default function ScreenRecorder() {
               </div>
               
               {/* Action Buttons */}
-              <div className="flex space-x-2 justify-center">
+              <div className="flex flex-wrap gap-2 justify-center">
                 <Button variant="outline" onClick={downloadRecording}>
                   <Download className="h-4 w-4 mr-2" />
                   {t.recording.download}
@@ -1351,6 +1800,26 @@ export default function ScreenRecorder() {
                   <ExternalLink className="h-4 w-4 mr-2" />
                   {t.recording.viewVideo}
                 </Button>
+                
+                {/* 字幕下载按钮 */}
+                {subtitleState.segments.length > 0 && (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => downloadSubtitles('srt')}
+                    >
+                      SRT
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => downloadSubtitles('vtt')}
+                    >
+                      VTT
+                    </Button>
+                  </>
+                )}
               </div>
               
               <div className="text-center">
