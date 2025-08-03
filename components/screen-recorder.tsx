@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -64,6 +64,8 @@ export default function ScreenRecorder() {
   const [isVideoPublic, setIsVideoPublic] = useState(true); // Default to public for sharing
   const [uploadedVideo, setUploadedVideo] = useState<any>(null); // Store uploaded video data
   const [toastMessage, setToastMessage] = useState<string | null>(null); // Toast message state
+  const [cameraPreviewStream, setCameraPreviewStream] = useState<MediaStream | null>(null); // Camera preview stream
+  const [isMounted, setIsMounted] = useState(false); // Track component mount status
   
   // Show toast message
   const showToast = (message: string) => {
@@ -140,6 +142,41 @@ export default function ScreenRecorder() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
+  const cameraPreviewRef = useRef<HTMLVideoElement | null>(null);
+
+  // 监听摄像头开启状态变化
+  useEffect(() => {
+    // 只在组件完全挂载后才处理摄像头预览
+    if (!isMounted) {
+      console.log('组件还未完全挂载，跳过摄像头预览');
+      return;
+    }
+    
+    console.log('摄像头状态变化:', { includeCamera, isRecording: recordingState.isRecording, isMounted });
+    
+    if (includeCamera) {
+      // 开启摄像头时启动预览（录制时也保持开启）
+      if (!cameraPreviewStream) {
+        console.log('启动摄像头预览...');
+        startCameraPreview();
+      } else if (recordingState.isRecording) {
+        console.log('录制中，保持摄像头画中画开启...');
+      }
+    } else {
+      // 关闭摄像头时停止预览
+      console.log('停止摄像头预览...');
+      stopCameraPreview();
+    }
+  }, [includeCamera, recordingState.isRecording, isMounted]);
+
+  // 组件挂载状态管理
+  useEffect(() => {
+    setIsMounted(true);
+    return () => {
+      setIsMounted(false);
+      stopCameraPreview();
+    };
+  }, []);
 
   const getQualityConstraints = (quality: RecordingQuality) => {
     return quality === '1080p' 
@@ -164,6 +201,173 @@ export default function ScreenRecorder() {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // 启动摄像头预览 - 使用画中画API（除非是仅录制摄像头模式）
+  const startCameraPreview = async () => {
+    const cameraOnlyMode = source === 'camera-only';
+    console.log(`开始启动摄像头${cameraOnlyMode ? '预览' : '画中画预览'}...`);
+    
+    try {
+      // 检查浏览器支持
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('浏览器不支持摄像头功能');
+      }
+
+      // 仅录制摄像头模式下不需要检查画中画API支持
+      if (!cameraOnlyMode && !document.pictureInPictureEnabled) {
+        throw new Error('浏览器不支持画中画API');
+      }
+
+      console.log('请求摄像头权限...');
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 320, max: 640 },
+          height: { ideal: 240, max: 480 },
+          facingMode: 'user'
+        },
+        audio: false // 预览不需要音频
+      });
+      
+      console.log('摄像头流获取成功:', {
+        id: stream.id,
+        active: stream.active,
+        videoTracks: stream.getVideoTracks().length
+      });
+      
+      // 检查视频轨道
+      const videoTracks = stream.getVideoTracks();
+      if (videoTracks.length === 0) {
+        throw new Error('没有找到可用的摄像头');
+      }
+      
+      setCameraPreviewStream(stream);
+      
+      // 仅录制摄像头模式下不使用画中画，只设置视频源
+      if (cameraOnlyMode) {
+        if (cameraPreviewRef.current) {
+          cameraPreviewRef.current.srcObject = stream;
+          console.log('仅录制摄像头模式，视频源设置完成');
+        }
+      } else {
+        // 创建画中画视频元素
+        const startPictureInPicture = (retryCount = 0) => {
+          const maxRetries = 10;
+          
+          if (cameraPreviewRef.current) {
+            console.log('启动画中画模式...');
+            cameraPreviewRef.current.srcObject = stream;
+            
+            // 添加事件监听器
+            cameraPreviewRef.current.onloadedmetadata = async () => {
+              console.log('视频元数据加载完成，准备进入画中画模式');
+              
+              try {
+                // 进入画中画模式
+                if (!document.pictureInPictureElement) {
+                  await cameraPreviewRef.current!.requestPictureInPicture();
+                  console.log('画中画模式启动成功');
+                  showToast('摄像头画中画预览已启动');
+                }
+              } catch (pipError) {
+                console.error('画中画模式启动失败:', pipError);
+                showToast('画中画模式启动失败，将使用默认预览');
+              }
+            };
+            
+            cameraPreviewRef.current.onenterpictureinpicture = () => {
+              console.log('进入画中画模式');
+            };
+            
+            cameraPreviewRef.current.onleavepictureinpicture = () => {
+              console.log('退出画中画模式');
+            };
+            
+            cameraPreviewRef.current.onerror = (e) => {
+              console.error('视频元素错误:', e);
+            };
+            
+            // 播放视频
+            cameraPreviewRef.current.play().then(() => {
+              console.log('视频播放成功');
+            }).catch((playError) => {
+              console.error('视频播放失败:', playError);
+            });
+            
+          } else if (retryCount < maxRetries) {
+            console.log(`视频元素还未渲染，稍后重试 (${retryCount + 1}/${maxRetries})...`);
+            setTimeout(() => {
+              startPictureInPicture(retryCount + 1);
+            }, 200);
+          } else {
+            console.error('达到最大重试次数，放弃设置画中画');
+            showToast('摄像头预览初始化失败，请稍后重试');
+          }
+        };
+        
+        startPictureInPicture();
+      }
+      
+    } catch (error: any) {
+      console.error('摄像头画中画预览启动失败:', {
+        name: error.name,
+        message: error.message,
+        constraint: error.constraint
+      });
+      
+      let errorMessage = `无法启动摄像头${cameraOnlyMode ? '预览' : '画中画预览'}`;
+      if (error.name === 'NotAllowedError') {
+        errorMessage = '摄像头权限被拒绝，请允许摄像头访问';
+      } else if (error.name === 'NotFoundError') {
+        errorMessage = '未找到摄像头设备';
+      } else if (error.name === 'NotReadableError') {
+        errorMessage = '摄像头正被其他应用程序使用';
+      } else if (error.message.includes('画中画')) {
+        errorMessage = '浏览器不支持画中画API，请使用Chrome或Edge浏览器';
+      }
+      
+      showToast(errorMessage);
+    }
+  };
+
+  // 停止摄像头预览 - 退出画中画模式（如果使用了画中画）
+  const stopCameraPreview = async () => {
+    const isCameraOnlyMode = source === 'camera-only';
+    console.log(`停止摄像头${isCameraOnlyMode ? '预览' : '画中画预览'}...`);
+    
+    try {
+      // 只有在非仅录制摄像头模式下才退出画中画模式
+      if (!isCameraOnlyMode && document.pictureInPictureElement) {
+        console.log('退出画中画模式...');
+        await document.exitPictureInPicture();
+      }
+    } catch (error) {
+      console.error('退出画中画模式失败:', error);
+    }
+    
+    if (cameraPreviewStream) {
+      console.log('停止摄像头流...');
+      cameraPreviewStream.getTracks().forEach(track => {
+        console.log('停止轨道:', track.label);
+        track.stop();
+      });
+      setCameraPreviewStream(null);
+    }
+    
+    if (cameraPreviewRef.current) {
+      console.log('清理视频元素...');
+      // 暂停视频
+      cameraPreviewRef.current.pause();
+      // 清空视频源
+      cameraPreviewRef.current.srcObject = null;
+      // 移除事件监听器
+      cameraPreviewRef.current.onloadedmetadata = null;
+      cameraPreviewRef.current.onenterpictureinpicture = null;
+      cameraPreviewRef.current.onleavepictureinpicture = null;
+      cameraPreviewRef.current.onerror = null;
+    }
+    
+    console.log(`摄像头${isCameraOnlyMode ? '预览' : '画中画预览'}停止完成`);
   };
 
   const getScreenStream = async (): Promise<MediaStream> => {
@@ -315,6 +519,9 @@ export default function ScreenRecorder() {
 
   const startRecording = async () => {
     try {
+      // 录制时保持画中画开启，屏幕录制会包含画中画内容
+      console.log('开始录制，保持摄像头画中画开启...');
+      
       chunksRef.current = [];
       const streams: MediaStream[] = [];
 
@@ -342,9 +549,9 @@ export default function ScreenRecorder() {
         }
       }
 
-      // Get camera stream with explicit permission request  
-      if ((source === 'camera' || source === 'camera-only') || (source === 'both' && includeCamera)) {
-        console.log('Request camera permission...');
+      // 仅录制摄像头的情况才需要摄像头流
+      if (source === 'camera-only') {
+        console.log('Request camera permission for camera-only recording...');
         try {
           const cameraStream = await getCameraStream();
           cameraStreamRef.current = cameraStream;
@@ -375,6 +582,12 @@ export default function ScreenRecorder() {
           }
           throw error;
         }
+      }
+      
+      // 对于屏幕录制或屏幕+摄像头录制，摄像头通过画中画显示在屏幕上
+      if ((source === 'screen' || source === 'both') && includeCamera) {
+        console.log('摄像头将通过画中画在屏幕录制中显示');
+        // 不需要添加摄像头流到录制流中，画中画会作为屏幕内容被录制
       }
 
       if (streams.length === 0) {
@@ -436,6 +649,9 @@ export default function ScreenRecorder() {
           cameraStreamRef.current.getTracks().forEach(track => track.stop());
           cameraStreamRef.current = null;
         }
+        
+        // 录制完成后保持画中画预览开启
+        console.log('录制完成，摄像头画中画预览继续保持开启状态');
       };
 
       mediaRecorderRef.current.start(1000); // Record in 1-second chunks
@@ -479,6 +695,13 @@ export default function ScreenRecorder() {
         isRecording: false, 
         isPaused: false 
       }));
+      
+      // 录制结束后，如果摄像头仍然开启，重新启动预览
+      setTimeout(() => {
+        if (includeCamera) {
+          startCameraPreview();
+        }
+      }, 500); // 稍微延迟以确保录制完全停止
     }
   };
 
@@ -704,6 +927,13 @@ export default function ScreenRecorder() {
               <div className="flex items-center space-x-2">
                 {includeCamera ? <Camera className="h-4 w-4" /> : <CameraOff className="h-4 w-4" />}
                 <Label>开启摄像头</Label>
+                {/* 摄像头状态指示器 */}
+                {includeCamera && cameraPreviewStream && (
+                  <div 
+                    className="w-2 h-2 bg-green-500 rounded-full animate-pulse"
+                    title={source === 'camera-only' ? '摄像头已就绪' : '摄像头画中画已启动'}
+                  ></div>
+                )}
               </div>
               <Switch
                 checked={includeCamera}
@@ -721,6 +951,47 @@ export default function ScreenRecorder() {
 
 
         </div>
+      )}
+
+
+      
+      {/* 摄像头视频元素 */}
+      {source === 'camera-only' && includeCamera && cameraPreviewStream && (
+        <Card className="w-fit mx-auto">
+          <CardContent className="p-3">
+            <div className="relative">
+              <video
+                ref={cameraPreviewRef}
+                className="w-80 h-60 object-cover rounded-lg bg-gray-900"
+                autoPlay
+                muted
+                playsInline
+                controls={false}
+                onLoadedData={() => console.log('视频数据加载完成')}
+                onCanPlay={() => console.log('视频可以播放')}
+                onError={(e) => console.error('视频元素错误:', e)}
+              />
+              <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+                实时预览
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* 隐藏的视频元素用于画中画（仅在非仅录制摄像头模式下使用） */}
+      {source !== 'camera-only' && (
+        <video
+          ref={cameraPreviewRef}
+          className="hidden"
+          autoPlay
+          muted
+          playsInline
+          controls={false}
+          onLoadedData={() => console.log('视频数据加载完成')}
+          onCanPlay={() => console.log('视频可以播放')}
+          onError={(e) => console.error('视频元素错误:', e)}
+        />
       )}
 
       {/* Recording Status */}
