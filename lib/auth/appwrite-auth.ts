@@ -1,5 +1,5 @@
 import { account } from '../appwrite';
-import { Models } from 'appwrite';
+import { Models, OAuthProvider } from 'appwrite';
 
 export interface User extends Models.User<Models.Preferences> {}
 
@@ -42,6 +42,23 @@ export class AuthService {
   static async updatePreferences(prefs: Models.Preferences) {
     try {
       return await account.updatePrefs(prefs);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async loginWithGitHub() {
+    try {
+      // Redirect to GitHub OAuth
+      const redirectUrl = typeof window !== 'undefined' 
+        ? `${window.location.origin}/dashboard`
+        : 'http://localhost:3000/dashboard';
+      
+      await account.createOAuth2Session(
+        OAuthProvider.Github,
+        redirectUrl, // Success URL
+        `${window.location.origin}/sign-in?error=oauth_cancelled` // Failure URL
+      );
     } catch (error) {
       throw error;
     }

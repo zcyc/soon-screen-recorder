@@ -7,6 +7,7 @@ interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
+  loginWithGitHub: () => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
 }
@@ -53,6 +54,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const loginWithGitHub = async () => {
+    try {
+      await AuthService.loginWithGitHub();
+      // OAuth redirect will handle the rest
+    } catch (error) {
+      throw error;
+    }
+  };
+
   const logout = async () => {
     try {
       await AuthService.logout();
@@ -66,6 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     login,
     register,
+    loginWithGitHub,
     logout,
     loading,
   };

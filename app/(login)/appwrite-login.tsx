@@ -6,11 +6,11 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Video, Loader2 } from 'lucide-react';
+import { Video, Loader2, Github } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 
 export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
-  const { login, register, user } = useAuth();
+  const { login, register, loginWithGitHub, user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/dashboard';
@@ -19,14 +19,23 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
+  const [githubLoading, setGithubLoading] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Redirect if already authenticated
+  // Handle OAuth errors and redirect if already authenticated
   useEffect(() => {
+    // Check for OAuth errors
+    const oauthError = searchParams.get('error');
+    if (oauthError === 'oauth_cancelled') {
+      setError('GitHub authentication was cancelled');
+    } else if (oauthError) {
+      setError('Authentication failed. Please try again.');
+    }
+    
     if (user) {
       router.push(redirect);
     }
-  }, [user, router, redirect]);
+  }, [user, router, redirect, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,6 +57,19 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
       setError(error.message || 'An error occurred');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGitHubLogin = async () => {
+    setGithubLoading(true);
+    setError('');
+    
+    try {
+      await loginWithGitHub();
+    } catch (error: any) {
+      console.error('GitHub OAuth error:', error);
+      setError(error.message || 'GitHub login failed');
+      setGithubLoading(false);
     }
   };
 
@@ -176,22 +198,58 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="px-2 bg-background text-muted-foreground">
-                {mode === 'signin'
-                  ? 'New to Soon?'
-                  : 'Already have an account?'}
+                Or continue with
               </span>
             </div>
           </div>
 
           <div className="mt-6">
-            <Link
-              href={mode === 'signin' ? '/sign-up' : '/sign-in'}
-              className="w-full flex justify-center py-2 px-4 border border-input rounded-full shadow-sm text-sm font-medium text-foreground bg-background hover:bg-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+            {/* GitHub OAuth Button */}
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full rounded-full"
+              onClick={handleGitHubLogin}
+              disabled={githubLoading || loading}
             >
-              {mode === 'signin'
-                ? 'Create an account'
-                : 'Sign in to existing account'}
-            </Link>
+              {githubLoading ? (
+                <>
+                  <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                  Connecting to GitHub...
+                </>
+              ) : (
+                <>
+                  <Github className="mr-2 h-4 w-4" />
+                  Continue with GitHub
+                </>
+              )}
+            </Button>
+          </div>
+          
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-background text-muted-foreground">
+                  {mode === 'signin'
+                    ? 'New to Soon?'
+                    : 'Already have an account?'}
+                </span>
+              </div>
+            </div>
+            
+            <div className="mt-6">
+              <Link
+                href={mode === 'signin' ? '/sign-up' : '/sign-in'}
+                className="w-full flex justify-center py-2 px-4 border border-input rounded-full shadow-sm text-sm font-medium text-foreground bg-background hover:bg-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+              >
+                {mode === 'signin'
+                  ? 'Create an account'
+                  : 'Sign in to existing account'}
+              </Link>
+            </div>
           </div>
         </div>
       </div>
