@@ -207,6 +207,7 @@ export interface Translations {
     videoNotFoundDesc: string;
     privateVideoError: string;
     backToHome: string;
+    browserNotSupported: string;
     download: string;
     views: string;
     reactions: string;
@@ -440,6 +441,7 @@ export const translations: Record<Locale, Translations> = {
       videoNotFoundDesc: 'The video you\'re looking for doesn\'t exist or is no longer available.',
       privateVideoError: 'This video is private or not found.',
       backToHome: 'Back to Home',
+    browserNotSupported: 'Your browser does not support video playback.',
       download: 'Download',
       views: 'views',
       reactions: 'Feedback',
@@ -667,6 +669,7 @@ export const translations: Record<Locale, Translations> = {
       videoNotFoundDesc: '您要查找的视频不存在或已不可用。',
       privateVideoError: '此视频为私有或未找到。',
       backToHome: '返回首页',
+      browserNotSupported: '您的浏览器不支持视频播放。',
       download: '下载',
       views: '次观看',
       reactions: '反馈',
@@ -712,9 +715,9 @@ export interface I18nContextType {
 }
 
 export const I18nContext = createContext<I18nContextType>({
-  locale: 'zh',
+  locale: 'en',
   setLocale: () => {},
-  t: translations['zh'],
+  t: translations['en'],
 });
 
 export const useI18n = () => {

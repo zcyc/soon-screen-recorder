@@ -8,23 +8,37 @@ interface I18nProviderProps {
   defaultLocale?: Locale;
 }
 
-export default function I18nProvider({ children, defaultLocale = 'zh' }: I18nProviderProps) {
+export default function I18nProvider({ children, defaultLocale = 'en' }: I18nProviderProps) {
+  // Start with server-safe default, then update on client
   const [locale, setLocale] = useState<Locale>(defaultLocale);
+  const [mounted, setMounted] = useState(false);
 
-  // Load locale from localStorage on mount
+  // Initialize locale from client-side storage after mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedLocale = localStorage.getItem('soon-locale') as Locale;
-      if (savedLocale && (savedLocale === 'en' || savedLocale === 'zh')) {
+    setMounted(true);
+    const savedLocale = localStorage.getItem('soon-locale') as Locale;
+    
+    if (savedLocale && (savedLocale === 'en' || savedLocale === 'zh')) {
+      // Only update if different from current locale to avoid unnecessary re-renders
+      if (savedLocale !== locale) {
         setLocale(savedLocale);
       }
+    } else {
+      // Detect browser language preference
+      const browserLang = navigator.language.toLowerCase();
+      const detectedLocale: Locale = browserLang.startsWith('zh') ? 'zh' : 'en';
+      
+      if (detectedLocale !== locale) {
+        setLocale(detectedLocale);
+        localStorage.setItem('soon-locale', detectedLocale);
+      }
     }
-  }, []);
+  }, [locale]);
 
   // Save locale to localStorage when it changes
   const handleSetLocale = (newLocale: Locale) => {
     setLocale(newLocale);
-    if (typeof window !== 'undefined') {
+    if (mounted) {
       localStorage.setItem('soon-locale', newLocale);
     }
   };

@@ -218,7 +218,7 @@ export default function SharePage() {
                     label="字幕"
                   />
                 )}
-                您的浏览器不支持视频播放。
+                {t.share.browserNotSupported || 'Your browser does not support video playback.'}
               </video>
             </CardContent>
           </Card>
