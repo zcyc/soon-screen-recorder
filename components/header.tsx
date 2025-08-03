@@ -44,8 +44,21 @@ function UserMenu() {
   }
 
   return (
-    <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-      <DropdownMenuTrigger>
+    <DropdownMenu 
+      open={isMenuOpen} 
+      onOpenChange={setIsMenuOpen}
+      modal={false}
+    >
+      <DropdownMenuTrigger
+        onMouseDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      >
         <Avatar className="cursor-pointer size-9">
           <AvatarImage alt={user.name || user.email} />
           <AvatarFallback>
@@ -58,7 +71,14 @@ function UserMenu() {
           </AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
+      <DropdownMenuContent 
+        align="end" 
+        className="w-48"
+        avoidCollisions={true}
+        onCloseAutoFocus={(e) => {
+          e.preventDefault();
+        }}
+      >
         <div className="px-2 py-1.5 text-sm font-medium text-foreground">
           <div className="flex items-center">
             <UserIcon className="mr-2 h-4 w-4" />
@@ -85,11 +105,11 @@ export default function Header() {
   return (
     <header className="border-b border-border bg-background sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-        <Link href="/" className="flex items-center">
-          <Video className="h-6 w-6 text-primary" />
-          <span className="ml-2 text-xl font-semibold text-foreground">soon</span>
-        </Link>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-6">
+          <Link href="/" className="flex items-center">
+            <Video className="h-6 w-6 text-primary" />
+            <span className="ml-2 text-xl font-semibold text-foreground">soon</span>
+          </Link>
           {user && (
             <nav className="flex items-center space-x-4">
               <Link
@@ -112,10 +132,10 @@ export default function Header() {
               </Link>
             </nav>
           )}
-          <div className="header-user-menu flex items-center space-x-4">
-            <ThemeControls />
-            <UserMenu />
-          </div>
+        </div>
+        <div className="header-user-menu flex items-center space-x-4">
+          <ThemeControls />
+          <UserMenu />
         </div>
       </div>
     </header>
