@@ -1,102 +1,367 @@
-# Soon - Appwrite 数据库设置指南
+# Soon - Complete Setup Guide 🚀
 
-## 概述
+This guide will help you set up the **Soon** screen recording application with all required services and dependencies.
 
-由于客户端 Appwrite SDK 的安全限制，无法自动创建数据库集合。请按照以下步骤在 Appwrite 控制台中手动设置数据库。
+## 📋 Prerequisites
 
-## 快速设置步骤
+Before starting, ensure you have:
 
-### 1. 访问 Appwrite 控制台
-- 访问：https://nyc.cloud.appwrite.io
-- 登录您的账户
-- 选择项目 ID 为 `soon` 的项目
+- **Node.js 18+** installed
+- **PostgreSQL** database running (local or cloud)
+- **Appwrite project** created and accessible
+- **Git** for version control
 
-### 2. 创建数据库
-- 点击左侧菜单 "Databases"
-- 点击 "Create Database"
-- 数据库 ID: `soon`
-- 数据库名称: `soon Database`
+## 🏗️ Architecture Overview
 
-### 3. 创建 Videos 集合
-- 在数据库中点击 "Create Collection"
-- 集合 ID: `videos`
-- 集合名称: `Videos`
+Soon uses a hybrid backend architecture:
+- **PostgreSQL + Drizzle ORM**: User management, authentication, activity logs
+- **Appwrite**: Video storage, metadata management, file operations
+- **Next.js**: Frontend and API routes
 
-#### Videos 集合属性：
-**字符串属性 (String):**
-- `title` - 大小: 255, 必需: 是
-- `fileId` - 大小: 255, 必需: 是
-- `userId` - 大小: 255, 必需: 是
-- `userName` - 大小: 255, 必需: 是
-- `quality` - 大小: 10, 必需: 是
-- `thumbnailUrl` - 大小: 500, 必需: 否
+---
 
-**整数属性 (Integer):**
-- `duration` - 默认值: 0, 必需: 是
-- `views` - 默认值: 0, 必需: 是
+## 🗄️ Part 1: PostgreSQL Database Setup
 
-**布尔属性 (Boolean):**
-- `isPublic` - 默认值: false, 必需: 是
+### Option A: Local PostgreSQL
 
-### 4. 创建 Reactions 集合
-- 集合 ID: `reactions`
-- 集合名称: `Video Reactions`
+1. **Install PostgreSQL**
+   ```bash
+   # macOS with Homebrew
+   brew install postgresql
+   brew services start postgresql
+   
+   # Ubuntu/Debian
+   sudo apt update
+   sudo apt install postgresql postgresql-contrib
+   sudo systemctl start postgresql
+   
+   # Windows: Download from https://www.postgresql.org/download/
+   ```
 
-#### Reactions 集合属性：
-**字符串属性 (String) - 所有属性大小: 255, 必需: 是:**
-- `videoId`
-- `userId`
-- `userName`
-- `emoji` (大小: 10)
+2. **Create Database**
+   ```bash
+   # Connect to PostgreSQL
+   psql -U postgres
+   
+   # Create database and user
+   CREATE DATABASE soon_app;
+   CREATE USER soon_user WITH ENCRYPTED PASSWORD 'your_secure_password';
+   GRANT ALL PRIVILEGES ON DATABASE soon_app TO soon_user;
+   \q
+   ```
 
-### 5. 配置集合权限 🔑
-**重要：这一步是解决 "401 Unauthorized" 错误的关键！**
+### Option B: Cloud PostgreSQL
 
-#### 为两个集合都配置以下权限：
-- 进入集合（videos 或 reactions）
-- 点击 "Settings" 标签  
-- 在 "Permissions" 部分点击 "Update Permissions"
-- 添加以下权限：
-  - **Read**: `Any`
-  - **Create**: `Users` 
-  - **Update**: `Users`
-  - **Delete**: `Users`
-- 点击 "Update" 保存
+Use services like:
+- **Railway**: https://railway.app
+- **Supabase**: https://supabase.com
+- **Neon**: https://neon.tech
+- **Render**: https://render.com
 
-### 6. 创建存储桶
-- 点击左侧菜单 "Storage"
-- 点击 "Create Bucket"
-- 桶 ID: `videos`
-- 桶名称: `Videos`
-- 配置:
-  - 文件安全: 禁用
-  - 最大文件大小: 104857600 (100MB)
-  - 允许文件类型: `video/webm, video/mp4, video/quicktime`
-  - 压缩: gzip
-  - 加密: 禁用
-  - 防病毒: 禁用
+---
 
-## 验证设置
+## ☁️ Part 2: Appwrite Setup
 
-完成所有步骤后：
-1. 访问 `/dashboard` 页面
-2. 如果设置正确，您将看到录制界面和视频列表
-3. 如果仍有错误，请检查集合名称和属性是否完全匹配
+### 1. Create Appwrite Project
 
-## 环境变量
+1. **Access Appwrite Console**
+   - Visit: https://cloud.appwrite.io (or your self-hosted instance)
+   - Create an account or sign in
+   - Click "Create Project"
+   - Project Name: `Soon Screen Recorder`
+   - Project ID: `soon`
 
-确保 `.env` 文件包含：
+### 2. Configure Authentication
+
+1. **Navigate to Auth > Settings**
+2. **Enable Auth Methods**:
+   - ✅ Email/Password
+   - ✅ Session Limit: 10
+   - ✅ Password History: 5
+3. **Security Settings**:
+   - Session Length: 1 year
+   - Password Dictionary: Enable
+
+### 3. Create Database Collections
+
+#### 🎬 Videos Collection
+
+1. **Create Collection**
+   - Navigate to **Databases**
+   - Click "Create Database"
+   - Database ID: `soon`
+   - Database Name: `Soon Database`
+
+2. **Create Videos Collection**
+   - Collection ID: `videos`
+   - Collection Name: `Videos`
+
+3. **Add Attributes**:
+   
+   **String Attributes:**
+   ```
+   • title - Size: 255, Required: ✅
+   • fileId - Size: 255, Required: ✅
+   • userId - Size: 255, Required: ✅
+   • userName - Size: 255, Required: ✅
+   • quality - Size: 10, Required: ✅
+   • thumbnailUrl - Size: 500, Required: ❌
+   • subtitleFileId - Size: 255, Required: ❌
+   ```
+   
+   **Integer Attributes:**
+   ```
+   • duration - Default: 0, Required: ✅
+   • views - Default: 0, Required: ✅
+   ```
+   
+   **Boolean Attributes:**
+   ```
+   • isPublic - Default: false, Required: ✅
+   ```
+
+#### 👥 Reactions Collection
+
+1. **Create Collection**
+   - Collection ID: `reactions`  
+   - Collection Name: `Video Reactions`
+
+2. **Add Attributes**:
+   
+   **String Attributes (All Required):**
+   ```
+   • videoId - Size: 255
+   • userId - Size: 255  
+   • userName - Size: 255
+   • emoji - Size: 10
+   ```
+
+### 4. Configure Permissions 🔐
+
+**Critical Step** - For both collections:
+
+1. **Videos Collection**:
+   - Click `videos` → `Settings` → `Permissions`
+   - **Read**: `users`, `any` (for public videos)
+   - **Create**: `users`
+   - **Update**: `users`
+   - **Delete**: `users`
+
+2. **Reactions Collection**:
+   - Click `reactions` → `Settings` → `Permissions`
+   - **Read**: `any`
+   - **Create**: `users`
+   - **Update**: `users`  
+   - **Delete**: `users`
+
+### 5. Create Storage Bucket
+
+1. **Navigate to Storage**
+2. **Create Bucket**:
+   - Bucket ID: `videos`
+   - Bucket Name: `Videos Storage`
+   
+3. **Configure Settings**:
+   ```
+   • Maximum File Size: 104857600 (100MB)
+   • Allowed File Types: video/webm, video/mp4, video/quicktime
+   • File Security: False (for public access)
+   • Compression: gzip
+   • Encryption: False
+   • Antivirus: False
+   ```
+
+4. **Set Bucket Permissions**:
+   - **Read**: `any`
+   - **Create**: `users`
+   - **Update**: `users`
+   - **Delete**: `users`
+
+---
+
+## 🔧 Part 3: Application Setup
+
+### 1. Clone and Install
+
+```bash
+git clone <repository-url>
+cd soon-screen-recorder
+npm install
 ```
-NEXT_PUBLIC_APPWRITE_ENDPOINT=https://nyc.cloud.appwrite.io/v1
+
+### 2. Environment Configuration
+
+#### Automatic Setup (Recommended)
+
+```bash
+npm run db:setup
+```
+
+This will create `.env` with PostgreSQL settings.
+
+#### Manual Setup
+
+Create `.env` file:
+
+```env
+# PostgreSQL Database
+POSTGRES_URL=postgresql://soon_user:your_password@localhost:5432/soon_app
+
+# Application
+BASE_URL=http://localhost:3000
+AUTH_SECRET=your_64_character_random_string
+
+# Appwrite Configuration
+NEXT_PUBLIC_APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
 NEXT_PUBLIC_APPWRITE_PROJECT_ID=soon
 NEXT_PUBLIC_APPWRITE_DATABASE_ID=soon
 NEXT_PUBLIC_APPWRITE_BUCKET_ID=videos
 ```
 
-## 故障排除
+### 3. Database Migration
 
-- **"Attribute not found in schema: userId"** - 检查 videos 集合是否有 userId 属性
-- **"Collection not found"** - 确认集合 ID 完全匹配 (videos, reactions)
-- **存储错误** - 检查存储桶 ID 是否为 "videos"
+```bash
+# Generate migrations
+npm run db:generate
 
-完成设置后，应用将完全正常工作！🎬
+# Apply migrations
+npm run db:migrate
+
+# Seed test data
+npm run db:seed
+```
+
+### 4. Test Account
+
+The seed script creates:
+- **Email**: `test@test.com`
+- **Password**: `admin123`
+
+---
+
+## ✅ Part 4: Verification
+
+### 1. Start Development Server
+
+```bash
+npm run dev
+```
+
+### 2. Test Checklist
+
+Visit `http://localhost:3000` and verify:
+
+- [ ] **Homepage loads** without errors
+- [ ] **Sign in** works with test account
+- [ ] **Dashboard** displays recording interface
+- [ ] **Recording** permissions work (screen/camera)
+- [ ] **Video upload** to Appwrite succeeds
+- [ ] **Video playback** from storage works
+- [ ] **Public sharing** links function
+- [ ] **Reactions system** operates
+
+---
+
+## 🔍 Troubleshooting
+
+### Common Issues
+
+#### 🚫 "Collection with ID 'videos' could not be found"
+```bash
+# Check Appwrite database settings
+• Verify database ID is exactly: soon
+• Verify collection IDs are exactly: videos, reactions
+```
+
+#### 🚫 "401 Unauthorized" Errors
+```bash
+# Check Appwrite permissions
+• Collections must have proper read/write permissions
+• Storage bucket must allow public read access
+• Project settings should allow your domain
+```
+
+#### 🚫 Database Connection Errors
+```bash
+# Test PostgreSQL connection
+psql "postgresql://soon_user:password@localhost:5432/soon_app"
+
+# Check environment variables
+echo $POSTGRES_URL
+```
+
+#### 🚫 Video Upload Failures
+```bash
+# Check Appwrite storage configuration
+• Bucket ID matches environment variable
+• File size limits are sufficient (100MB+)
+• Allowed file types include video/webm
+• Storage permissions allow user uploads
+```
+
+#### 🚫 Screen Recording Permission Denied
+```bash
+# Browser requirements
+• Use HTTPS in production (required for screen capture)
+• Grant camera/microphone permissions
+• Use supported browsers (Chrome, Edge, Firefox)
+```
+
+---
+
+## 🚀 Production Deployment
+
+### Environment Variables for Production
+
+```env
+# Update these for production
+BASE_URL=https://your-domain.com
+POSTGRES_URL=postgresql://user:pass@production-host:5432/db
+
+# Keep Appwrite settings, or use your own instance
+NEXT_PUBLIC_APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
+# ... rest of Appwrite config
+```
+
+### Security Checklist
+
+- [ ] **HTTPS enabled** (required for screen recording)
+- [ ] **Database credentials** secured
+- [ ] **Appwrite API keys** restricted to your domain
+- [ ] **File upload limits** configured appropriately
+- [ ] **CORS settings** properly configured
+
+---
+
+## 📞 Support
+
+### Getting Help
+
+1. **Check logs** in browser developer console
+2. **Verify all environment variables** are set correctly
+3. **Test Appwrite connection** independently
+4. **Check PostgreSQL connectivity**
+
+### Common Log Messages
+
+```bash
+✅ "Appwrite config: { endpoint: '...', projectId: '...' }"
+✅ "Successfully created video record"
+❌ "Collection not found" → Check Appwrite database setup
+❌ "401 Unauthorized" → Check permissions configuration
+```
+
+---
+
+## 🎉 Success!
+
+Once setup is complete, you should have:
+
+- ✅ **Full screen recording** functionality
+- ✅ **Video management** and sharing
+- ✅ **User authentication** system
+- ✅ **Public video** gallery
+- ✅ **Subtitle generation** with speech recognition
+- ✅ **Multi-language** support (English/Chinese)
+
+**Happy Recording!** 🎬
