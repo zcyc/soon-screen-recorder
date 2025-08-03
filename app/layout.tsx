@@ -30,8 +30,9 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${manrope.className}`}
+      style={{ scrollbarGutter: 'stable' }}
     >
-      <body className="min-h-[100dvh] bg-background text-foreground">
+      <body className="min-h-[100dvh] bg-background text-foreground" style={{ width: '100vw', maxWidth: '100%', overflowX: 'hidden' }}>
         <ThemeProvider>
           <I18nProvider>
             <AuthProvider>

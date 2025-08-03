@@ -128,7 +128,7 @@
     --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
-    --primary: 217 91% 59%; /* Default blue theme */
+    --primary: 142 76% 36%; /* Default green theme */
     --primary-foreground: 0 0% 98%;
     --secondary: 240 4.8% 95.9%;
     --secondary-foreground: 240 5.9% 10%;
@@ -180,8 +180,18 @@
   }
   
   /* Prevent layout shifts during content loading */
-  html, body {
+  html {
     overflow-x: hidden;
+    /* Always reserve space for scrollbar to prevent jumping */
+    overflow-y: scroll !important;
+    scrollbar-gutter: stable both-edges;
+  }
+  
+  body {
+    overflow-x: hidden;
+    /* Prevent horizontal scrolling that causes jumping */
+    width: 100vw;
+    max-width: 100%;
   }
   
   /* Ensure consistent box sizing */
@@ -197,11 +207,47 @@
     margin-right: auto;
     /* Avoid containment as it can cause issues */
     transform: translateZ(0); /* Hardware acceleration instead */
+    /* Ensure stable width calculation */
+    box-sizing: border-box;
+  }
+  
+  /* Stable page container to prevent jumping */
+  #__next, [id="root"] {
+    width: 100%;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
   }
   
   /* Stabilize main content area */
   main {
     contain: layout;
     min-height: calc(100vh - 4rem); /* Account for header height */
+  }
+  
+  /* Prevent page jumping for select dropdowns */
+  [data-radix-select-trigger] {
+    transform: translateZ(0);
+    will-change: auto;
+    contain: layout;
+  }
+  
+  [data-radix-select-content] {
+    transform: translateZ(0);
+    will-change: auto;
+    contain: layout;
+    /* Ensure dropdown doesn't cause page shifts */
+    position: fixed !important;
+  }
+  
+  /* Ensure body doesn't jump when content changes */
+  body {
+    min-height: 100vh;
+  }
+  
+  /* Ensure select containers don't cause layout shifts */
+  .select-container {
+    contain: layout;
+    min-height: 2.5rem; /* 40px - consistent with SelectTrigger */
   }
 }

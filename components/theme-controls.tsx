@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Moon, Sun, Palette, Check } from 'lucide-react';
+import { Moon, Sun, Palette, Check, Languages } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useI18n } from '@/lib/i18n';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +16,9 @@ import { useTheme, themeColors, type ThemeColor } from '@/contexts/theme-context
 
 export default function ThemeControls() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isLanguageOpen, setIsLanguageOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const { locale, setLocale, t } = useI18n();
   
   // Theme context variables
   let mode, themeColor, toggleMode, setThemeColor;
@@ -29,7 +32,7 @@ export default function ThemeControls() {
   } catch (error) {
     // If theme context is not available, use defaults
     mode = 'light';
-    themeColor = themeColors[0];
+    themeColor = themeColors[1];
     toggleMode = () => {};
     setThemeColor = () => {};
   }
@@ -43,7 +46,11 @@ export default function ThemeControls() {
     return <div className="flex items-center space-x-2 h-9 w-18" />;
   }
 
-  const handleColorChange = (color: ThemeColor) => {
+  const handleColorChange = (color: ThemeColor, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     setThemeColor(color);
     setIsOpen(false);
   };
@@ -52,9 +59,15 @@ export default function ThemeControls() {
     <div className="flex items-center space-x-2">
       {/* Theme Mode Toggle */}
       <Button
+        type="button"
         variant="outline"
         size="sm"
-        onClick={toggleMode}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleMode();
+        }}
+        onMouseDown={(e) => e.preventDefault()}
         className="rounded-full p-2 h-9 w-9"
         title={mode === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
       >
@@ -66,23 +79,42 @@ export default function ThemeControls() {
       </Button>
 
       {/* Theme Color Picker */}
-      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenu 
+        open={isOpen} 
+        onOpenChange={(open) => {
+          setIsOpen(open);
+        }}
+        modal={false}
+      >
         <DropdownMenuTrigger asChild>
           <Button
+            type="button"
             variant="outline"
             size="sm"
             className="rounded-full p-2 h-9 w-9"
             title="Change theme color"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
           >
             <Palette className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuContent 
+          align="end" 
+          className="w-48 z-50"
+          sideOffset={5}
+          avoidCollisions={true}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
           {themeColors.map((color) => (
             <DropdownMenuItem
               key={color.value}
               className="cursor-pointer flex items-center justify-between"
-              onClick={() => handleColorChange(color)}
+              onClick={(e) => handleColorChange(color, e)}
+              onMouseDown={(e) => e.preventDefault()}
             >
               <div className="flex items-center space-x-2">
                 <div 
@@ -98,6 +130,76 @@ export default function ThemeControls() {
               )}
             </DropdownMenuItem>
           ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Language Toggle */}
+      <DropdownMenu 
+        open={isLanguageOpen} 
+        onOpenChange={(open) => {
+          setIsLanguageOpen(open);
+        }}
+        modal={false}
+      >
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="rounded-full p-2 h-9 w-9"
+            title="Change language"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          >
+            <Languages className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent 
+          align="end" 
+          className="w-48 z-50"
+          sideOffset={5}
+          avoidCollisions={true}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
+          <DropdownMenuItem 
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setLocale('zh');
+              setIsLanguageOpen(false);
+            }}
+            onMouseDown={(e) => e.preventDefault()}
+            className={`cursor-pointer flex items-center justify-between ${locale === 'zh' ? 'bg-accent' : ''}`}
+          >
+            <div className="flex items-center space-x-2">
+              <span className="text-lg">🇨🇳</span>
+              <span>中文</span>
+            </div>
+            {locale === 'zh' && (
+              <Check className="h-4 w-4" />
+            )}
+          </DropdownMenuItem>
+          <DropdownMenuItem 
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setLocale('en');
+              setIsLanguageOpen(false);
+            }}
+            onMouseDown={(e) => e.preventDefault()}
+            className={`cursor-pointer flex items-center justify-between ${locale === 'en' ? 'bg-accent' : ''}`}
+          >
+            <div className="flex items-center space-x-2">
+              <span className="text-lg">🇺🇸</span>
+              <span>English</span>
+            </div>
+            {locale === 'en' && (
+              <Check className="h-4 w-4" />
+            )}
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

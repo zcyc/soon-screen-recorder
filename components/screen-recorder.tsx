@@ -1256,9 +1256,9 @@ export default function ScreenRecorder() {
         <div className="space-y-6">
           {/* 第一行：录制质量和录制源 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
+            <div className="select-container">
               <Label className="text-sm font-medium mb-3 block">{t.recording.recordingQuality}</Label>
-              <Select value={quality} onValueChange={(value) => setQuality(value as RecordingQuality)}>
+              <Select value={quality} onValueChange={(value) => setQuality(value as RecordingQuality)} modal={false}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder={t.recording.selectRecordingQuality} />
                 </SelectTrigger>
@@ -1269,7 +1269,7 @@ export default function ScreenRecorder() {
               </Select>
             </div>
             
-            <div>
+            <div className="select-container">
               <Label className="text-sm font-medium mb-3 block">{t.recording.recordingSource}</Label>
               <Select 
                 value={source === 'camera-only' ? 'camera-only' : screenSource} 
@@ -1285,6 +1285,7 @@ export default function ScreenRecorder() {
                     setScreenSource(value as ScreenSourceType);
                   }
                 }}
+                modal={false}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder={t.recording.selectRecordingSource} />
