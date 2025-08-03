@@ -23,7 +23,9 @@ import {
   Share2,
   Copy,
   ExternalLink,
-  Link
+  Link,
+  Circle,
+  StopCircle
 } from 'lucide-react';
 import { storage, config } from '@/lib/appwrite';
 import { DatabaseService } from '@/lib/database';
@@ -52,7 +54,7 @@ export default function ScreenRecorder() {
     recordedBlob: null,
   });
   
-  const [quality, setQuality] = useState<RecordingQuality>('1080p');
+  const [quality, setQuality] = useState<RecordingQuality>('720p');
   const [source, setSource] = useState<RecordingSource>('screen');
   const [screenSource, setScreenSource] = useState<ScreenSourceType>('monitor');
   const [includeAudio, setIncludeAudio] = useState(true);
@@ -747,7 +749,7 @@ export default function ScreenRecorder() {
                 </Button>
               )}
               <Button size="sm" onClick={stopRecording}>
-                <Square className="h-4 w-4 mr-1" />
+                <StopCircle className="h-4 w-4 mr-1" />
                 {t.recording.stop}
               </Button>
             </div>
@@ -758,7 +760,7 @@ export default function ScreenRecorder() {
       {/* Start Recording Button */}
       {!recordingState.isRecording && !recordingState.recordedBlob && (
         <Button onClick={startRecording} className="w-full" size="lg">
-          <Square className="h-5 w-5 mr-2" />
+          <Circle className="h-5 w-5 mr-2 fill-current" />
           {t.recording.start}
         </Button>
       )}
