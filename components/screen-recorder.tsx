@@ -169,6 +169,16 @@ export default function ScreenRecorder() {
     }
   }, [includeCamera, recordingState.isRecording, isMounted]);
 
+  // 自动关闭摄像头当选择不支持的录制源时
+  useEffect(() => {
+    if ((screenSource === 'window' || screenSource === 'browser') && 
+        source !== 'camera-only' && 
+        includeCamera) {
+      console.log(`如选择${screenSource === 'window' ? '应用窗口' : '浏览器标签页'}，自动关闭摄像头`);
+      setIncludeCamera(false);
+    }
+  }, [screenSource, source, includeCamera]);
+
   // 组件挂载状态管理
   useEffect(() => {
     setIsMounted(true);
@@ -926,7 +936,15 @@ export default function ScreenRecorder() {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 {includeCamera ? <Camera className="h-4 w-4" /> : <CameraOff className="h-4 w-4" />}
-                <Label>开启摄像头</Label>
+                <div className="flex flex-col">
+                  <Label>开启摄像头</Label>
+                  {/* 不支持摄像头的提示 */}
+                  {(screenSource === 'window' || screenSource === 'browser') && source !== 'camera-only' && (
+                    <span className="text-xs text-muted-foreground">
+                      {screenSource === 'window' ? '应用窗口不支持摄像头' : '浏览器标签页不支持摄像头'}
+                    </span>
+                  )}
+                </div>
                 {/* 摄像头状态指示器 */}
                 {includeCamera && cameraPreviewStream && (
                   <div 
@@ -944,7 +962,10 @@ export default function ScreenRecorder() {
                   }
                   setIncludeCamera(checked);
                 }}
-                disabled={source === 'camera-only'} // 仅录制摄像头时禁用切换
+                disabled={
+                  source === 'camera-only' || // 仅录制摄像头时禁用切换
+                  (screenSource === 'window' || screenSource === 'browser') // 应用窗口和浏览器标签页不支持摄像头
+                }
               />
             </div>
           </div>
