@@ -66,10 +66,10 @@ function UserMenu() {
     return (
       <div className="flex items-center space-x-4">
         <Button asChild variant="outline" className="rounded-full">
-          <Link href="/sign-in">Sign In</Link>
+          <Link href="/sign-in">{t.auth.signIn}</Link>
         </Button>
         <Button asChild className="rounded-full">
-          <Link href="/sign-up">Sign Up</Link>
+          <Link href="/sign-up">{t.auth.signUp}</Link>
         </Button>
       </div>
     );

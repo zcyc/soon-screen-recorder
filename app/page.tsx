@@ -5,10 +5,12 @@ import { ArrowRight, Video, Monitor, Camera, Mic } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { useI18n } from '@/lib/i18n';
 
 export default function HomePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const { t } = useI18n();
 
   useEffect(() => {
     if (!loading && user) {
@@ -33,11 +35,11 @@ export default function HomePage() {
             <Video className="h-16 w-16 text-primary" />
           </div>
           <h1 className="text-4xl font-bold text-foreground tracking-tight sm:text-5xl md:text-6xl">
-            Screen Recording
-            <span className="block text-primary">Made Simple</span>
+            {t.home.heroTitle}
+            <span className="block text-primary">{t.home.heroSubtitle}</span>
           </h1>
           <p className="mt-6 text-xl text-muted-foreground max-w-2xl mx-auto">
-            Record your screen, camera, and audio with Soon - the simple and powerful screen recording tool.
+            {t.home.heroDescription}
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
             <Button
@@ -46,7 +48,7 @@ export default function HomePage() {
               className="text-lg rounded-full px-8 py-3"
             >
               <a href="/sign-up">
-                Start Recording
+                {t.home.startRecording}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </a>
             </Button>
@@ -57,18 +59,18 @@ export default function HomePage() {
               className="text-lg rounded-full px-8 py-3"
             >
               <a href="/sign-in">
-                Sign In
+                {t.home.signIn}
               </a>
             </Button>
           </div>
           
           <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800 max-w-2xl mx-auto">
             <p className="text-sm text-blue-700 dark:text-blue-300">
-              <span className="font-semibold">🚀 First time setup:</span> After signing up, visit{" "}
+              <span className="font-semibold">{t.home.setupNotice}</span> {t.home.setupLink.split('/setup')[0]}
               <a href="/setup" className="underline font-medium">
                 /setup
-              </a>{" "}
-              to initialize your database collections.
+              </a>
+              {t.home.setupLink.split('/setup')[1]}
             </p>
           </div>
         </div>
@@ -79,10 +81,10 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-foreground mb-4">
-              Everything You Need to Record
+              {t.home.featuresTitle}
             </h2>
             <p className="text-xl text-muted-foreground">
-              Professional-quality recordings with just a few clicks
+              {t.home.featuresSubtitle}
             </p>
           </div>
           
@@ -91,9 +93,9 @@ export default function HomePage() {
               <div className="bg-primary/10 rounded-full p-6 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
                 <Monitor className="h-10 w-10 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Screen Recording</h3>
+              <h3 className="text-xl font-semibold mb-2">{t.home.screenRecordingTitle}</h3>
               <p className="text-muted-foreground">
-                Capture your entire screen or specific windows with crystal clear quality up to 1080p.
+                {t.home.screenRecordingDesc}
               </p>
             </div>
             
@@ -101,9 +103,9 @@ export default function HomePage() {
               <div className="bg-primary/10 rounded-full p-6 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
                 <Camera className="h-10 w-10 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Camera Recording</h3>
+              <h3 className="text-xl font-semibold mb-2">{t.home.cameraRecordingTitle}</h3>
               <p className="text-muted-foreground">
-                Include your webcam in recordings for personal touch and better engagement.
+                {t.home.cameraRecordingDesc}
               </p>
             </div>
             
@@ -111,9 +113,9 @@ export default function HomePage() {
               <div className="bg-primary/10 rounded-full p-6 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
                 <Mic className="h-10 w-10 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Audio Recording</h3>
+              <h3 className="text-xl font-semibold mb-2">{t.home.audioRecordingTitle}</h3>
               <p className="text-muted-foreground">
-                Capture system audio and microphone input for complete recording experience.
+                {t.home.audioRecordingDesc}
               </p>
             </div>
           </div>
@@ -124,10 +126,10 @@ export default function HomePage() {
       <section className="py-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold text-foreground mb-4">
-            Ready to Start Recording?
+            {t.home.ctaTitle}
           </h2>
           <p className="text-xl text-muted-foreground mb-8">
-            Join Soon today and start creating amazing screen recordings in minutes.
+            {t.home.ctaDescription}
           </p>
           <Button
             asChild
@@ -135,7 +137,7 @@ export default function HomePage() {
             className="text-lg rounded-full px-8 py-3"
           >
             <a href="/sign-up">
-              Get Started for Free
+              {t.home.getStarted}
               <ArrowRight className="ml-2 h-5 w-5" />
             </a>
           </Button>

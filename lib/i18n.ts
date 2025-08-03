@@ -11,6 +11,26 @@ export interface Translations {
     profile: string;
     signOut: string;
   };
+  home: {
+    heroTitle: string;
+    heroSubtitle: string;
+    heroDescription: string;
+    startRecording: string;
+    signIn: string;
+    setupNotice: string;
+    setupLink: string;
+    featuresTitle: string;
+    featuresSubtitle: string;
+    screenRecordingTitle: string;
+    screenRecordingDesc: string;
+    cameraRecordingTitle: string;
+    cameraRecordingDesc: string;
+    audioRecordingTitle: string;
+    audioRecordingDesc: string;
+    ctaTitle: string;
+    ctaDescription: string;
+    getStarted: string;
+  };
   
   // Dashboard
   dashboard: {
@@ -207,6 +227,26 @@ export const translations: Record<Locale, Translations> = {
       profile: 'Profile',
       signOut: 'Sign Out',
     },
+    home: {
+      heroTitle: 'Screen Recording',
+      heroSubtitle: 'Made Simple',
+      heroDescription: 'Record your screen, camera, and audio with Soon - the simple and powerful screen recording tool.',
+      startRecording: 'Start Recording',
+      signIn: 'Sign In',
+      setupNotice: '🚀 First time setup:',
+      setupLink: 'After signing up, visit /setup to initialize your database collections.',
+      featuresTitle: 'Everything You Need to Record',
+      featuresSubtitle: 'Professional-quality recordings with just a few clicks',
+      screenRecordingTitle: 'Screen Recording',
+      screenRecordingDesc: 'Capture your entire screen or specific windows with crystal clear quality up to 1080p.',
+      cameraRecordingTitle: 'Camera Recording',
+      cameraRecordingDesc: 'Include your webcam in recordings for personal touch and better engagement.',
+      audioRecordingTitle: 'Audio Recording',
+      audioRecordingDesc: 'Capture system audio and microphone input for complete recording experience.',
+      ctaTitle: 'Ready to Start Recording?',
+      ctaDescription: 'Join Soon today and start creating amazing screen recordings in minutes.',
+      getStarted: 'Get Started for Free',
+    },
     dashboard: {
       recordVideo: 'Record Video',
       myVideos: 'My Videos',
@@ -386,6 +426,26 @@ export const translations: Record<Locale, Translations> = {
       devices: '设备',
       profile: '个人资料', 
       signOut: '退出登录',
+    },
+    home: {
+      heroTitle: '屏幕录制',
+      heroSubtitle: '简单易用',
+      heroDescription: '使用 Soon 轻松录制屏幕、摄像头和音频 - 简单而强大的屏幕录制工具。',
+      startRecording: '开始录制',
+      signIn: '登录',
+      setupNotice: '🚀 首次配置：',
+      setupLink: '注册后，访问 /setup 来初始化您的数据库集合。',
+      featuresTitle: '满足您的录制需求',
+      featuresSubtitle: '仅需几次点击就能获得专业品质的录制',
+      screenRecordingTitle: '屏幕录制',
+      screenRecordingDesc: '捕获整个屏幕或特定窗口，提供高达 1080p 的清晰画质。',
+      cameraRecordingTitle: '摄像头录制',
+      cameraRecordingDesc: '在录制中包含您的网络摄像头，增加个人化触感和更好的互动效果。',
+      audioRecordingTitle: '音频录制',
+      audioRecordingDesc: '捕获系统音频和麦克风输入，提供完整的录制体验。',
+      ctaTitle: '准备开始录制了吗？',
+      ctaDescription: '立即加入 Soon，在几分钟内开始创建令人惊叹的屏幕录制。',
+      getStarted: '免费开始使用',
     },
     dashboard: {
       recordVideo: '录制视频',
