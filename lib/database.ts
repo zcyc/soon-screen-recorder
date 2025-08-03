@@ -110,8 +110,16 @@ export class DatabaseService {
         videoId
       );
       return response as unknown as VideoRecord;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch video:', error);
+      
+      // Provide more specific error messages for common cases
+      if (error.code === 404) {
+        throw new Error('Video not found or no longer available.');
+      } else if (error.code === 401) {
+        throw new Error('This video is private or requires authentication to view.');
+      }
+      
       throw error;
     }
   }
@@ -250,11 +258,26 @@ export class DatabaseService {
 
   static async incrementViews(videoId: string) {
     try {
+      // First check if video exists and is accessible
       const video = await this.getVideoById(videoId);
-      await this.updateVideo(videoId, { views: video.views + 1 });
-    } catch (error) {
+      
+      // Only increment views for public videos or if user has access
+      if (video.isPublic) {
+        try {
+          await this.updateVideo(videoId, { views: video.views + 1 });
+        } catch (updateError: any) {
+          // If update fails due to permissions, try alternative approach
+          if (updateError.code === 401 || updateError.code === 'document_invalid_permissions') {
+            console.info('Unable to increment views due to permissions - this is normal for anonymous users viewing public videos');
+            // Fail silently for anonymous users - view counting is not critical
+            return;
+          }
+          throw updateError;
+        }
+      }
+    } catch (error: any) {
       console.error('Failed to increment views:', error);
-      // Don't throw error for view tracking failures
+      // Don't throw error for view tracking failures to avoid breaking page load
     }
   }
 
@@ -289,13 +312,22 @@ export class DatabaseService {
           },
           [
             Permission.read(Role.any()),
-            Permission.write(Role.user(userId))
+            Permission.write(Role.user(userId)),
+            Permission.delete(Role.user(userId))
           ]
         );
         return response as unknown as VideoReaction;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to add reaction:', error);
+      
+      // Provide more specific error messages
+      if (error.code === 401) {
+        throw new Error('You must be logged in to react to videos.');
+      } else if (error.code === 'collection_invalid_permissions') {
+        throw new Error('You do not have permission to add reactions to this video.');
+      }
+      
       throw error;
     }
   }
@@ -310,8 +342,16 @@ export class DatabaseService {
         ]
       );
       return response.documents as unknown as VideoReaction[];
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch reactions:', error);
+      
+      // If it's a permission error, return empty array instead of throwing
+      // This allows anonymous users to view videos without reactions
+      if (error.code === 401 || error.code === 'collection_invalid_permissions') {
+        console.info('Anonymous user cannot access reactions - returning empty array');
+        return [];
+      }
+      
       throw error;
     }
   }

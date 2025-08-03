@@ -53,7 +53,7 @@ export interface Translations {
     publicVideo: string;
     publicVideoDesc: string;
     privateVideoDesc: string;
-    recording: string;
+    recordingStatus: string;
     paused: string;
     stop: string;
     start: string;
@@ -79,8 +79,6 @@ export interface Translations {
     // Additional UI elements
     selectRecordingQuality: string;
     selectRecordingSource: string;
-    recordingSource: string;
-    cameraOnly: string;
     cameraOnlyDesc: string;
     openMicrophone: string;
     microphoneDescription: string;
@@ -223,7 +221,7 @@ export const translations: Record<Locale, Translations> = {
     publicVideo: 'Public Video',
     publicVideoDesc: 'Anyone can access the share link',
     privateVideoDesc: 'Only you can access the video',
-      recording: 'Recording',
+      recordingStatus: 'Recording',
       paused: 'Paused',
       stop: 'Stop',
       start: 'Start Recording',
@@ -249,8 +247,6 @@ export const translations: Record<Locale, Translations> = {
       // Additional UI elements
       selectRecordingQuality: 'Select recording quality',
       selectRecordingSource: 'Select recording source',
-      recordingSource: 'Recording Source',
-      cameraOnly: 'Camera Only',
       cameraOnlyDesc: 'Record using camera only, no screen content',
       openMicrophone: 'Open Microphone',
       microphoneDescription: 'Record audio independently, not affected by camera switch',
@@ -381,7 +377,7 @@ export const translations: Record<Locale, Translations> = {
     publicVideo: '公开视频',
     publicVideoDesc: '任何人都可以访问分享链接',
     privateVideoDesc: '只有您可以访问视频',
-      recording: '录制中',
+      recordingStatus: '录制中',
       paused: '已暂停',
       stop: '停止',
       start: '开始录制',
@@ -407,8 +403,6 @@ export const translations: Record<Locale, Translations> = {
       // Additional UI elements
       selectRecordingQuality: '选择录制质量',
       selectRecordingSource: '选择录制源',
-      recordingSource: '录制源',
-      cameraOnly: '仅录制摄像头',
       cameraOnlyDesc: '仅使用摄像头进行录制，不包含屏幕内容',
       openMicrophone: '开启麦克风',
       microphoneDescription: '独立录制声音，不受摄像头开关影响',

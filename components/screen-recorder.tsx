@@ -1068,7 +1068,7 @@ export default function ScreenRecorder() {
               <div className="flex items-center space-x-2">
                 <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
                 <span className="font-medium">
-                  {recordingState.isPaused ? t.recording.paused : t.recording.recording}
+                  {recordingState.isPaused ? t.recording.paused : t.recording.recordingStatus}
                 </span>
               </div>
               <span className="font-mono text-lg">
