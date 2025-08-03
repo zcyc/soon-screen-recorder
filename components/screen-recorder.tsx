@@ -1443,9 +1443,11 @@ export default function ScreenRecorder() {
                 </div>
                 <div className="flex flex-col">
                   <Label>{t.subtitles.enableSubtitles || '开启字幕'}</Label>
-                  <p className="text-xs text-muted-foreground">
-                    {t.subtitles.subtitleDescription || '自动从音频生成字幕'}
-                  </p>
+                  {t.subtitles.subtitleDescription && (
+                    <p className="text-xs text-muted-foreground">
+                      {t.subtitles.subtitleDescription}
+                    </p>
+                  )}
                   {!includeAudio && (
                     <span className="text-xs text-orange-600 dark:text-orange-400">
                       {t.subtitles.needMicrophoneForSubtitles || '需要开启麦克风才能生成字幕'}

@@ -370,8 +370,8 @@ export const translations: Record<Locale, Translations> = {
       cameraPermissionDenied: 'Camera permission denied',
     },
     subtitles: {
-      enableSubtitles: 'Enable Subtitles',
-      subtitleDescription: 'Automatically generate subtitles from audio',
+      enableSubtitles: 'Enable Speech to Subtitles',
+      subtitleDescription: '',
       needMicrophoneForSubtitles: 'Enable microphone to generate subtitles',
       listeningForSpeech: 'Listening for speech',
       microphoneRequiredForSubtitles: 'Please enable microphone to use subtitle feature',
@@ -602,8 +602,8 @@ export const translations: Record<Locale, Translations> = {
       cameraPermissionDenied: '摄像头权限被拒绝',
     },
     subtitles: {
-      enableSubtitles: '开启字幕',
-      subtitleDescription: '自动从音频生成字幕',
+      enableSubtitles: '开启语音转字幕',
+      subtitleDescription: '',
       needMicrophoneForSubtitles: '需要开启麦克风才能生成字幕',
       listeningForSpeech: '正在监听语音',
       microphoneRequiredForSubtitles: '请先开启麦克风才能使用字幕功能',
