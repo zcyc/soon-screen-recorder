@@ -20,11 +20,13 @@ import {
 import { DatabaseService, VideoRecord, VideoReaction } from '@/lib/database';
 import { storage, config } from '@/lib/appwrite';
 import { useAuth } from '@/contexts/auth-context';
+import { useI18n } from '@/lib/i18n';
 
 export default function SharePage() {
   const params = useParams();
   const videoId = params.videoId as string;
   const { user } = useAuth();
+  const { t } = useI18n();
   
   const [video, setVideo] = useState<VideoRecord | null>(null);
   const [reactions, setReactions] = useState<VideoReaction[]>([]);
@@ -32,11 +34,11 @@ export default function SharePage() {
   const [error, setError] = useState<string | null>(null);
 
   const emojis = [
-    { emoji: '👍', icon: ThumbsUp, label: 'Like' },
-    { emoji: '❤️', icon: Heart, label: 'Love' },
-    { emoji: '😊', icon: Smile, label: 'Happy' },
-    { emoji: '👏', icon: ThumbsUp, label: 'Applause' },
-    { emoji: '⭐', icon: Star, label: 'Awesome' },
+    { emoji: '👍', icon: ThumbsUp, label: t.share.like },
+    { emoji: '❤️', icon: Heart, label: t.share.love },
+    { emoji: '😊', icon: Smile, label: t.share.happy },
+    { emoji: '👏', icon: ThumbsUp, label: t.share.applause },
+    { emoji: '⭐', icon: Star, label: t.share.awesome },
   ];
 
   useEffect(() => {
@@ -57,13 +59,13 @@ export default function SharePage() {
     try {
       const videoData = await DatabaseService.getVideoById(videoId);
       if (!videoData.isPublic && (!user || user.$id !== videoData.userId)) {
-        setError('This video is private or not found.');
+        setError(t.share.privateVideoError);
         return;
       }
       setVideo(videoData);
     } catch (error) {
       console.error('Failed to load video:', error);
-      setError('Video not found or no longer available.');
+      setError(t.share.videoNotFoundDesc);
     } finally {
       setLoading(false);
     }
@@ -136,7 +138,7 @@ export default function SharePage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading video...</p>
+          <p className="mt-4 text-muted-foreground">{t.share.loading}</p>
         </div>
       </div>
     );
@@ -147,12 +149,12 @@ export default function SharePage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <Play className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-          <h1 className="text-2xl font-bold mb-2">Video Not Found</h1>
+          <h1 className="text-2xl font-bold mb-2">{t.share.videoNotFound}</h1>
           <p className="text-muted-foreground mb-4">
-            {error || 'The video you\'re looking for doesn\'t exist or is no longer available.'}
+            {error || t.share.videoNotFoundDesc}
           </p>
           <Button onClick={() => window.location.href = '/'}>
-            Back to Home
+            {t.share.backToHome}
           </Button>
         </div>
       </div>
@@ -182,7 +184,7 @@ export default function SharePage() {
                 <CardTitle className="text-2xl">{video.title}</CardTitle>
                 <Button variant="outline" onClick={handleDownload}>
                   <Download className="h-4 w-4 mr-2" />
-                  Download
+                  {t.share.download}
                 </Button>
               </div>
             </CardHeader>
@@ -194,7 +196,7 @@ export default function SharePage() {
                 </div>
                 <div className="flex items-center">
                   <Eye className="h-4 w-4 mr-1" />
-                  {video.views} views
+                  {video.views} {t.share.views}
                 </div>
                 <div className="flex items-center">
                   <Clock className="h-4 w-4 mr-1" />
@@ -209,7 +211,7 @@ export default function SharePage() {
               {/* Reactions */}
               {user && (
                 <div className="border-t pt-4">
-                  <h3 className="text-lg font-semibold mb-3">Reactions</h3>
+                  <h3 className="text-lg font-semibold mb-3">{t.share.reactions}</h3>
                   <div className="flex space-x-2 mb-4">
                     {emojis.map(({ emoji, icon: Icon, label }) => {
                       const count = getReactionCount(emoji);
@@ -233,7 +235,7 @@ export default function SharePage() {
                   {/* Recent Reactions */}
                   {reactions.length > 0 && (
                     <div>
-                      <h4 className="text-sm font-medium mb-2">Recent reactions:</h4>
+                      <h4 className="text-sm font-medium mb-2">{t.share.recentReactions}</h4>
                       <div className="flex flex-wrap gap-2">
                         {reactions.slice(0, 10).map((reaction) => (
                           <div
@@ -246,7 +248,7 @@ export default function SharePage() {
                         ))}
                         {reactions.length > 10 && (
                           <span className="text-xs text-muted-foreground">
-                            and {reactions.length - 10} more...
+                            {t.share.andMore.replace('{count}', (reactions.length - 10).toString())}
                           </span>
                         )}
                       </div>
@@ -258,14 +260,14 @@ export default function SharePage() {
               {!user && (
                 <div className="border-t pt-4 text-center">
                   <p className="text-muted-foreground mb-4">
-                    Sign in to react to this video
+                    {t.share.signInToReact}
                   </p>
                   <div className="space-x-2">
                     <Button asChild variant="outline">
-                      <a href="/sign-in">Sign In</a>
+                      <a href="/sign-in">{t.share.signIn}</a>
                     </Button>
                     <Button asChild>
-                      <a href="/sign-up">Sign Up</a>
+                      <a href="/sign-up">{t.share.signUp}</a>
                     </Button>
                   </div>
                 </div>

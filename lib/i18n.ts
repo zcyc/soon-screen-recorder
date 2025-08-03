@@ -152,6 +152,26 @@ export interface Translations {
     public: string;
     share: string;
   };
+  share: {
+    loading: string;
+    videoNotFound: string;
+    videoNotFoundDesc: string;
+    privateVideoError: string;
+    backToHome: string;
+    download: string;
+    views: string;
+    reactions: string;
+    recentReactions: string;
+    andMore: string;
+    signInToReact: string;
+    signIn: string;
+    signUp: string;
+    like: string;
+    love: string;
+    happy: string;
+    applause: string;
+    awesome: string;
+  };
   
   // Common
   common: {
@@ -314,6 +334,26 @@ export const translations: Record<Locale, Translations> = {
       public: 'Public',
       share: 'Share',
     },
+    share: {
+      loading: 'Loading video...',
+      videoNotFound: 'Video Not Found',
+      videoNotFoundDesc: 'The video you\'re looking for doesn\'t exist or is no longer available.',
+      privateVideoError: 'This video is private or not found.',
+      backToHome: 'Back to Home',
+      download: 'Download',
+      views: 'views',
+      reactions: 'Reactions',
+      recentReactions: 'Recent reactions:',
+      andMore: 'and {count} more...',
+      signInToReact: 'Sign in to react to this video',
+      signIn: 'Sign In',
+      signUp: 'Sign Up',
+      like: 'Like',
+      love: 'Love',
+      happy: 'Happy',
+      applause: 'Applause',
+      awesome: 'Awesome',
+    },
     common: {
       loading: 'Loading...',
       error: 'Error',
@@ -469,6 +509,26 @@ export const translations: Record<Locale, Translations> = {
       views: '观看',
       public: '公开',
       share: '分享',
+    },
+    share: {
+      loading: '加载视频中...',
+      videoNotFound: '视频未找到',
+      videoNotFoundDesc: '您要查找的视频不存在或已不可用。',
+      privateVideoError: '此视频为私有或未找到。',
+      backToHome: '返回首页',
+      download: '下载',
+      views: '次观看',
+      reactions: '反应',
+      recentReactions: '最近的反应：',
+      andMore: '还有 {count} 个...',
+      signInToReact: '登录以对此视频做出反应',
+      signIn: '登录',
+      signUp: '注册',
+      like: '点赞',
+      love: '喜爱',
+      happy: '开心',
+      applause: '鼓掌',
+      awesome: '精彩',
     },
     common: {
       loading: '加载中...',
