@@ -58,12 +58,7 @@ function UserMenu() {
 
   if (loading) {
     return (
-      <div className="header-user-menu">
-        {/* Language Toggle Skeleton */}
-        <div className="h-8 w-14 animate-pulse bg-muted rounded-full" />
-        {/* User Menu Skeleton */}
-        <div className="h-9 w-9 animate-pulse bg-muted rounded-full" />
-      </div>
+      <div className="h-9 w-9 animate-pulse bg-muted rounded-full" />
     );
   }
 
