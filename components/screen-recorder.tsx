@@ -982,12 +982,19 @@ export default function ScreenRecorder() {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 {includeAudio ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-                <div>
-                  <Label>{t.recording.includeAudio}</Label>
+                <div className="flex flex-col">
+                  <Label>开启麦克风</Label>
                   <p className="text-xs text-muted-foreground">
                     独立录制声音，不受摄像头开关影响
                   </p>
                 </div>
+                {/* 麦克风状态指示器 */}
+                {includeAudio && (
+                  <div 
+                    className="w-2 h-2 bg-green-500 rounded-full animate-pulse"
+                    title='麦克风已开启'
+                  ></div>
+                )}
               </div>
               <Switch
                 checked={includeAudio}
