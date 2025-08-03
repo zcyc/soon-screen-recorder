@@ -143,6 +143,7 @@ export default function ScreenRecorder() {
   const screenStreamRef = useRef<MediaStream | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const cameraPreviewRef = useRef<HTMLVideoElement | null>(null);
+  const cameraOnlyVideoRef = useRef<HTMLVideoElement | null>(null); // 仅录制摄像头模式的视频元素
 
   // 监听摄像头开启状态变化
   useEffect(() => {
@@ -255,10 +256,32 @@ export default function ScreenRecorder() {
       
       // 仅录制摄像头模式下不使用画中画，只设置视频源
       if (cameraOnlyMode) {
-        if (cameraPreviewRef.current) {
-          cameraPreviewRef.current.srcObject = stream;
-          console.log('仅录制摄像头模式，视频源设置完成');
-        }
+        const setupCameraOnlyVideo = (retryCount = 0) => {
+          const maxRetries = 10;
+          
+          if (cameraOnlyVideoRef.current) {
+            console.log('仅录制摄像头模式，设置视频源...');
+            cameraOnlyVideoRef.current.srcObject = stream;
+            
+            // 播放视频
+            cameraOnlyVideoRef.current.play().then(() => {
+              console.log('仅录制摄像头模式，视频播放成功');
+            }).catch((playError) => {
+              console.error('仅录制摄像头模式，视频播放失败:', playError);
+            });
+            
+          } else if (retryCount < maxRetries) {
+            console.log(`仅录制摄像头视频元素还未渲染，稍后重试 (${retryCount + 1}/${maxRetries})...`);
+            setTimeout(() => {
+              setupCameraOnlyVideo(retryCount + 1);
+            }, 200);
+          } else {
+            console.error('达到最大重试次数，放弃设置仅录制摄像头视频');
+            showToast('摄像头预览初始化失败，请稍后重试');
+          }
+        };
+        
+        setupCameraOnlyVideo();
       } else {
         // 创建画中画视频元素
         const startPictureInPicture = (retryCount = 0) => {
@@ -365,7 +388,7 @@ export default function ScreenRecorder() {
     }
     
     if (cameraPreviewRef.current) {
-      console.log('清理视频元素...');
+      console.log('清理画中画视频元素...');
       // 暂停视频
       cameraPreviewRef.current.pause();
       // 清空视频源
@@ -375,6 +398,14 @@ export default function ScreenRecorder() {
       cameraPreviewRef.current.onenterpictureinpicture = null;
       cameraPreviewRef.current.onleavepictureinpicture = null;
       cameraPreviewRef.current.onerror = null;
+    }
+    
+    if (cameraOnlyVideoRef.current) {
+      console.log('清理仅录制摄像头视频元素...');
+      // 暂停视频
+      cameraOnlyVideoRef.current.pause();
+      // 清空视频源
+      cameraOnlyVideoRef.current.srcObject = null;
     }
     
     console.log(`摄像头${isCameraOnlyMode ? '预览' : '画中画预览'}停止完成`);
@@ -982,15 +1013,15 @@ export default function ScreenRecorder() {
           <CardContent className="p-3">
             <div className="relative">
               <video
-                ref={cameraPreviewRef}
+                ref={cameraOnlyVideoRef}
                 className="w-80 h-60 object-cover rounded-lg bg-gray-900"
                 autoPlay
                 muted
                 playsInline
                 controls={false}
-                onLoadedData={() => console.log('视频数据加载完成')}
-                onCanPlay={() => console.log('视频可以播放')}
-                onError={(e) => console.error('视频元素错误:', e)}
+                onLoadedData={() => console.log('仅录制摄像头视频数据加载完成')}
+                onCanPlay={() => console.log('仅录制摄像头视频可以播放')}
+                onError={(e) => console.error('仅录制摄像头视频元素错误:', e)}
               />
               <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
                 实时预览
