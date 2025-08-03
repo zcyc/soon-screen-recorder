@@ -25,7 +25,7 @@ export default function HomePage() {
   }
 
   return (
-    <main className="flex-1">
+    <main className="flex-1 content-container">
       {/* Hero Section */}
       <section className="py-20 text-center">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">

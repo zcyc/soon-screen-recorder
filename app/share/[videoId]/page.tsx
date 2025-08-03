@@ -161,7 +161,7 @@ export default function SharePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 content-container">
         <div className="max-w-4xl mx-auto">
           {/* Video Player */}
           <Card className="mb-6">

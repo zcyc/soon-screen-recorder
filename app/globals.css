@@ -71,6 +71,39 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+  
+  /* Prevent layout shift */
+  .prevent-layout-shift {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+  
+
+  
+  /* Stabilize header user menu area */
+  .header-user-menu {
+    min-width: 180px;
+    height: 2.25rem; /* 36px - consistent height */
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    justify-content: flex-end;
+  }
+  
+  /* Header stability */
+  header {
+    min-height: 4rem; /* 64px - ensure consistent header height */
+  }
+  
+  /* Stable content container - no animations to prevent jumps */
+  .content-container {
+    opacity: 1;
+    /* Hardware acceleration for smoother rendering */
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-transform: translateZ(0);
+  }
 }
 
 /* Theme transitions */
@@ -140,5 +173,35 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* Improve font rendering and layout stability */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  
+  /* Prevent layout shifts during content loading */
+  html, body {
+    overflow-x: hidden;
+  }
+  
+  /* Ensure consistent box sizing */
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+  
+  /* Prevent layout shifting by ensuring consistent container behavior */
+  .max-w-7xl {
+    width: 100%;
+    max-width: 80rem;
+    margin-left: auto;
+    margin-right: auto;
+    /* Avoid containment as it can cause issues */
+    transform: translateZ(0); /* Hardware acceleration instead */
+  }
+  
+  /* Stabilize main content area */
+  main {
+    contain: layout;
+    min-height: calc(100vh - 4rem); /* Account for header height */
   }
 }
