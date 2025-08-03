@@ -48,12 +48,6 @@ export default function DashboardPage() {
       {/* Recording Section */}
       <div className="mb-8">
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Video className="h-5 w-5 mr-2" />
-              {t.dashboard.recordVideo}
-            </CardTitle>
-          </CardHeader>
           <CardContent>
             <ScreenRecorder />
           </CardContent>

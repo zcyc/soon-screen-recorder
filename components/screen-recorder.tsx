@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Monitor, 
   Camera, 
@@ -31,7 +32,7 @@ import { useI18n } from '@/lib/i18n';
 import { ID, Permission, Role } from 'appwrite';
 
 type RecordingQuality = '720p' | '1080p';
-type RecordingSource = 'screen' | 'camera' | 'both';
+type RecordingSource = 'screen' | 'camera' | 'both' | 'camera-only';
 type ScreenSourceType = 'monitor' | 'window' | 'browser';
 
 interface RecordingState {
@@ -119,13 +120,16 @@ export default function ScreenRecorder() {
           text: `${t.recording.watchVideo}: ${video.title}`,
           url: shareUrl,
         });
+        // 原生分享成功，不显示消息
       } catch (error) {
-        // User cancelled sharing or other error, don't show message
-        console.log('Share cancelled or failed:', error);
+        // 用户取消分享或其他错误，不作任何操作
+        if (error instanceof Error && error.name !== 'AbortError') {
+          console.log('分享取消或失败:', error.message);
+        }
       }
     } else {
-      // Browser doesn't support native sharing, copy to clipboard instead
-      copyShareLink(video.$id);
+      // 浏览器不支持原生分享，显示提示消息
+      showToast('您的浏览器不支持分享功能，请使用复制链接按钮');
     }
   };
 
@@ -257,7 +261,7 @@ export default function ScreenRecorder() {
         ...constraints,
         facingMode: 'user'
       },
-      audio: includeAudio && (source === 'camera' || source === 'both')
+      audio: includeAudio && (source === 'camera' || source === 'both' || source === 'camera-only')
     });
   };
 
@@ -329,7 +333,7 @@ export default function ScreenRecorder() {
         } catch (error: any) {
           console.error('Screen recording permission denied:', error);
           if (error.name === 'NotAllowedError') {
-            alert(t.permissions.screenDenied);
+            showToast(t.permissions.screenDenied);
             return;
           }
           throw error;
@@ -337,7 +341,7 @@ export default function ScreenRecorder() {
       }
 
       // Get camera stream with explicit permission request  
-      if (source === 'camera' || source === 'both') {
+      if ((source === 'camera' || source === 'camera-only') || (source === 'both' && includeCamera)) {
         console.log('Request camera permission...');
         try {
           const cameraStream = await getCameraStream();
@@ -361,10 +365,10 @@ export default function ScreenRecorder() {
         } catch (error: any) {
           console.error('Camera permission denied:', error);
           if (error.name === 'NotAllowedError') {
-            alert(t.permissions.cameraDenied);
+            showToast(t.permissions.cameraDenied);
             return;
           } else if (error.name === 'NotFoundError') {
-            alert(t.permissions.cameraNotFound);
+            showToast(t.permissions.cameraNotFound);
             return;
           }
           throw error;
@@ -444,7 +448,7 @@ export default function ScreenRecorder() {
 
     } catch (error) {
       console.error('Failed to start recording:', error);
-      alert('Failed to start recording. Please check your permissions and try again.');
+      showToast(t.recording.startFailed || '录制启动失败，请检查权限设置后重试。');
     }
   };
 
@@ -497,12 +501,12 @@ export default function ScreenRecorder() {
 
   const uploadToAppwrite = async () => {
     if (!recordingState.recordedBlob) {
-      alert('No recording to save!');
+      showToast(t.recording.noRecording || '没有可保存的录制！');
       return;
     }
     
     if (!user) {
-      alert('Please sign in to save recordings.');
+      showToast(t.recording.loginRequired || '请登录后保存录制。');
       return;
     }
 
@@ -570,7 +574,7 @@ export default function ScreenRecorder() {
       console.log('Created video record:', createdVideo);
 
       console.log('Upload and database save successful!');
-      alert('Recording saved successfully!');
+      showToast(t.recording.saveSuccess || '视频保存成功！');
       
       // Save uploaded video data for display
       setUploadedVideo(createdVideo);
@@ -585,7 +589,7 @@ export default function ScreenRecorder() {
         code: error.code,
         type: error.type
       });
-      alert(`Failed to save recording: ${error.message || 'Unknown error'}. Please check the console for details.`);
+      showToast(`保存失败: ${error.message || '未知错误'}。请检查控制台获取详细信息。`);
     } finally {
       setIsUploading(false);
     }
@@ -595,57 +599,45 @@ export default function ScreenRecorder() {
     <div className="space-y-6">
       {/* Recording Controls */}
       {!recordingState.isRecording && !recordingState.recordedBlob && (
-        <div className="space-y-4">
-          <div>
-            <Label className="text-sm font-medium mb-3 block">{t.recording.recordingQuality}</Label>
-            <RadioGroup value={quality} onValueChange={(value) => setQuality(value as RecordingQuality)}>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="720p" id="720p" />
-                <Label htmlFor="720p">720p (1280x720)</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="1080p" id="1080p" />
-                <Label htmlFor="1080p">1080p (1920x1080)</Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          <div>
-            <Label className="text-sm font-medium mb-3 block">{t.recording.recordingSource}</Label>
-            <RadioGroup value={source} onValueChange={(value) => setSource(value as RecordingSource)}>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="screen" id="screen" />
-                <Label htmlFor="screen" className="flex items-center">
-                  <Monitor className="h-4 w-4 mr-2" />
-                  {t.recording.screenOnly}
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="camera" id="camera" />
-                <Label htmlFor="camera" className="flex items-center">
-                  <Camera className="h-4 w-4 mr-2" />
-                  {t.recording.cameraOnly}
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="both" id="both" />
-                <Label htmlFor="both" className="flex items-center">
-                  <Settings className="h-4 w-4 mr-2" />
-                  {t.recording.screenAndCamera}
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          {/* Screen Source Selection - only show when screen recording is enabled */}
-          {(source === 'screen' || source === 'both') && (
+        <div className="space-y-6">
+          {/* 第一行：录制质量和录制源 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label className="text-sm font-medium mb-3 block">{t.recording.screenSource}</Label>
-              <RadioGroup value={screenSource} onValueChange={(value) => setScreenSource(value as ScreenSourceType)}>
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="monitor" id="monitor" />
-                    <Label htmlFor="monitor" className="flex-1 cursor-pointer">
+              <Label className="text-sm font-medium mb-3 block">{t.recording.recordingQuality}</Label>
+              <Select value={quality} onValueChange={(value) => setQuality(value as RecordingQuality)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="选择录制质量" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="720p">720p (1280x720)</SelectItem>
+                  <SelectItem value="1080p">1080p (1920x1080)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label className="text-sm font-medium mb-3 block">录制源</Label>
+              <Select 
+                value={source === 'camera-only' ? 'camera-only' : screenSource} 
+                onValueChange={(value) => {
+                  if (value === 'camera-only') {
+                    setSource('camera-only' as RecordingSource);
+                    setIncludeCamera(true); // 自动开启摄像头
+                  } else {
+                    // 如果之前是camera-only，现在切换到屏幕录制，需要设置为screen模式
+                    if (source === 'camera-only') {
+                      setSource('screen' as RecordingSource);
+                    }
+                    setScreenSource(value as ScreenSourceType);
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="选择录制源" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monitor">
+                    <div>
                       <div className="flex items-center">
                         <Monitor className="h-4 w-4 mr-2" />
                         <span className="font-medium">{t.recording.entireScreen}</span>
@@ -653,11 +645,10 @@ export default function ScreenRecorder() {
                       <div className="text-xs text-muted-foreground ml-6">
                         {t.recording.entireScreenDesc}
                       </div>
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="window" id="window" />
-                    <Label htmlFor="window" className="flex-1 cursor-pointer">
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="window">
+                    <div>
                       <div className="flex items-center">
                         <Settings className="h-4 w-4 mr-2" />
                         <span className="font-medium">{t.recording.applicationWindow}</span>
@@ -665,11 +656,10 @@ export default function ScreenRecorder() {
                       <div className="text-xs text-muted-foreground ml-6">
                         {t.recording.applicationWindowDesc}
                       </div>
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="browser" id="browser" />
-                    <Label htmlFor="browser" className="flex-1 cursor-pointer">
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="browser">
+                    <div>
                       <div className="flex items-center">
                         <Camera className="h-4 w-4 mr-2" />
                         <span className="font-medium">{t.recording.browserTab}</span>
@@ -677,39 +667,57 @@ export default function ScreenRecorder() {
                       <div className="text-xs text-muted-foreground ml-6">
                         {t.recording.browserTabDesc}
                       </div>
-                    </Label>
-                  </div>
-                </div>
-              </RadioGroup>
-
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="camera-only">
+                    <div>
+                      <div className="flex items-center">
+                        <Camera className="h-4 w-4 mr-2" />
+                        <span className="font-medium">仅录制摄像头</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground ml-6">
+                        仅使用摄像头进行录制，不包含屏幕内容
+                      </div>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          )}
-
-          <div className="flex items-center justify-between">
-            <Label className="flex items-center space-x-2">
-              {includeAudio ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-              <span>{t.recording.includeAudio}</span>
-            </Label>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIncludeAudio(!includeAudio)}
-            >
-              {includeAudio ? t.recording.on : t.recording.off}
-            </Button>
+          </div>
+          
+          {/* 第二行：音频和摄像头控制 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                {includeAudio ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+                <Label>{t.recording.includeAudio}</Label>
+              </div>
+              <Switch
+                checked={includeAudio}
+                onCheckedChange={setIncludeAudio}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                {includeCamera ? <Camera className="h-4 w-4" /> : <CameraOff className="h-4 w-4" />}
+                <Label>开启摄像头</Label>
+              </div>
+              <Switch
+                checked={includeCamera}
+                onCheckedChange={(checked) => {
+                  // 当选择仅录制摄像头时，不允许关闭摄像头
+                  if (source === 'camera-only' && !checked) {
+                    return; // 不允许关闭
+                  }
+                  setIncludeCamera(checked);
+                }}
+                disabled={source === 'camera-only'} // 仅录制摄像头时禁用切换
+              />
+            </div>
           </div>
 
-          {source === 'both' && (
-            <div className="p-3 bg-muted/50 rounded-lg">
-              <div className="flex items-center space-x-2 text-sm">
-                <Camera className="h-4 w-4 text-primary" />
-                <span className="font-medium">{t.recording.includeCamera}</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t.recording.cameraIncluded || 'Camera will be automatically included in recording'}
-              </p>
-            </div>
-          )}
+
         </div>
       )}
 

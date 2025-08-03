@@ -71,6 +71,11 @@ export interface Translations {
     entireScreenDesc: string;
     applicationWindowDesc: string;
     browserTabDesc: string;
+    // Toast messages
+    saveSuccess: string;
+    startFailed: string;
+    noRecording: string;
+    loginRequired: string;
   };
   
   // Devices
@@ -185,6 +190,11 @@ export const translations: Record<Locale, Translations> = {
       entireScreenDesc: 'Record everything on your screen',
       applicationWindowDesc: 'Record a specific application window',
       browserTabDesc: 'Record a specific browser tab',
+      // Toast messages
+      saveSuccess: 'Recording saved successfully!',
+      startFailed: 'Failed to start recording. Please check your permissions and try again.',
+      noRecording: 'No recording to save!',
+      loginRequired: 'Please sign in to save recordings.',
     },
     devices: {
       title: 'Recording Devices',
@@ -289,6 +299,11 @@ export const translations: Record<Locale, Translations> = {
       entireScreenDesc: '录制您的整个屏幕内容',
       applicationWindowDesc: '录制特定应用程序窗口',
       browserTabDesc: '录制特定浏览器标签页内容',
+      // Toast messages
+      saveSuccess: '视频保存成功！',
+      startFailed: '录制启动失败，请检查权限设置后重试。',
+      noRecording: '没有可保存的录制！',
+      loginRequired: '请登录后保存录制。',
     },
     devices: {
       title: '录制设备',

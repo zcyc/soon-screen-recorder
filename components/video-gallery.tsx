@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { VideoDeleteDialog } from '@/components/ui/confirm-dialog';
+import { DeleteModal, useDeleteModal } from '@/components/ui/delete-modal';
 import { 
   Search, 
   Eye, 
@@ -39,6 +39,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
+  const { isOpen: isDeleteModalOpen, deleteData, openDeleteModal, closeDeleteModal } = useDeleteModal();
 
   useEffect(() => {
     loadVideos();
@@ -115,18 +116,17 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
           text: `观看 ${video.title}`,
           url: shareUrl,
         });
+        // 原生分享成功，不显示消息
       } catch (error) {
-        console.error('Error sharing:', error);
-        fallbackShare(shareUrl);
+        // 用户取消分享或其他错误，不作任何操作
+        if (error instanceof Error && error.name !== 'AbortError') {
+          console.log('分享取消或失败:', error.message);
+        }
       }
     } else {
-      fallbackShare(shareUrl);
+      // 浏览器不支持原生分享，显示提示消息
+      showToast('您的浏览器不支持分享功能，请使用复制链接按钮');
     }
-  };
-
-  const fallbackShare = (url: string) => {
-    navigator.clipboard.writeText(url);
-    showToast('链接已复制到剪贴板！');
   };
 
   const handleCopyShareLink = async (video: Video) => {
@@ -161,37 +161,36 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
     document.body.removeChild(link);
   };
 
-  const handleDelete = async (videoId: string, fileId: string) => {
-    try {
-      setDeletingVideoId(videoId);
-      const result = await DatabaseService.deleteVideo(videoId, fileId);
-      
-      // Update video list immediately
-      setVideos(videos.filter(v => v.$id !== videoId));
-      
-      // Show appropriate success message
-      if (result && typeof result === 'object' && 'storageDeleteSuccess' in result) {
-        // New response format with detailed info
-        showToast(result.message || '视频删除成功！');
-        if (!result.storageDeleteSuccess) {
-          console.warn('Storage file deletion failed but video removed from list');
+  const handleDeleteClick = (video: Video) => {
+    openDeleteModal({
+      title: video.title,
+      description: '此操作无法撤销，视频将永久从您的账户中移除。',
+      onConfirm: async () => {
+        try {
+          setDeletingVideoId(video.$id);
+          const result = await DatabaseService.deleteVideo(video.$id, video.fileId);
+          
+          // Update video list immediately
+          setVideos(videos.filter(v => v.$id !== video.$id));
+          
+          // Show appropriate success message
+          if (result && typeof result === 'object' && 'storageDeleteSuccess' in result) {
+            showToast(result.message || '视频删除成功！');
+            if (!result.storageDeleteSuccess) {
+              console.warn('Storage file deletion failed but video removed from list');
+            }
+          } else {
+            showToast('视频已成功删除！');
+          }
+        } catch (error: any) {
+          console.error('Error deleting video:', error);
+          showToast(error.message || '删除视频时出错，请重试。');
+          throw error; // 重新抛出错误，保持模态框打开
+        } finally {
+          setDeletingVideoId(null);
         }
-      } else {
-        // Legacy response or direct success
-        showToast('视频已成功删除！');
       }
-    } catch (error: any) {
-      console.error('Error deleting video:', error);
-      console.error('Error details:', {
-        code: error.code,
-        message: error.message,
-        type: error.type
-      });
-      // 显示具体的错误信息
-      showToast(error.message || '删除视频时出错，请重试。');
-    } finally {
-      setDeletingVideoId(null);
-    }
+    });
   };
 
   if (loading) {
@@ -248,11 +247,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
           <div className="text-muted-foreground mb-4">
             {searchQuery ? t.dashboard.noMatchingVideos : showPublic ? t.dashboard.noPublicVideos : t.dashboard.noVideosYet}
           </div>
-          {!showPublic && !searchQuery && (
-            <Button onClick={() => window.location.href = '/dashboard'}>
-              {t.dashboard.startRecording}
-            </Button>
-          )}
+
         </div>
       )}
 
@@ -362,22 +357,24 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
                     >
                       <Download className="h-3 w-3" />
                     </Button>
-                    <VideoDeleteDialog
-                      videoTitle={video.title}
-                      onConfirm={() => handleDelete(video.$id, video.fileId)}
-                      isLoading={deletingVideoId === video.$id}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 hover:bg-red-600 hover:text-white transition-colors"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.nativeEvent.stopImmediatePropagation();
+                        handleDeleteClick(video);
+                      }}
+                      disabled={deletingVideoId === video.$id}
                     >
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 w-8 p-0 hover:bg-red-600 hover:text-white transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                      >
+                      {deletingVideoId === video.$id ? (
+                        <div className="animate-spin rounded-full h-3 w-3 border border-current border-t-transparent" />
+                      ) : (
                         <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </VideoDeleteDialog>
+                      )}
+                    </Button>
                   </div>
                 )}
                 
@@ -488,6 +485,16 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
           {toastMessage}
         </div>
       )}
+      
+      {/* Delete Modal */}
+      <DeleteModal
+        isOpen={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        onConfirm={deleteData?.onConfirm || (() => {})}
+        title={deleteData?.title || ''}
+        description={deleteData?.description || '此操作无法撤销，请确认要继续。'}
+        isLoading={deletingVideoId !== null}
+      />
     </div>
   );
 }
