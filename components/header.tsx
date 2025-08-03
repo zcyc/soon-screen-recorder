@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Video, LogOut, User as UserIcon, Languages } from 'lucide-react';
+import { Video, LogOut, User as UserIcon } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import {
   DropdownMenu,
@@ -17,62 +17,7 @@ import { useAuth } from '@/contexts/auth-context';
 import ThemeControls from '@/components/theme-controls';
 
 
-function LanguageToggle() {
-  const { locale, setLocale, t } = useI18n();
 
-  return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger asChild>
-        <Button 
-          type="button"
-          variant="outline" 
-          size="sm" 
-          className="rounded-full p-2 h-9 w-9"
-          title="Change language"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-        >
-          <Languages className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent 
-        align="end"
-        className="z-50"
-        sideOffset={5}
-        avoidCollisions={true}
-        onCloseAutoFocus={(e) => e.preventDefault()}
-      >
-        <DropdownMenuItem 
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setLocale('zh');
-          }}
-          onMouseDown={(e) => e.preventDefault()}
-          className={`cursor-pointer ${locale === 'zh' ? 'bg-accent' : ''}`}
-        >
-          <span className="mr-2">🇨🇳</span>
-          中文
-        </DropdownMenuItem>
-        <DropdownMenuItem 
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setLocale('en');
-          }}
-          onMouseDown={(e) => e.preventDefault()}
-          className={`cursor-pointer ${locale === 'en' ? 'bg-accent' : ''}`}
-        >
-          <span className="mr-2">🇺🇸</span>
-          English
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
 
 function UserMenu() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -83,11 +28,7 @@ function UserMenu() {
     await logout();
   }
 
-  if (loading) {
-    return (
-      <div className="h-9 w-9 animate-pulse bg-muted rounded-full" />
-    );
-  }
+  // Skeleton removed as requested
 
   if (!user) {
     return (
@@ -173,7 +114,6 @@ export default function Header() {
           )}
           <div className="header-user-menu flex items-center space-x-4">
             <ThemeControls />
-            <LanguageToggle />
             <UserMenu />
           </div>
         </div>

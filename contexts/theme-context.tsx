@@ -61,7 +61,7 @@ interface ThemeProviderProps {
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [mode, setMode] = useState<ThemeMode>('light');
-  const [themeColor, setThemeColorState] = useState<ThemeColor>(themeColors[0]);
+  const [themeColor, setThemeColorState] = useState<ThemeColor>(themeColors[1]);
   const [mounted, setMounted] = useState(false);
 
   // Load theme preferences from localStorage
@@ -88,7 +88,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     
     // Force apply initial theme immediately when mounted
     const root = document.documentElement;
-    const initialColor = savedColor ? themeColors.find(c => c.value === savedColor) || themeColors[0] : themeColors[0];
+    const initialColor = savedColor ? themeColors.find(c => c.value === savedColor) || themeColors[1] : themeColors[1];
     root.style.setProperty('--primary', initialColor.primary);
     root.style.setProperty('--primary-foreground', initialColor.primaryForeground);
   }, []); 
