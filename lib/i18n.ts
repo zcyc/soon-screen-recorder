@@ -78,22 +78,59 @@ export interface Translations {
     loginRequired: string;
   };
   
+  // Authentication
+  auth: {
+    signInToSoon: string;
+    createSoonAccount: string;
+    welcomeBack: string;
+    signInDescription: string;
+    signUpDescription: string;
+    fullName: string;
+    email: string;
+    password: string;
+    enterFullName: string;
+    enterEmail: string;
+    enterPassword: string;
+    signIn: string;
+    signUp: string;
+    loading: string;
+    orContinueWith: string;
+    continueWithGitHub: string;
+    connectingToGitHub: string;
+    newToSoon: string;
+    alreadyHaveAccount: string;
+    createAccount: string;
+    signInToExistingAccount: string;
+    nameRequired: string;
+    errorOccurred: string;
+    githubLoginFailed: string;
+    githubAuthCancelled: string;
+    authenticationFailed: string;
+  };
+  
   // Devices
   devices: {
     title: string;
+    description: string;
     recordingEnvironment: string;
-    httpsStatus: string;
-    httpsEnabled: string;
-    httpsRequired: string;
-    mediaRecorderSupport: string;
+    recordingEnvironmentStatus: string;
+    httpsConnection: string;
+    httpsSecure: string;
+    httpsInsecure: string;
+    httpsWarning: string;
+    screenRecording: string;
+    cameraRecording: string;
+    microphoneRecording: string;
     supported: string;
-    notSupported: string;
-    cameraPermission: string;
-    microphonePermission: string;
     granted: string;
     denied: string;
-    notRequested: string;
-    requestPermissions: string;
+    needsPermission: string;
+    unknown: string;
+    unsupported: string;
+    authorize: string;
+    refreshPermissionStatus: string;
+    checkingPermissions: string;
+    permissionTroubleshooting: string;
   };
   
   // Video Gallery
@@ -196,21 +233,56 @@ export const translations: Record<Locale, Translations> = {
       noRecording: 'No recording to save!',
       loginRequired: 'Please sign in to save recordings.',
     },
+    auth: {
+      signInToSoon: 'Sign in to Soon',
+      createSoonAccount: 'Create your Soon account',
+      welcomeBack: 'Welcome back! Please sign in to continue.',
+      signInDescription: 'Welcome back! Please sign in to continue.',
+      signUpDescription: 'Start recording and sharing your screen instantly.',
+      fullName: 'Full Name',
+      email: 'Email',
+      password: 'Password',
+      enterFullName: 'Enter your full name',
+      enterEmail: 'Enter your email',
+      enterPassword: 'Enter your password',
+      signIn: 'Sign in',
+      signUp: 'Sign up',
+      loading: 'Loading...',
+      orContinueWith: 'Or continue with',
+      continueWithGitHub: 'Continue with GitHub',
+      connectingToGitHub: 'Connecting to GitHub...',
+      newToSoon: 'New to Soon?',
+      alreadyHaveAccount: 'Already have an account?',
+      createAccount: 'Create an account',
+      signInToExistingAccount: 'Sign in to existing account',
+      nameRequired: 'Name is required',
+      errorOccurred: 'An error occurred',
+      githubLoginFailed: 'GitHub login failed',
+      githubAuthCancelled: 'GitHub authentication was cancelled',
+      authenticationFailed: 'Authentication failed. Please try again.',
+    },
     devices: {
-      title: 'Recording Devices',
+      title: 'Devices',
+      description: 'Check recording device permissions and browser compatibility status',
       recordingEnvironment: 'Recording Environment',
-      httpsStatus: 'HTTPS Status',
-      httpsEnabled: 'HTTPS Enabled',
-      httpsRequired: 'HTTPS Required for recording',
-      mediaRecorderSupport: 'MediaRecorder Support',
+      recordingEnvironmentStatus: 'Recording Environment Status',
+      httpsConnection: 'HTTPS Connection',
+      httpsSecure: 'Secure',
+      httpsInsecure: 'Insecure',
+      httpsWarning: '⚠️ Screen recording requires HTTPS connection. Please enable HTTPS in production.',
+      screenRecording: 'Screen Recording',
+      cameraRecording: 'Camera Recording',
+      microphoneRecording: 'Microphone Recording',
       supported: 'Supported',
-      notSupported: 'Not Supported',
-      cameraPermission: 'Camera Permission',
-      microphonePermission: 'Microphone Permission',
       granted: 'Granted',
       denied: 'Denied',
-      notRequested: 'Not Requested',
-      requestPermissions: 'Request Permissions',
+      needsPermission: 'Needs Permission',
+      unknown: 'Unknown',
+      unsupported: 'Unsupported',
+      authorize: 'Authorize',
+      refreshPermissionStatus: 'Refresh Permission Status',
+      checkingPermissions: 'Checking recording permissions...',
+      permissionTroubleshooting: '💡 If permissions are denied, click the camera/microphone icon next to the address bar to re-authorize, or manage site permissions in browser settings.',
     },
     videos: {
       searchPlaceholder: 'Search videos...',
@@ -305,21 +377,56 @@ export const translations: Record<Locale, Translations> = {
       noRecording: '没有可保存的录制！',
       loginRequired: '请登录后保存录制。',
     },
+    auth: {
+      signInToSoon: '登录 Soon',
+      createSoonAccount: '创建您的 Soon 账户',
+      welcomeBack: '欢迎回来！请登录以继续。',
+      signInDescription: '欢迎回来！请登录以继续。',
+      signUpDescription: '立即开始录制和分享您的屏幕。',
+      fullName: '全名',
+      email: '邮箱',
+      password: '密码',
+      enterFullName: '请输入您的全名',
+      enterEmail: '请输入您的邮箱',
+      enterPassword: '请输入您的密码',
+      signIn: '登录',
+      signUp: '注册',
+      loading: '加载中...',
+      orContinueWith: '或继续使用',
+      continueWithGitHub: '使用 GitHub 继续',
+      connectingToGitHub: '正在连接到 GitHub...',
+      newToSoon: '初次使用 Soon?',
+      alreadyHaveAccount: '已有账户？',
+      createAccount: '创建账户',
+      signInToExistingAccount: '登录现有账户',
+      nameRequired: '姓名为必填项',
+      errorOccurred: '发生错误',
+      githubLoginFailed: 'GitHub 登录失败',
+      githubAuthCancelled: 'GitHub 认证已取消',
+      authenticationFailed: '认证失败，请重试。',
+    },
     devices: {
-      title: '录制设备',
+      title: '设备',
+      description: '检查录制设备权限和浏览器兼容性状态',
       recordingEnvironment: '录制环境',
-      httpsStatus: 'HTTPS 状态',
-      httpsEnabled: 'HTTPS 已启用',
-      httpsRequired: '录制需要 HTTPS',
-      mediaRecorderSupport: 'MediaRecorder 支持',
+      recordingEnvironmentStatus: '录制环境状态',
+      httpsConnection: 'HTTPS 连接',
+      httpsSecure: '安全',
+      httpsInsecure: '不安全',
+      httpsWarning: '⚠️ 屏幕录制需要 HTTPS 连接。请在生产环境中启用 HTTPS。',
+      screenRecording: '屏幕录制',
+      cameraRecording: '摄像头录制',
+      microphoneRecording: '麦克风录制',
       supported: '支持',
-      notSupported: '不支持',
-      cameraPermission: '摄像头权限',
-      microphonePermission: '麦克风权限',
       granted: '已授权',
       denied: '已拒绝',
-      notRequested: '未请求',
-      requestPermissions: '请求权限',
+      needsPermission: '需要授权',
+      unknown: '未知',
+      unsupported: '不支持',
+      authorize: '授权',
+      refreshPermissionStatus: '刷新权限状态',
+      checkingPermissions: '检查录制权限...',
+      permissionTroubleshooting: '💡 如果权限被拒绝，请点击地址栏旁的摄像头/麦克风图标重新授权，或在浏览器设置中管理网站权限。',
     },
     videos: {
       searchPlaceholder: '搜索视频...',

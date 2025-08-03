@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Settings, Monitor, Camera, Mic, CheckCircle, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { useI18n } from '@/lib/i18n';
 
 interface PermissionStatus {
   camera: 'granted' | 'denied' | 'prompt' | 'unknown';
@@ -12,6 +13,7 @@ interface PermissionStatus {
 }
 
 export default function RecordingStatus() {
+  const { t } = useI18n();
   const [permissions, setPermissions] = useState<PermissionStatus>({
     camera: 'unknown',
     microphone: 'unknown',
@@ -98,17 +100,17 @@ export default function RecordingStatus() {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'granted':
-        return '已授权';
+        return t.devices.granted;
       case 'supported':
-        return '支持';
+        return t.devices.supported;
       case 'denied':
-        return '已拒绝';
+        return t.devices.denied;
       case 'unsupported':
-        return '不支持';
+        return t.devices.unsupported;
       case 'prompt':
-        return '需要授权';
+        return t.devices.needsPermission;
       default:
-        return '未知';
+        return t.devices.unknown;
     }
   };
 
@@ -130,16 +132,10 @@ export default function RecordingStatus() {
   if (isLoading) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Settings className="h-5 w-5 mr-2" />
-            录制环境检查
-          </CardTitle>
-        </CardHeader>
         <CardContent className="flex items-center justify-center py-6">
           <div className="flex items-center space-x-2 text-muted-foreground">
             <RefreshCw className="h-4 w-4 animate-spin" />
-            <span>检查录制权限...</span>
+            <span>{t.devices.checkingPermissions}</span>
           </div>
         </CardContent>
       </Card>
@@ -148,12 +144,6 @@ export default function RecordingStatus() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center">
-          <Settings className="h-5 w-5 mr-2" />
-          录制环境状态
-        </CardTitle>
-      </CardHeader>
       <CardContent className="space-y-4">
         {/* HTTPS Status */}
         <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
@@ -165,17 +155,17 @@ export default function RecordingStatus() {
                 <XCircle className="h-4 w-4 text-red-600" />
               )}
             </div>
-            <span className="text-sm font-medium">HTTPS 连接</span>
+            <span className="text-sm font-medium">{t.devices.httpsConnection}</span>
           </div>
           <span className={`text-sm ${isHttps ? 'text-green-600' : 'text-red-600'}`}>
-            {isHttps ? '安全' : '不安全'}
+            {isHttps ? t.devices.httpsSecure : t.devices.httpsInsecure}
           </span>
         </div>
 
         {!isHttps && (
           <div className="p-3 bg-red-50 dark:bg-red-950 rounded-lg border border-red-200 dark:border-red-800">
             <p className="text-red-700 dark:text-red-300 text-xs">
-              ⚠️ 屏幕录制需要 HTTPS 连接。请在生产环境中启用 HTTPS。
+              {t.devices.httpsWarning}
             </p>
           </div>
         )}
@@ -184,7 +174,7 @@ export default function RecordingStatus() {
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <Monitor className="h-4 w-4 mr-2" />
-            <span className="text-sm">屏幕录制</span>
+            <span className="text-sm">{t.devices.screenRecording}</span>
           </div>
           <div className="flex items-center space-x-2">
             {getStatusIcon(permissions.screen)}
@@ -198,7 +188,7 @@ export default function RecordingStatus() {
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <Camera className="h-4 w-4 mr-2" />
-            <span className="text-sm">摄像头录制</span>
+            <span className="text-sm">{t.devices.cameraRecording}</span>
           </div>
           <div className="flex items-center space-x-2">
             {getStatusIcon(permissions.camera)}
@@ -212,7 +202,7 @@ export default function RecordingStatus() {
                 onClick={() => requestPermission('camera')}
                 className="h-6 px-2 text-xs"
               >
-                授权
+                {t.devices.authorize}
               </Button>
             )}
           </div>
@@ -222,7 +212,7 @@ export default function RecordingStatus() {
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <Mic className="h-4 w-4 mr-2" />
-            <span className="text-sm">麦克风录制</span>
+            <span className="text-sm">{t.devices.microphoneRecording}</span>
           </div>
           <div className="flex items-center space-x-2">
             {getStatusIcon(permissions.microphone)}
@@ -236,7 +226,7 @@ export default function RecordingStatus() {
                 onClick={() => requestPermission('microphone')}
                 className="h-6 px-2 text-xs"
               >
-                授权
+                {t.devices.authorize}
               </Button>
             )}
           </div>
@@ -252,7 +242,7 @@ export default function RecordingStatus() {
             disabled={isLoading}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            刷新权限状态
+            {t.devices.refreshPermissionStatus}
           </Button>
         </div>
 
@@ -260,7 +250,7 @@ export default function RecordingStatus() {
         {(permissions.camera === 'denied' || permissions.microphone === 'denied') && (
           <div className="p-3 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
             <p className="text-amber-700 dark:text-amber-300 text-xs">
-              💡 如果权限被拒绝，请点击地址栏旁的摄像头/麦克风图标重新授权，或在浏览器设置中管理网站权限。
+              {t.devices.permissionTroubleshooting}
             </p>
           </div>
         )}

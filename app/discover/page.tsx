@@ -6,7 +6,7 @@ import VideoGalleryWrapper from '@/components/video-gallery-wrapper';
 
 export default function DiscoverPage() {
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
         <div className="flex items-center mb-4">
           <Video className="h-8 w-8 mr-3 text-primary" />

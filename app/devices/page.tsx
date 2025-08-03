@@ -7,12 +7,12 @@ export default function DevicesPage() {
   const { t } = useI18n();
   
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold">{t.devices.title}</h1>
           <p className="text-muted-foreground mt-2">
-            Check recording device permissions and browser compatibility status
+            {t.devices.description}
           </p>
         </div>
         

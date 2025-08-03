@@ -8,9 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Video, Loader2, Github } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
+import { useI18n } from '@/lib/i18n';
 
 export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
   const { login, register, loginWithGitHub, user } = useAuth();
+  const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/dashboard';
@@ -27,9 +29,9 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
     // Check for OAuth errors
     const oauthError = searchParams.get('error');
     if (oauthError === 'oauth_cancelled') {
-      setError('GitHub authentication was cancelled');
+      setError(t.auth.githubAuthCancelled);
     } else if (oauthError) {
-      setError('Authentication failed. Please try again.');
+      setError(t.auth.authenticationFailed);
     }
     
     if (user) {
@@ -47,14 +49,14 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
         await login(email, password);
       } else {
         if (!name.trim()) {
-          throw new Error('Name is required');
+          throw new Error(t.auth.nameRequired);
         }
         await register(email, password, name);
       }
       router.push(redirect);
     } catch (error: any) {
       console.error('Auth error:', error);
-      setError(error.message || 'An error occurred');
+      setError(error.message || t.auth.errorOccurred);
     } finally {
       setLoading(false);
     }
@@ -68,7 +70,7 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
       await loginWithGitHub();
     } catch (error: any) {
       console.error('GitHub OAuth error:', error);
-      setError(error.message || 'GitHub login failed');
+      setError(error.message || t.auth.githubLoginFailed);
       setGithubLoading(false);
     }
   };
@@ -81,13 +83,13 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-foreground">
           {mode === 'signin'
-            ? 'Sign in to Soon'
-            : 'Create your Soon account'}
+            ? t.auth.signInToSoon
+            : t.auth.createSoonAccount}
         </h2>
         <p className="mt-2 text-center text-sm text-muted-foreground">
           {mode === 'signin'
-            ? 'Welcome back! Please sign in to continue.'
-            : 'Start recording and sharing your screen instantly.'}
+            ? t.auth.signInDescription
+            : t.auth.signUpDescription}
         </p>
       </div>
 
@@ -99,7 +101,7 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
                 htmlFor="name"
                 className="block text-sm font-medium text-foreground"
               >
-                Full Name
+                {t.auth.fullName}
               </Label>
               <div className="mt-1">
                 <Input
@@ -112,7 +114,7 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
                   required
                   maxLength={50}
                   className="rounded-full"
-                  placeholder="Enter your full name"
+                  placeholder={t.auth.enterFullName}
                 />
               </div>
             </div>
@@ -123,7 +125,7 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
               htmlFor="email"
               className="block text-sm font-medium text-foreground"
             >
-              Email
+              {t.auth.email}
             </Label>
             <div className="mt-1">
               <Input
@@ -136,7 +138,7 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
                 required
                 maxLength={50}
                 className="rounded-full"
-                placeholder="Enter your email"
+                placeholder={t.auth.enterEmail}
               />
             </div>
           </div>
@@ -146,7 +148,7 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
               htmlFor="password"
               className="block text-sm font-medium text-foreground"
             >
-              Password
+              {t.auth.password}
             </Label>
             <div className="mt-1">
               <Input
@@ -162,7 +164,7 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
                 minLength={8}
                 maxLength={100}
                 className="rounded-full"
-                placeholder="Enter your password"
+                placeholder={t.auth.enterPassword}
               />
             </div>
           </div>
@@ -180,12 +182,12 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
               {loading ? (
                 <>
                   <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                  Loading...
+                  {t.auth.loading}
                 </>
               ) : mode === 'signin' ? (
-                'Sign in'
+                t.auth.signIn
               ) : (
-                'Sign up'
+                t.auth.signUp
               )}
             </Button>
           </div>
@@ -198,7 +200,7 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="px-2 bg-background text-muted-foreground">
-                Or continue with
+                {t.auth.orContinueWith}
               </span>
             </div>
           </div>
@@ -215,12 +217,12 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
               {githubLoading ? (
                 <>
                   <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                  Connecting to GitHub...
+                  {t.auth.connectingToGitHub}
                 </>
               ) : (
                 <>
                   <Github className="mr-2 h-4 w-4" />
-                  Continue with GitHub
+                  {t.auth.continueWithGitHub}
                 </>
               )}
             </Button>
@@ -234,8 +236,8 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
               <div className="relative flex justify-center text-sm">
                 <span className="px-2 bg-background text-muted-foreground">
                   {mode === 'signin'
-                    ? 'New to Soon?'
-                    : 'Already have an account?'}
+                    ? t.auth.newToSoon
+                    : t.auth.alreadyHaveAccount}
                 </span>
               </div>
             </div>
@@ -246,8 +248,8 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
                 className="w-full flex justify-center py-2 px-4 border border-input rounded-full shadow-sm text-sm font-medium text-foreground bg-background hover:bg-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
               >
                 {mode === 'signin'
-                  ? 'Create an account'
-                  : 'Sign in to existing account'}
+                  ? t.auth.createAccount
+                  : t.auth.signInToExistingAccount}
               </Link>
             </div>
           </div>
