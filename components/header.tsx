@@ -108,7 +108,7 @@ export default function Header() {
         <div className="flex items-center space-x-6">
           <Link href="/" className="flex items-center">
             <Video className="h-6 w-6 text-primary" />
-            <span className="ml-2 text-xl font-semibold text-foreground">soon</span>
+            <span className="ml-2 text-xl font-semibold text-foreground">{t.appName}</span>
           </Link>
           {user && (
             <nav className="flex items-center space-x-4">
