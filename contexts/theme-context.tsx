@@ -4,46 +4,16 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 
 export type ThemeMode = 'light' | 'dark' | 'auto';
 
-export interface ThemeColor {
-  name: string;
-  value: string;
-  primary: string;
-  primaryForeground: string;
-}
-
-export const themeColors: ThemeColor[] = [
-  {
-    name: 'Green',  
-    value: 'green',
-    primary: '142 76% 36%', // green-500 in HSL
-    primaryForeground: '0 0% 98%'
-  },
-  {
-    name: 'Blue',
-    value: 'blue',
-    primary: '217 91% 59%', // blue-500 in HSL
-    primaryForeground: '0 0% 98%'
-  },
-  {
-    name: 'Orange',
-    value: 'orange', 
-    primary: '25 95% 53%', // orange-500 in HSL
-    primaryForeground: '0 0% 98%'
-  },
-  {
-    name: 'Red',
-    value: 'red',
-    primary: '0 84% 60%', // red-500 in HSL
-    primaryForeground: '0 0% 98%'
-  }
-];
+// Fixed green theme color values
+const GREEN_THEME = {
+  primary: '142 76% 36%', // green-500 in HSL
+  primaryForeground: '0 0% 98%'
+};
 
 interface ThemeContextType {
   mode: ThemeMode;
   actualMode: 'light' | 'dark'; // 实际生效的模式
-  themeColor: ThemeColor;
   toggleMode: () => void;
-  setThemeColor: (color: ThemeColor) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -82,21 +52,16 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
 
   const [mode, setMode] = useState<ThemeMode>('auto');
   const [actualMode, setActualMode] = useState<'light' | 'dark'>(() => getInitialTheme());
-  const [themeColor, setThemeColorState] = useState<ThemeColor>(themeColors[0]);
   const [mounted, setMounted] = useState(false);
 
   // Load theme preferences from localStorage
   useEffect(() => {
     const savedMode = (localStorage.getItem('theme-mode') as ThemeMode) || 'auto';
-    const savedColor = localStorage.getItem('theme-color');
-    
     setMode(savedMode);
     
-    if (savedColor) {
-      const color = themeColors.find(c => c.value === savedColor);
-      if (color) {
-        setThemeColorState(color);
-      }
+    // Clean up old theme-color localStorage entry since we're using fixed green theme
+    if (localStorage.getItem('theme-color')) {
+      localStorage.removeItem('theme-color');
     }
     
     setMounted(true);
@@ -129,17 +94,16 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       root.classList.remove('dark');
     }
     
-    // Apply theme color as CSS variables - 只在颜色确实改变时更新
+    // Apply fixed green theme color as CSS variables
     const currentPrimary = root.style.getPropertyValue('--primary');
-    if (currentPrimary !== themeColor.primary) {
-      root.style.setProperty('--primary', themeColor.primary);
-      root.style.setProperty('--primary-foreground', themeColor.primaryForeground);
+    if (currentPrimary !== GREEN_THEME.primary) {
+      root.style.setProperty('--primary', GREEN_THEME.primary);
+      root.style.setProperty('--primary-foreground', GREEN_THEME.primaryForeground);
     }
     
-    // Save to localStorage
+    // Save to localStorage (only mode, color is fixed)
     localStorage.setItem('theme-mode', mode);
-    localStorage.setItem('theme-color', themeColor.value);
-  }, [mode, themeColor, mounted, actualMode]);
+  }, [mode, mounted, actualMode]);
 
   // 自动更新基于时间的主题（仅在 auto 模式下）
   useEffect(() => {
@@ -169,12 +133,8 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     });
   };
 
-  const setThemeColor = (color: ThemeColor) => {
-    setThemeColorState(color);
-  };
-
   return (
-    <ThemeContext.Provider value={{ mode, actualMode, themeColor, toggleMode, setThemeColor }}>
+    <ThemeContext.Provider value={{ mode, actualMode, toggleMode }}>
       {children}
     </ThemeContext.Provider>
   );
