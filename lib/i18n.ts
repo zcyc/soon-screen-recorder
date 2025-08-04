@@ -3,6 +3,8 @@ import { createContext, useContext } from 'react';
 export type Locale = 'en' | 'zh';
 
 export interface Translations {
+  // App name
+  appName: string;
   // Navigation
   nav: {
     dashboard: string;
@@ -256,6 +258,7 @@ export interface Translations {
 
 export const translations: Record<Locale, Translations> = {
   en: {
+    appName: 'soon',
     nav: {
       dashboard: 'Dashboard',
       discover: 'Discover',
@@ -265,8 +268,8 @@ export const translations: Record<Locale, Translations> = {
     },
     home: {
       heroTitle: 'Screen Recording',
-      heroSubtitle: 'Made Simple',
-      heroDescription: 'Record your screen, camera, and audio with soon - the simple and powerful screen recording tool.',
+      heroSubtitle: 'Simple. Soon.',
+      heroDescription: 'No Install, One-Click Record',
       startRecording: 'Start Recording',
       signIn: 'Sign In',
       featuresTitle: 'Everything You Need to Record',
@@ -488,6 +491,7 @@ export const translations: Record<Locale, Translations> = {
     },
   },
   zh: {
+    appName: '快录',
     nav: {
       dashboard: '仪表盘',
       discover: '发现',
@@ -496,9 +500,9 @@ export const translations: Record<Locale, Translations> = {
       signOut: '退出登录',
     },
     home: {
-      heroTitle: '屏幕录制',
-      heroSubtitle: '简单易用',
-      heroDescription: '使用 soon 轻松录制屏幕、摄像头和音频 - 简单而强大的屏幕录制工具。',
+      heroTitle: '录制屏幕',
+      heroSubtitle: '简单快速',
+      heroDescription: '免安装，一键录',
       startRecording: '开始录制',
       signIn: '登录',
       featuresTitle: '满足您的录制需求',
@@ -511,7 +515,7 @@ export const translations: Record<Locale, Translations> = {
       audioRecordingTitle: '音频录制',
       audioRecordingDesc: '捕获系统音频和麦克风输入，提供完整的录制体验。',
       ctaTitle: '准备开始录制了吗？',
-      ctaDescription: '立即加入 soon，在几分钟内开始创建令人惊叹的屏幕录制。',
+      ctaDescription: '立即加入快录，在几分钟内开始创建令人惊叹的屏幕录制。',
       getStarted: '免费开始使用',
     },
     dashboard: {
@@ -527,7 +531,7 @@ export const translations: Record<Locale, Translations> = {
     },
     discover: {
       title: '发现视频',
-      description: '浏览 Soon 社区分享的公开录像。',
+      description: '浏览快录社区分享的公开录像。',
     },
     recording: {
       recordingQuality: '录制质量',
@@ -621,8 +625,8 @@ export const translations: Record<Locale, Translations> = {
       hideSubtitles: '隐藏字幕',
     },
     auth: {
-      signInToSoon: '登录 soon',
-      createSoonAccount: '创建您的 soon 账户',
+      signInToSoon: '登录快录',
+      createSoonAccount: '创建您的快录账户',
       welcomeBack: '欢迎回来！请登录以继续。',
       signInDescription: '欢迎回来！请登录以继续。',
       signUpDescription: '立即开始录制和分享您的屏幕。',
@@ -638,7 +642,7 @@ export const translations: Record<Locale, Translations> = {
       orContinueWith: '或继续使用',
       continueWithGitHub: '使用 GitHub 继续',
       connectingToGitHub: '正在连接到 GitHub...',
-      newToSoon: '初次使用 soon?',
+      newToSoon: '初次使用快录?',
       alreadyHaveAccount: '已有账户？',
       createAccount: '创建账户',
       signInToExistingAccount: '登录现有账户',
