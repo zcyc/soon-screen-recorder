@@ -28,7 +28,8 @@ export const config = {
   bucketId: process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID!,
   // Collections
   collectionsId: {
-    videos: 'videos', // Correct collection ID
-    reactions: 'reactions'
+    videos: 'videos',
+    reactions: 'reactions',
+    activity_logs: 'activity_logs'
   }
 };

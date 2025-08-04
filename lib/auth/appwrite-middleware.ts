@@ -1,12 +1,11 @@
 import { z } from 'zod';
-import { User } from '@/lib/db/schema';
-import { getUser } from '@/lib/db/queries';
+import { AuthService, User } from '@/lib/auth/appwrite-auth';
 import { redirect } from 'next/navigation';
 
 export type ActionState = {
   error?: string;
   success?: string;
-  [key: string]: any; // This allows for additional properties
+  [key: string]: any;
 };
 
 type ValidatedActionFunction<S extends z.ZodType<any, any>, T> = (
@@ -39,8 +38,9 @@ export function validatedActionWithUser<S extends z.ZodType<any, any>, T>(
   action: ValidatedActionWithUserFunction<S, T>
 ) {
   return async (prevState: ActionState, formData: FormData) => {
-    const user = await getUser();
+    const user = await AuthService.getCurrentUser();
     if (!user) {
+      redirect('/sign-in');
       throw new Error('User is not authenticated');
     }
 
@@ -53,4 +53,12 @@ export function validatedActionWithUser<S extends z.ZodType<any, any>, T>(
   };
 }
 
-
+// Helper function to get current authenticated user
+export async function requireAuth(): Promise<User> {
+  const user = await AuthService.getCurrentUser();
+  if (!user) {
+    redirect('/sign-in');
+    throw new Error('Authentication required');
+  }
+  return user;
+}

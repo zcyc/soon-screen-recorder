@@ -62,21 +62,10 @@
 2. **Environment Setup**
    Create your `.env` file using the setup script:
    ```bash
-   npm run db:setup
+   npm install
    ```
 
-3. **Database Setup**
-   Run migrations and seed the database:
-   ```bash
-   npm run db:migrate
-   npm run db:seed
-   ```
-   
-   This creates a test user:
-   - Email: `test@test.com`
-   - Password: `admin123`
-
-4. **Appwrite Configuration**
+3. **Appwrite Configuration**
    Set up your Appwrite project and update the environment variables:
    ```env
    NEXT_PUBLIC_APPWRITE_ENDPOINT=your_appwrite_endpoint
@@ -85,7 +74,7 @@
    NEXT_PUBLIC_APPWRITE_BUCKET_ID=your_bucket_id
    ```
 
-5. **Start Development Server**
+4. **Start Development Server**
    ```bash
    npm run dev
    ```
@@ -141,21 +130,19 @@ The application includes a comprehensive theming system supporting light and dar
 │   └── header.tsx        # Navigation header
 ├── contexts/             # React contexts
 ├── lib/                  # Utility libraries
-│   ├── database.ts       # Database operations
-│   ├── config.ts         # App configuration
-│   └── db/              # Database schema & migrations
+│   ├── auth/            # Authentication services
+│   ├── services/        # Business logic services
+│   ├── database.ts       # Appwrite database operations
+│   ├── appwrite.ts      # Appwrite configuration
+│   └── config.ts        # App configuration
 └── public/              # Static assets
 ```
 
 ## 🔧 Development Scripts
 
 - `npm run dev` - Start development server with Turbopack
-- `npm run build` - Build for production
+- `npm run build` - Build for production  
 - `npm run start` - Start production server
-- `npm run db:generate` - Generate database migrations
-- `npm run db:migrate` - Run database migrations
-- `npm run db:seed` - Seed database with test data
-- `npm run db:studio` - Open Drizzle Studio
 
 ## 🌐 Browser Support
 
@@ -173,11 +160,12 @@ The application is fully responsive and optimized for:
 
 ## 🔒 Security Features
 
-- JWT-based authentication with secure cookie storage
-- Protected routes with middleware
+- Appwrite-based authentication with secure session management
+- Protected routes with authentication middleware
+- Activity logging for security monitoring
 - File upload validation and size limits
 - XSS protection with proper content sanitization
-- CSRF protection on form submissions
+- OAuth support (GitHub) for enhanced security
 
 ## 🚀 Deployment
 
