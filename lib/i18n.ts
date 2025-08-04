@@ -255,13 +255,7 @@ export interface Translations {
     microphoneNotFound: string;
   };
   
-  // Theme Colors
-  themeColors: {
-    blue: string;
-    green: string;
-    orange: string;
-    red: string;
-  };
+
 }
 
 export const translations: Record<Locale, Translations> = {
@@ -497,12 +491,7 @@ export const translations: Record<Locale, Translations> = {
       microphoneDenied: 'Microphone permission denied. Please allow microphone access in browser settings.',
       microphoneNotFound: 'Microphone device not found. Please check if your microphone is properly connected.',
     },
-    themeColors: {
-      blue: 'Blue',
-      green: 'Green',
-      orange: 'Orange',
-      red: 'Red',
-    },
+
   },
   zh: {
     appName: '快录',
@@ -736,12 +725,7 @@ export const translations: Record<Locale, Translations> = {
       microphoneDenied: '麦克风权限被拒绝。请在浏览器设置中允许麦克风访问权限。',
       microphoneNotFound: '未找到麦克风设备。请检查您的麦克风是否正常连接。',
     },
-    themeColors: {
-      blue: '蓝色',
-      green: '绿色',
-      orange: '橙色',
-      red: '红色',
-    },
+
   },
 };
 
