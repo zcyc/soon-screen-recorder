@@ -49,18 +49,49 @@ export class AuthService {
 
   static async loginWithGitHub() {
     try {
-      // Redirect to GitHub OAuth
-      const redirectUrl = typeof window !== 'undefined' 
-        ? `${window.location.origin}/dashboard`
-        : 'http://localhost:3000/dashboard';
+      // Get base URL from environment or fallback to current origin
+      const getBaseUrl = () => {
+        if (typeof window !== 'undefined') {
+          return window.location.origin;
+        }
+        return process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+      };
+
+      const baseUrl = getBaseUrl();
+      const redirectUrl = `${baseUrl}/dashboard`;
+      const failureUrl = `${baseUrl}/sign-in?error=oauth_failed`;
+      
+      // Debug logging in development
+      if (process.env.NEXT_PUBLIC_OAUTH_DEBUG === 'true') {
+        console.log('OAuth Configuration:', {
+          baseUrl,
+          redirectUrl,
+          failureUrl,
+          userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'server'
+        });
+      }
       
       await account.createOAuth2Session(
         OAuthProvider.Github,
         redirectUrl, // Success URL
-        `${window.location.origin}/sign-in?error=oauth_cancelled` // Failure URL
+        failureUrl // Failure URL
       );
-    } catch (error) {
-      throw error;
+    } catch (error: any) {
+      console.error('GitHub OAuth session creation failed:', error);
+      // Provide more specific error information
+      const errorMessage = error.message || 'OAuth authentication failed';
+      throw new Error(`GitHub OAuth Error: ${errorMessage}`);
+    }
+  }
+
+  static async handleOAuthCallback() {
+    try {
+      // This method can be called after OAuth redirect to ensure session is established
+      const user = await account.get();
+      return user;
+    } catch (error: any) {
+      console.error('OAuth callback handling failed:', error);
+      throw new Error('Failed to complete OAuth authentication');
     }
   }
 }
