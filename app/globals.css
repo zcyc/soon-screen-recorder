@@ -106,17 +106,35 @@
   }
 }
 
-/* Theme transitions */
+/* Prevent FOUC and optimize theme transitions */
 @layer base {
+  /* Ensure stable initial rendering */
+  html {
+    /* Always show content - rely on proper SSR theme detection instead of hiding */
+    visibility: visible;
+  }
+  
+  /* Optimized theme transitions - only for specific properties */
   * {
-    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
-    transition-duration: 200ms;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-property: color, background-color, border-color;
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0.2, 1);
+  }
+  
+  /* No transitions during initial load to prevent flash */
+  html:not([data-hydrated]) * {
+    transition: none !important;
   }
   
   /* Override for specific elements that shouldn't transition */
-  input, textarea, select {
+  input, textarea, select, button:active {
     transition: none;
+  }
+  
+  /* Stable rendering during theme changes */
+  body {
+    /* Prevent flash by maintaining consistent background immediately */
+    transition: background-color 100ms ease-out;
   }
 }
 
@@ -142,12 +160,18 @@
     --input: 240 5.9% 90%;
     --ring: 240 10% 3.9%;
     --radius: 0.6rem;
+    
+    /* Preload dark theme variables for instant switching */
+    --dark-background: 240 10% 3.9%;
+    --dark-foreground: 0 0% 98%;
+    --dark-card: 240 10% 3.9%;
+    --dark-border: 240 3.7% 15.9%;
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
+    --background: var(--dark-background);
+    --foreground: var(--dark-foreground);
+    --card: var(--dark-card);
     --card-foreground: 0 0% 98%;
     --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
@@ -161,7 +185,7 @@
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
+    --border: var(--dark-border);
     --input: 240 3.7% 15.9%;
     --ring: 240 5% 64.9%;
   }

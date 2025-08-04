@@ -44,6 +44,7 @@ export default async function RootLayout({
       data-detected-locale={detectedLocale}
       data-initial-theme={initialTheme.actualMode}
     >
+
       <body className="min-h-[100dvh] bg-background text-foreground" style={{ width: '100vw', maxWidth: '100%', overflowX: 'hidden' }}>
         <ThemeProvider>
           <I18nProvider initialLocale={detectedLocale}>

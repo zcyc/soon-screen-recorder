@@ -55,14 +55,21 @@ export default function I18nProvider({ children, initialLocale }: I18nProviderPr
     } else if (!savedLocale && initialLocale) {
       // No saved preference, so save the server-detected locale
       localStorage.setItem('soon-locale', initialLocale);
+      // Also set cookie for server-side persistence
+      document.cookie = `soon-locale=${initialLocale}; path=/; max-age=31536000; samesite=strict`;
+    } else if (savedLocale && savedLocale === locale) {
+      // Ensure cookie is set for server-side persistence even when preferences match
+      document.cookie = `soon-locale=${savedLocale}; path=/; max-age=31536000; samesite=strict`;
     }
   }, []); // Empty dependency array - run only once after mount
 
-  // Save locale to localStorage when it changes
+  // Save locale to localStorage and cookie when it changes
   const handleSetLocale = (newLocale: Locale) => {
     setLocale(newLocale);
     if (mounted) {
       localStorage.setItem('soon-locale', newLocale);
+      // Also set cookie for server-side detection
+      document.cookie = `soon-locale=${newLocale}; path=/; max-age=31536000; samesite=strict`;
     }
   };
 
