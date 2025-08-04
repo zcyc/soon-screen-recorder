@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/contexts/theme-context';
 import { AuthProvider } from '@/contexts/auth-context';
 import I18nProvider from '@/components/i18n-provider';
 import { getServerDetectedLocale } from '@/lib/locale-detection';
+import { getServerInitialTheme } from '@/lib/server-theme-detection';
 
 export const metadata: Metadata = {
   title: 'soon - Screen Recording Made Simple',
@@ -27,15 +28,21 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Get the server-detected locale for SSR consistency
+  // Get the server-detected locale and initial theme for SSR consistency
   const detectedLocale = await getServerDetectedLocale();
+  const initialTheme = await getServerInitialTheme();
   
   return (
     <html
       lang={detectedLocale === 'zh' ? 'zh-CN' : 'en'}
-      className={`${manrope.className}`}
-      style={{ scrollbarGutter: 'stable' }}
+      className={`${manrope.className}${initialTheme.shouldApplyDarkClass ? ' dark' : ''}`}
+      style={{ 
+        scrollbarGutter: 'stable',
+        '--primary': initialTheme.themeColor.primary,
+        '--primary-foreground': initialTheme.themeColor.primaryForeground
+      } as React.CSSProperties}
       data-detected-locale={detectedLocale}
+      data-initial-theme={initialTheme.actualMode}
     >
       <body className="min-h-[100dvh] bg-background text-foreground" style={{ width: '100vw', maxWidth: '100%', overflowX: 'hidden' }}>
         <ThemeProvider>

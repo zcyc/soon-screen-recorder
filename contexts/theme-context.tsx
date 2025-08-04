@@ -13,15 +13,15 @@ export interface ThemeColor {
 
 export const themeColors: ThemeColor[] = [
   {
-    name: 'Blue',
-    value: 'blue',
-    primary: '217 91% 59%', // blue-500 in HSL
-    primaryForeground: '0 0% 98%'
-  },
-  {
     name: 'Green',  
     value: 'green',
     primary: '142 76% 36%', // green-500 in HSL
+    primaryForeground: '0 0% 98%'
+  },
+  {
+    name: 'Blue',
+    value: 'blue',
+    primary: '217 91% 59%', // blue-500 in HSL
     primaryForeground: '0 0% 98%'
   },
   {
@@ -68,9 +68,21 @@ function getTimeBasedTheme(): 'light' | 'dark' {
 }
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
+  // Read initial theme from server-side rendered data attribute
+  const getInitialTheme = (): 'light' | 'dark' => {
+    if (typeof document !== 'undefined') {
+      const serverTheme = document.documentElement.getAttribute('data-initial-theme');
+      if (serverTheme === 'dark' || serverTheme === 'light') {
+        return serverTheme;
+      }
+    }
+    // Fallback to time-based theme
+    return getTimeBasedTheme();
+  };
+
   const [mode, setMode] = useState<ThemeMode>('auto');
-  const [actualMode, setActualMode] = useState<'light' | 'dark'>(() => getTimeBasedTheme());
-  const [themeColor, setThemeColorState] = useState<ThemeColor>(themeColors[1]);
+  const [actualMode, setActualMode] = useState<'light' | 'dark'>(() => getInitialTheme());
+  const [themeColor, setThemeColorState] = useState<ThemeColor>(themeColors[0]);
   const [mounted, setMounted] = useState(false);
 
   // Load theme preferences from localStorage
@@ -109,21 +121,25 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       setActualMode(effectiveMode);
     }
     
-    // Apply dark/light mode
-    if (effectiveMode === 'dark') {
+    // Apply dark/light mode - 只在需要时修改，避免不必要的闪烁
+    const hasDarkClass = root.classList.contains('dark');
+    if (effectiveMode === 'dark' && !hasDarkClass) {
       root.classList.add('dark');
-    } else {
+    } else if (effectiveMode === 'light' && hasDarkClass) {
       root.classList.remove('dark');
     }
     
-    // Apply theme color as CSS variables
-    root.style.setProperty('--primary', themeColor.primary);
-    root.style.setProperty('--primary-foreground', themeColor.primaryForeground);
+    // Apply theme color as CSS variables - 只在颜色确实改变时更新
+    const currentPrimary = root.style.getPropertyValue('--primary');
+    if (currentPrimary !== themeColor.primary) {
+      root.style.setProperty('--primary', themeColor.primary);
+      root.style.setProperty('--primary-foreground', themeColor.primaryForeground);
+    }
     
     // Save to localStorage
     localStorage.setItem('theme-mode', mode);
     localStorage.setItem('theme-color', themeColor.value);
-  }, [mode, themeColor, mounted]);
+  }, [mode, themeColor, mounted, actualMode]);
 
   // 自动更新基于时间的主题（仅在 auto 模式下）
   useEffect(() => {
@@ -135,6 +151,9 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
         setActualMode(newActualMode);
       }
     };
+    
+    // 立即检查一次，确保与服务器端保持同步
+    updateTimeBasedTheme();
     
     // 每分钟检查一次时间变化
     const interval = setInterval(updateTimeBasedTheme, 60000);
@@ -153,11 +172,6 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const setThemeColor = (color: ThemeColor) => {
     setThemeColorState(color);
   };
-
-  // Prevent hydration mismatch
-  if (!mounted) {
-    return <>{children}</>;
-  }
 
   return (
     <ThemeContext.Provider value={{ mode, actualMode, themeColor, toggleMode, setThemeColor }}>
