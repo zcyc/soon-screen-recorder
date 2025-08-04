@@ -1258,7 +1258,7 @@ export default function ScreenRecorder() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="select-container">
               <Label className="text-sm font-medium mb-3 block">{t.recording.recordingQuality}</Label>
-              <Select value={quality} onValueChange={(value) => setQuality(value as RecordingQuality)} modal={false}>
+              <Select value={quality} onValueChange={(value) => setQuality(value as RecordingQuality)}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder={t.recording.selectRecordingQuality} />
                 </SelectTrigger>
@@ -1285,7 +1285,6 @@ export default function ScreenRecorder() {
                     setScreenSource(value as ScreenSourceType);
                   }
                 }}
-                modal={false}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder={t.recording.selectRecordingSource} />

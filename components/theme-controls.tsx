@@ -1,19 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Moon, Sun, Palette, Check, Languages } from 'lucide-react';
+import { Check, Languages, Moon, Sun, Clock, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/i18n';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel
+  DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { useTheme, themeColors, type ThemeColor } from '@/contexts/theme-context';
-
 export default function ThemeControls() {
   const [isOpen, setIsOpen] = useState(false);
   const [isLanguageOpen, setIsLanguageOpen] = useState(false);
@@ -21,17 +18,19 @@ export default function ThemeControls() {
   const { locale, setLocale, t } = useI18n();
   
   // Theme context variables
-  let mode, themeColor, toggleMode, setThemeColor;
+  let mode, actualMode, themeColor, toggleMode, setThemeColor;
   
   try {
     const themeContext = useTheme();
     mode = themeContext.mode;
+    actualMode = themeContext.actualMode;
     themeColor = themeContext.themeColor;
     toggleMode = themeContext.toggleMode;
     setThemeColor = themeContext.setThemeColor;
   } catch (error) {
     // If theme context is not available, use defaults
-    mode = 'light';
+    mode = 'auto';
+    actualMode = 'light';
     themeColor = themeColors[1];
     toggleMode = () => {};
     setThemeColor = () => {};
@@ -41,9 +40,39 @@ export default function ThemeControls() {
     setMounted(true);
   }, []);
 
-  // Don't render anything until mounted to avoid hydration mismatch
+  // Render placeholder with icons until mounted to avoid hydration mismatch
   if (!mounted) {
-    return <div className="flex items-center space-x-2 h-9 w-18" />;
+    return (
+      <div className="flex items-center space-x-2">
+        {/* Theme Mode Toggle Placeholder - show clock as auto default */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-full p-2 h-9 w-9 pointer-events-none"
+          disabled
+        >
+          <Clock className="h-4 w-4" />
+        </Button>
+        {/* Theme Color Picker Placeholder */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-full p-2 h-9 w-9 pointer-events-none"
+          disabled
+        >
+          <Palette className="h-4 w-4" />
+        </Button>
+        {/* Language Toggle Placeholder */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-full p-2 h-9 w-9 pointer-events-none"
+          disabled
+        >
+          <Languages className="h-4 w-4" />
+        </Button>
+      </div>
+    );
   }
 
   const handleColorChange = (color: ThemeColor, e?: React.MouseEvent) => {
@@ -69,9 +98,17 @@ export default function ThemeControls() {
         }}
         onMouseDown={(e) => e.preventDefault()}
         className="rounded-full p-2 h-9 w-9"
-        title={mode === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+        title={
+          mode === 'auto' 
+            ? 'Auto mode (based on time) - Click to switch to light mode' 
+            : mode === 'light' 
+            ? 'Light mode - Click to switch to dark mode'
+            : 'Dark mode - Click to switch to auto mode'
+        }
       >
-        {mode === 'light' ? (
+        {mode === 'auto' ? (
+          <Clock className="h-4 w-4" />
+        ) : mode === 'light' ? (
           <Moon className="h-4 w-4" />
         ) : (
           <Sun className="h-4 w-4" />
@@ -109,27 +146,40 @@ export default function ThemeControls() {
           avoidCollisions={true}
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
-          {themeColors.map((color) => (
-            <DropdownMenuItem
-              key={color.value}
-              className="cursor-pointer flex items-center justify-between"
-              onClick={(e) => handleColorChange(color, e)}
-              onMouseDown={(e) => e.preventDefault()}
-            >
-              <div className="flex items-center space-x-2">
-                <div 
-                  className="w-4 h-4 rounded-full border border-gray-300"
-                  style={{ 
-                    backgroundColor: `hsl(${color.primary})`,
-                  }}
-                />
-                <span>{color.name}</span>
-              </div>
-              {themeColor.value === color.value && (
-                <Check className="h-4 w-4" />
-              )}
-            </DropdownMenuItem>
-          ))}
+          {themeColors.map((color) => {
+            // Get translated color name
+            const colorName = (() => {
+              switch(color.value) {
+                case 'blue': return t.themeColors?.blue || 'Blue';
+                case 'green': return t.themeColors?.green || 'Green';
+                case 'orange': return t.themeColors?.orange || 'Orange';
+                case 'red': return t.themeColors?.red || 'Red';
+                default: return color.name;
+              }
+            })();
+            
+            return (
+              <DropdownMenuItem
+                key={color.value}
+                className="cursor-pointer flex items-center justify-between"
+                onClick={(e) => handleColorChange(color, e)}
+                onMouseDown={(e) => e.preventDefault()}
+              >
+                <div className="flex items-center space-x-2">
+                  <div 
+                    className="w-4 h-4 rounded-full border border-gray-300"
+                    style={{ 
+                      backgroundColor: `hsl(${color.primary})`,
+                    }}
+                  />
+                  <span>{colorName}</span>
+                </div>
+                {themeColor.value === color.value && (
+                  <Check className="h-4 w-4" />
+                )}
+              </DropdownMenuItem>
+            );
+          })}
         </DropdownMenuContent>
       </DropdownMenu>
 
