@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,7 @@ import { Video, Loader2, Github } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/lib/i18n';
 
-export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
+function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
   const { login, register, loginWithGitHub, user } = useAuth();
   const { t } = useI18n();
   const router = useRouter();
@@ -256,5 +256,13 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
         </div>
       </div>
     </div>
+  );
+}
+
+export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <LoginForm mode={mode} />
+    </Suspense>
   );
 }

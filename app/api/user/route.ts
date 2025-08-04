@@ -1,6 +1,10 @@
-import { getUser } from '@/lib/db/queries';
+import { AuthService } from '@/lib/auth/appwrite-auth';
 
 export async function GET() {
-  const user = await getUser();
-  return Response.json(user);
+  try {
+    const user = await AuthService.getCurrentUser();
+    return Response.json(user);
+  } catch (error) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 }
