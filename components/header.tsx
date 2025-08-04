@@ -33,10 +33,10 @@ function UserMenu() {
   if (!user) {
     return (
       <div className="flex items-center space-x-4">
-        <Button asChild variant="outline" className="rounded-full">
+        <Button asChild variant="outline" className="rounded-full min-w-[100px] text-center">
           <Link href="/sign-in">{t.auth.signIn}</Link>
         </Button>
-        <Button asChild className="rounded-full">
+        <Button asChild className="rounded-full min-w-[100px] text-center">
           <Link href="/sign-up">{t.auth.signUp}</Link>
         </Button>
       </div>

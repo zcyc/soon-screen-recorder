@@ -13,18 +13,14 @@ export default function HomePage() {
   const { t } = useI18n();
 
   useEffect(() => {
+    // 只有在已登录且不在加载状态时才跳转
     if (!loading && user) {
       router.push('/dashboard');
     }
   }, [user, loading, router]);
 
-  if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  // 不再显示加载状态，而是直接显示主页内容
+  // 认证检查在后台进行，如果已登录会自动跳转
 
   return (
     <main className="flex-1 content-container">
