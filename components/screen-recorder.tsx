@@ -2143,19 +2143,6 @@ export default function ScreenRecorder() {
                 )}
               </div>
               <div className="flex items-center space-x-2">
-                {/* 画中画快捷启动按钮 - 仅Chrome显示 */}
-                {includeCamera && cameraPreviewStream && detectPiPSupport().canAutoStart && detectPiPSupport().supported && !document.pictureInPictureElement && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={startPictureInPictureManually}
-                    title="启动画中画模式"
-                    className="text-xs px-2 py-1 h-6"
-                    disabled={isPiPRequesting}
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                  </Button>
-                )}
                 <Switch
                   checked={includeCamera}
                   onCheckedChange={async (checked) => {
@@ -2287,7 +2274,7 @@ export default function ScreenRecorder() {
         onLoadedData={() => console.log('视频数据加载完成')}
         onCanPlay={() => console.log('视频可以播放')}
         onError={(e) => console.error('视频元素错误:', e)}
-        disablePictureInPicture={detectPiPSupport().browser !== 'Firefox'} // 非Firefox禁用原生画中画按钮
+        disablePictureInPicture={detectPiPSupport().browser !== 'Firefox' && detectPiPSupport().browser !== 'Chrome'} // 只为Firefox和Chrome启用画中画
       />
       
       {/* 画中画引导提示 - 根据浏览器显示不同内容 */}
