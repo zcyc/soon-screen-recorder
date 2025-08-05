@@ -74,9 +74,11 @@ export function getMediaRecorderSupport() {
     supportsVP9: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus'),
     supportsVP8: MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus'),
     supportsH264: MediaRecorder.isTypeSupported('video/mp4;codecs=h264,aac'),
-    // Firefox-specific quirks
+    // Browser-specific quirks
     needsDelayedBlobCreation: browser.isFirefox,
-    needsExplicitStreamCleanup: browser.isFirefox,
+    needsExplicitStreamCleanup: browser.isFirefox || browser.isSafari,
+    needsConservativeBitrate: browser.isSafari,
+    hasLimitedScreenCapture: browser.isSafari, // Safari has limitations with getDisplayMedia
     supportsDataAvailableChunking: true, // All modern browsers support this
   };
 }
@@ -102,6 +104,16 @@ export function getOptimalRecordingSettings(quality: '720p' | '1080p' = '720p') 
     
     // Lower bitrate for Firefox to ensure stability
     videoBitsPerSecond = quality === '1080p' ? 4000000 : 2000000;
+  } else if (support.isSafari) {
+    // Safari-specific optimizations
+    if (support.supportsH264) {
+      mimeType = 'video/mp4;codecs=h264,aac';
+    } else if (support.supportsWebM) {
+      mimeType = 'video/webm';
+    }
+    
+    // Safari needs more conservative bitrate
+    videoBitsPerSecond = quality === '1080p' ? 3500000 : 1800000;
   } else if (support.isChrome || support.isEdge) {
     // Chrome and Edge prefer VP9
     if (support.supportsVP9) {
@@ -115,7 +127,7 @@ export function getOptimalRecordingSettings(quality: '720p' | '1080p' = '720p') 
     mimeType,
     videoBitsPerSecond,
     audioBitsPerSecond: 128000, // Standard audio bitrate
-    // Firefox needs explicit timeslice for better chunk collection
-    timeslice: support.isFirefox ? 1000 : undefined,
+    // Firefox and Safari need explicit timeslice for better chunk collection
+    timeslice: support.isFirefox ? 1000 : support.isSafari ? 1500 : undefined,
   };
 }

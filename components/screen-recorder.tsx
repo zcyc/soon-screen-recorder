@@ -1090,7 +1090,7 @@ export default function ScreenRecorder() {
       // Create MediaRecorder with browser-optimized settings
       const optimalSettings = getOptimalRecordingSettings(quality);
       
-      console.log('Browser detected:', browserInfoRef.current.isFirefox ? 'Firefox' : browserInfoRef.current.isChrome ? 'Chrome' : 'Other', 'version:', browserInfoRef.current.version);
+      console.log('Browser detected:', browserInfoRef.current.isFirefox ? 'Firefox' : browserInfoRef.current.isChrome ? 'Chrome' : browserInfoRef.current.isSafari ? 'Safari' : 'Other', 'version:', browserInfoRef.current.version);
       console.log('Using MediaRecorder settings:', optimalSettings);
       
       const options = {
@@ -1125,7 +1125,7 @@ export default function ScreenRecorder() {
       } catch (error) {
         console.error('Failed to create MediaRecorder:', error);
         
-        // Firefox-specific fallback options
+        // Browser-specific fallback options
         if (browserInfoRef.current.isFirefox) {
           console.log('Attempting Firefox fallback MediaRecorder creation...');
           try {
@@ -1134,6 +1134,16 @@ export default function ScreenRecorder() {
             console.log('Firefox fallback MediaRecorder created successfully');
           } catch (fallbackError) {
             console.error('Firefox fallback MediaRecorder creation failed:', fallbackError);
+            throw fallbackError;
+          }
+        } else if (browserInfoRef.current.isSafari) {
+          console.log('Attempting Safari fallback MediaRecorder creation...');
+          try {
+            const safariOptions = { mimeType: 'video/mp4' };
+            mediaRecorderRef.current = new MediaRecorder(finalStream, safariOptions);
+            console.log('Safari fallback MediaRecorder created successfully');
+          } catch (fallbackError) {
+            console.error('Safari fallback MediaRecorder creation failed:', fallbackError);
             throw fallbackError;
           }
         } else {
@@ -1151,9 +1161,15 @@ export default function ScreenRecorder() {
         if (event.data && event.data.size > 0) {
           chunksRef.current.push(event.data);
           
-          // Firefox-specific: Log chunk collection for debugging
+          // Browser-specific: Log chunk collection for debugging
           if (browserInfoRef.current.isFirefox) {
             console.log('Firefox chunk collected:', {
+              chunkSize: event.data.size,
+              totalChunks: chunksRef.current.length,
+              totalSize: chunksRef.current.reduce((sum, chunk) => sum + chunk.size, 0)
+            });
+          } else if (browserInfoRef.current.isSafari) {
+            console.log('Safari chunk collected:', {
               chunkSize: event.data.size,
               totalChunks: chunksRef.current.length,
               totalSize: chunksRef.current.reduce((sum, chunk) => sum + chunk.size, 0)
@@ -1218,9 +1234,12 @@ export default function ScreenRecorder() {
               console.log('Stream cleanup completed');
             };
             
-            // Firefox needs delayed cleanup to avoid issues
+            // Browser-specific cleanup timing
             if (browserInfoRef.current.isFirefox) {
               setTimeout(cleanupStreams, 100);
+            } else if (browserInfoRef.current.isSafari) {
+              // Safari needs a slightly longer delay for stream cleanup
+              setTimeout(cleanupStreams, 200);
             } else {
               cleanupStreams();
             }
@@ -1234,9 +1253,12 @@ export default function ScreenRecorder() {
           }
         };
         
-        // Firefox needs a slight delay for reliable blob creation
+        // Browser-specific blob creation timing
         if (browserInfoRef.current.isFirefox) {
           setTimeout(createBlob, 100);
+        } else if (browserInfoRef.current.isSafari) {
+          // Safari needs a slightly longer delay for reliable blob creation
+          setTimeout(createBlob, 150);
         } else {
           createBlob();
         }
@@ -1301,7 +1323,7 @@ export default function ScreenRecorder() {
       console.log('Stopping recording, current state:', currentState);
       
       if (currentState === 'recording' || currentState === 'paused') {
-        // Firefox-specific: Ensure final chunk collection
+        // Browser-specific: Ensure final chunk collection
         if (isFirefox()) {
           console.log('Firefox detected, ensuring final data collection...');
           // Request final data before stopping
@@ -1309,6 +1331,14 @@ export default function ScreenRecorder() {
             mediaRecorderRef.current.requestData();
           } catch (error) {
             console.warn('Could not request final data:', error);
+          }
+        } else if (browserInfoRef.current.isSafari) {
+          console.log('Safari detected, ensuring final data collection...');
+          // Safari also benefits from requesting final data
+          try {
+            mediaRecorderRef.current.requestData();
+          } catch (error) {
+            console.warn('Safari: Could not request final data:', error);
           }
         }
         
@@ -1335,8 +1365,8 @@ export default function ScreenRecorder() {
       setIsNearTimeLimit(false);
       
       // 录制结束后，如果摄像头仍然开启，重新启动预览
-      // Firefox需要更长的延迟以确保录制完全停止
-      const delay = isFirefox() ? 1000 : 500;
+      // Firefox和Safari需要更长的延迟以确保录制完全停止
+      const delay = isFirefox() ? 1000 : browserInfoRef.current.isSafari ? 1200 : 500;
       setTimeout(() => {
         if (includeCamera) {
           startCameraPreview();
@@ -1492,6 +1522,34 @@ export default function ScreenRecorder() {
 
   return (
     <div className="space-y-6">
+      {/* Safari Compatibility Warning */}
+      {browserInfoRef.current.isSafari && (
+        <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+          <div className="flex items-start space-x-3">
+            <div className="w-5 h-5 text-orange-500 mt-0.5">
+              <svg viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                Safari 录制功能限制
+              </h3>
+              <div className="mt-1 text-sm text-orange-700 dark:text-orange-300">
+                <p>
+                  Safari 对屏幕录制功能有一些限制。为获得最佳体验，建议：
+                </p>
+                <ul className="mt-2 list-disc list-inside space-y-1">
+                  <li>使用较低的录制质量设置（720p）</li>
+                  <li>避免录制过长的视频</li>
+                  <li>如遇问题，请尝试使用 Chrome 或 Firefox</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Recording Controls */}
       {!recordingState.isRecording && !recordingState.recordedBlob && (
         <div className="space-y-6">

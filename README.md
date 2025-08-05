@@ -148,7 +148,7 @@ The application includes a comprehensive theming system supporting light and dar
 
 - **Chrome/Edge**: Full support with optimal performance
 - **Firefox**: Full support with slightly reduced performance
-- **Safari**: Basic support (some recording limitations)
+- **Safari**: Enhanced support with optimized settings (some recording limitations)
 - **Mobile Browsers**: Limited screen recording support
 
 ## 📱 Responsive Design
