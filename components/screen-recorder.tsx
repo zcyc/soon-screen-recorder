@@ -632,14 +632,47 @@ export default function ScreenRecorder() {
       }
 
       console.log('请求摄像头权限...');
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 320, max: 640 },
-          height: { ideal: 240, max: 480 },
-          facingMode: 'user'
-        },
-        audio: false // 预览不需要音频
-      });
+      
+      // 使用尝试-降级策略来获取摄像头流
+      let stream: MediaStream;
+      
+      // 第一次尝试：理想设置
+      try {
+        const idealConstraints: MediaStreamConstraints = {
+          video: {
+            width: { ideal: 320 },
+            height: { ideal: 240 },
+            facingMode: 'user'
+          },
+          audio: false
+        };
+        console.log('尝试理想设置:', idealConstraints);
+        stream = await navigator.mediaDevices.getUserMedia(idealConstraints);
+      } catch (firstError) {
+        console.warn('理想设置失败，尝试基本设置:', firstError);
+        
+        // 第二次尝试：移除尺寸约束
+        try {
+          const basicConstraints: MediaStreamConstraints = {
+            video: {
+              facingMode: 'user'
+            },
+            audio: false
+          };
+          console.log('尝试基本设置:', basicConstraints);
+          stream = await navigator.mediaDevices.getUserMedia(basicConstraints);
+        } catch (secondError) {
+          console.warn('基本设置失败，尝试最简单设置:', secondError);
+          
+          // 第三次尝试：最简单设置
+          const minimalConstraints: MediaStreamConstraints = {
+            video: true,
+            audio: false
+          };
+          console.log('尝试最简单设置:', minimalConstraints);
+          stream = await navigator.mediaDevices.getUserMedia(minimalConstraints);
+        }
+      }
       
       console.log('摄像头流获取成功:', {
         id: stream.id,
@@ -744,6 +777,10 @@ export default function ScreenRecorder() {
         errorMessage = '未找到摄像头设备';
       } else if (error.name === 'NotReadableError') {
         errorMessage = '摄像头正被其他应用程序使用';
+      } else if (error.name === 'OverconstrainedError') {
+        errorMessage = `摄像头不支持请求的设置（${error.constraint}），已自动降级，请重试`;
+      } else if (error.name === 'TypeError') {
+        errorMessage = '浏览器不支持摄像头功能或缺少必要的权限';
       }
       
       showToast(errorMessage);
@@ -1209,7 +1246,12 @@ export default function ScreenRecorder() {
           console.log(`Firefox 检查 MIME 类型: ${mimeType || 'default'} - ${isSupported ? '支持' : '不支持'}`);
           
           if (isSupported) {
-            if (mimeType) options.mimeType = mimeType;
+            if (mimeType) {
+              options.mimeType = mimeType;
+            } else {
+              // Use default webm for Firefox when empty mimeType is supported
+              options.mimeType = 'video/webm';
+            }
             break;
           }
         }
@@ -1227,12 +1269,12 @@ export default function ScreenRecorder() {
         };
         
         // Fallback for browsers that don't support VP9
-        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        if (options.mimeType && !MediaRecorder.isTypeSupported(options.mimeType)) {
           options.mimeType = 'video/webm;codecs=vp8,opus';
         }
         
         // Final fallback
-        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        if (options.mimeType && !MediaRecorder.isTypeSupported(options.mimeType)) {
           options.mimeType = 'video/webm';
         }
       }
@@ -1836,19 +1878,134 @@ export default function ScreenRecorder() {
       
       {/* Firefox专用CSS - 只显示画中画按钮 */}
       <style jsx global>{`
+        /* Firefox 媒体控件全面隐藏策略 */
         .firefox-pip-video {
-          position: relative;
+          position: relative !important;
+          background: #000 !important;
         }
         
-        /* 隐藏 Firefox 的所有控件面板 */
-        .firefox-pip-video::-webkit-media-controls {
+        /* 通过多重方式隐藏 Firefox 原生控件 */
+        .firefox-pip-video[controls] {
+          /* 尝试隐藏整个控制栏 */
+        }
+        
+        .firefox-pip-video::-moz-media-controls {
           visibility: hidden !important;
           opacity: 0 !important;
           pointer-events: none !important;
+          display: none !important;
+          height: 0 !important;
+          width: 0 !important;
+          overflow: hidden !important;
+          -moz-appearance: none !important;
         }
         
-        /* Firefox 特有的控件隐藏 */
-        .firefox-pip-video::-moz-media-controls {
+        /* Firefox 控件面板隐藏 */
+        .firefox-pip-video::-moz-media-controls-panel {
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+          display: none !important;
+        }
+        
+        /* 隐藏播放/暂停按钮 */
+        .firefox-pip-video::-moz-media-controls-play-button,
+        .firefox-pip-video::-moz-media-controls-overlay-play-button {
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+          display: none !important;
+        }
+        
+        /* 隐藏时间控件 */
+        .firefox-pip-video::-moz-media-controls-scrubber,
+        .firefox-pip-video::-moz-media-controls-time-display,
+        .firefox-pip-video::-moz-media-controls-current-time,
+        .firefox-pip-video::-moz-media-controls-duration {
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+          display: none !important;
+        }
+        
+        /* 隐藏音量控件 */
+        .firefox-pip-video::-moz-media-controls-volume-control,
+        .firefox-pip-video::-moz-media-controls-mute-button,
+        .firefox-pip-video::-moz-media-controls-volume-slider {
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+          display: none !important;
+        }
+        
+        /* 隐藏全屏按钮 */
+        .firefox-pip-video::-moz-media-controls-fullscreen-button {
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+          display: none !important;
+        }
+        
+        /* Firefox 最新版本的控件结构 */
+        .firefox-pip-video video::-moz-media-controls,
+        .firefox-pip-video::-moz-media-controls-button-panel,
+        .firefox-pip-video::-moz-media-controls-statusbar {
+          visibility: hidden !important;
+          opacity: 0 !important;
+          display: none !important;
+          height: 0 !important;
+        }
+        
+        /* Firefox 130+ 新控件选择器 */
+        .firefox-pip-video div[role="group"],
+        .firefox-pip-video div[class*="control"],
+        .firefox-pip-video button:not([title*="picture"]):not([title*="Picture"]) {
+          visibility: hidden !important;
+          opacity: 0 !important;
+          display: none !important;
+        }
+        
+        /* 显示并优化画中画按钮 - Firefox */
+        .firefox-pip-video::-moz-media-controls-picture-in-picture-button,
+        .firefox-pip-video button[title*="picture"],
+        .firefox-pip-video button[title*="Picture"] {
+          visibility: visible !important;
+          opacity: 1 !important;
+          pointer-events: all !important;
+          display: block !important;
+          position: relative !important;
+          background: rgba(0, 0, 0, 0.8) !important;
+          border-radius: 6px !important;
+          padding: 4px !important;
+          margin: 4px !important;
+          border: 1px solid rgba(255, 255, 255, 0.2) !important;
+          transition: all 0.2s ease !important;
+          z-index: 9999 !important;
+        }
+        
+        .firefox-pip-video::-moz-media-controls-picture-in-picture-button:hover {
+          background: rgba(0, 0, 0, 0.9) !important;
+          border-color: rgba(255, 255, 255, 0.4) !important;
+          transform: scale(1.05) !important;
+        }
+        
+        /* 隐藏 Firefox 覆盖层和其他元素 */
+        .firefox-pip-video::-moz-media-controls-overlay {
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+          display: none !important;
+        }
+        
+        /* 隐藏其他可能的控件 */
+        .firefox-pip-video::-moz-media-controls > *:not(button[title*="Picture-in-Picture"]):not([aria-label*="Picture-in-Picture"]) {
+          visibility: hidden !important;
+          opacity: 0 !important;
+          display: none !important;
+        }
+        
+        /* 兼容 WebKit 浏览器（如果Firefox使用WebKit引擎） */
+        .firefox-pip-video::-webkit-media-controls {
           visibility: hidden !important;
           opacity: 0 !important;
           pointer-events: none !important;
@@ -1860,78 +2017,48 @@ export default function ScreenRecorder() {
           pointer-events: none !important;
         }
         
-        /* 隐藏播放按钮 */
+        /* WebKit 播放按钮隐藏 */
         .firefox-pip-video::-webkit-media-controls-play-button,
-        .firefox-pip-video::-webkit-media-controls-overlay-play-button,
-        .firefox-pip-video::-moz-media-controls-play-button {
+        .firefox-pip-video::-webkit-media-controls-overlay-play-button {
           visibility: hidden !important;
           opacity: 0 !important;
           pointer-events: none !important;
         }
         
-        /* 隐藏时间轴 */
+        /* WebKit 时间轴隐藏 */
         .firefox-pip-video::-webkit-media-controls-timeline,
         .firefox-pip-video::-webkit-media-controls-timeline-container,
         .firefox-pip-video::-webkit-media-controls-current-time-display,
-        .firefox-pip-video::-webkit-media-controls-time-remaining-display,
-        .firefox-pip-video::-moz-media-controls-scrubber {
+        .firefox-pip-video::-webkit-media-controls-time-remaining-display {
           visibility: hidden !important;
           opacity: 0 !important;
           pointer-events: none !important;
         }
         
-        /* 隐藏音量控件 */
+        /* WebKit 音量控件隐藏 */
         .firefox-pip-video::-webkit-media-controls-volume-slider,
-        .firefox-pip-video::-webkit-media-controls-mute-button,
-        .firefox-pip-video::-moz-media-controls-volume-control,
-        .firefox-pip-video::-moz-media-controls-mute-button {
+        .firefox-pip-video::-webkit-media-controls-mute-button {
           visibility: hidden !important;
           opacity: 0 !important;
           pointer-events: none !important;
         }
         
-        /* 隐藏全屏按钮 */
-        .firefox-pip-video::-webkit-media-controls-fullscreen-button,
-        .firefox-pip-video::-moz-media-controls-fullscreen-button {
+        /* WebKit 全屏按钮隐藏 */
+        .firefox-pip-video::-webkit-media-controls-fullscreen-button {
           visibility: hidden !important;
           opacity: 0 !important;
           pointer-events: none !important;
         }
         
-        /* 显示并定位画中画按钮 */
+        /* WebKit 画中画按钮显示 */
         .firefox-pip-video::-webkit-media-controls-picture-in-picture-button {
           visibility: visible !important;
           opacity: 1 !important;
           pointer-events: all !important;
-          position: absolute !important;
-          bottom: 8px !important;
-          right: 8px !important;
-          z-index: 1000 !important;
-          background: rgba(0, 0, 0, 0.7) !important;
-          border-radius: 4px !important;
-        }
-        
-        .firefox-pip-video::-moz-media-controls-picture-in-picture-button {
-          visibility: visible !important;
-          opacity: 1 !important;
-          pointer-events: all !important;
-          position: absolute !important;
-          bottom: 8px !important;
-          right: 8px !important;
-          z-index: 1000 !important;
-          background: rgba(0, 0, 0, 0.7) !important;
-          border-radius: 4px !important;
-        }
-        
-        /* 隐藏所有其他控件 */
-        .firefox-pip-video :not([class*="picture-in-picture"]):not([data-testid*="pip"]) {
-          visibility: hidden !important;
-        }
-        
-        /* Firefox 的覆盖层也要隐藏 */
-        .firefox-pip-video::-moz-media-controls-overlay {
-          visibility: hidden !important;
-          opacity: 0 !important;
+          background: rgba(0, 0, 0, 0.8) !important;
+          border-radius: 6px !important;
+          padding: 4px !important;
+          margin: 4px !important;
         }
       `}</style>
 
@@ -2114,7 +2241,7 @@ export default function ScreenRecorder() {
       {/* 摄像头预览视频元素 - 根据画中画支持动态显示/隐藏 */}
       <video
         ref={cameraPreviewRef}
-        className={`${detectPiPSupport().canAutoStart ? 'hidden' : cameraPreviewStream ? 'block' : 'hidden'} w-64 h-48 bg-black rounded-lg border border-gray-300 dark:border-gray-600 ${detectPiPSupport().browser === 'Safari' ? 'cursor-pointer hover:border-primary/50 transition-colors' : ''} ${detectPiPSupport().browser === 'Firefox' ? 'firefox-pip-video' : ''} relative`}
+        className={`${detectPiPSupport().canAutoStart ? 'hidden' : cameraPreviewStream ? 'block' : 'hidden'} w-64 h-48 bg-black rounded-lg border border-gray-300 dark:border-gray-600 ${detectPiPSupport().browser === 'Safari' || detectPiPSupport().browser === 'Firefox' ? 'cursor-pointer hover:border-primary/50 transition-colors' : ''} ${detectPiPSupport().browser === 'Firefox' ? 'firefox-pip-video' : ''} relative`}
         autoPlay
         muted
         playsInline
@@ -2125,9 +2252,9 @@ export default function ScreenRecorder() {
           const pipSupport = detectPiPSupport();
           
           if (pipSupport.browser === 'Firefox') {
-            // Firefox使用原生画中画按钮
-            showToast('请使用视频控件中的画中画按钮');
-            return;
+            // Firefox也支持点击视频启动画中画，同时保留控件中的画中画按钮
+            console.log('Firefox点击视频尝试启动画中画');
+            // 继续执行下面的逻辑，不return
           }
           
           e.preventDefault();
@@ -2144,6 +2271,8 @@ export default function ScreenRecorder() {
                 console.error(`${pipSupport.browser}点击视频启动失败:`, error);
                 if (pipSupport.browser === 'Safari') {
                   showToast('Safari请先与视频交互，再点击下方按钮');
+                } else if (pipSupport.browser === 'Firefox') {
+                  showToast('Firefox请使用视频控件中的画中画按钮或下方按钮');
                 } else {
                   showToast('请使用下方按钮启动画中画');
                 }
@@ -2186,7 +2315,7 @@ export default function ScreenRecorder() {
                 ) : detectPiPSupport().browser === 'Firefox' ? (
                   <div>
                     <h4 className="font-medium text-foreground mb-2">
-                      点击视频控件中的画中画按钮
+                      点击上方视频中的按钮启用画中画
                     </h4>
                     <p className="text-sm text-muted-foreground">
                       启用画中画后可在其他应用中录制摄像头
