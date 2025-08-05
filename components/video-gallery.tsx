@@ -17,7 +17,11 @@ import {
   Grid,
   List,
   Copy,
-  Link
+  Link,
+  Lock,
+  Unlock,
+  Globe,
+  Shield
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { DatabaseService, type Video } from '@/lib/database';
@@ -39,6 +43,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
+  const [updatingPrivacyId, setUpdatingPrivacyId] = useState<string | null>(null);
   const { isOpen: isDeleteModalOpen, deleteData, openDeleteModal, closeDeleteModal } = useDeleteModal();
 
   useEffect(() => {
@@ -193,6 +198,34 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
     });
   };
 
+  const handlePrivacyToggle = async (video: Video) => {
+    if (!user) {
+      showToast(t.recording.loginRequired);
+      return;
+    }
+
+    try {
+      setUpdatingPrivacyId(video.$id);
+      
+      // Call the database service directly from the client
+      const updatedVideo = await DatabaseService.toggleVideoPrivacy(video.$id, user.$id);
+      
+      // Update the video in the local state
+      setVideos(videos.map(v => 
+        v.$id === video.$id 
+          ? { ...v, isPublic: updatedVideo.isPublic }
+          : v
+      ));
+      
+      showToast(t.videos.privacyUpdated);
+    } catch (error: any) {
+      console.error('Error updating privacy:', error);
+      showToast(error.message || t.videos.privacyUpdateFailed);
+    } finally {
+      setUpdatingPrivacyId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -311,18 +344,55 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
                       {video.views}
                     </span>
                   </div>
-                  {video.isPublic && (
-                    <Badge variant="outline" className="text-xs px-2 py-0.5">
-                      <ExternalLink className="h-3 w-3 mr-1" />
-                      {t.videos.public}
-                    </Badge>
-                  )}
+                  <Badge 
+                    variant={video.isPublic ? "outline" : "secondary"} 
+                    className={`text-xs px-2 py-0.5 ${
+                      video.isPublic 
+                        ? "border-green-300 text-green-700 bg-green-50" 
+                        : "border-gray-300 text-gray-700 bg-gray-100"
+                    }`}
+                  >
+                    {video.isPublic ? (
+                      <>
+                        <Globe className="h-3 w-3 mr-1" />
+                        {t.videos.public}
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="h-3 w-3 mr-1" />
+                        {t.videos.private}
+                      </>
+                    )}
+                  </Badge>
                 </div>
                 
                 {/* Action Buttons */}
                 {/* 用户自己的视频 */}
                 {(!showPublic && user && user.$id === video.userId) && (
                   <div className="flex justify-center space-x-1 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 pt-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className={`h-8 w-8 p-0 transition-colors ${
+                        video.isPublic 
+                          ? "hover:bg-orange-600 hover:text-white" 
+                          : "hover:bg-green-600 hover:text-white"
+                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePrivacyToggle(video);
+                      }}
+                      title={video.isPublic ? t.videos.makePrivate : t.videos.makePublic}
+                      disabled={updatingPrivacyId === video.$id}
+                    >
+                      {updatingPrivacyId === video.$id ? (
+                        <div className="animate-spin rounded-full h-3 w-3 border border-current border-t-transparent" />
+                      ) : video.isPublic ? (
+                        <Lock className="h-3 w-3" />
+                      ) : (
+                        <Globe className="h-3 w-3" />
+                      )}
+                    </Button>
                     <Button
                       size="sm"
                       variant="ghost"
@@ -438,6 +508,21 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
                   {/* 用户自己的视频 - 显示所有按钮 */}
                   {(!showPublic && user && user.$id === selectedVideo.userId) && (
                     <>
+                      <Button
+                        variant="outline"
+                        onClick={() => handlePrivacyToggle(selectedVideo)}
+                        disabled={updatingPrivacyId === selectedVideo.$id}
+                        className={selectedVideo.isPublic ? "border-orange-300 text-orange-700 hover:bg-orange-50" : "border-green-300 text-green-700 hover:bg-green-50"}
+                      >
+                        {updatingPrivacyId === selectedVideo.$id ? (
+                          <div className="animate-spin rounded-full h-4 w-4 mr-2 border border-current border-t-transparent" />
+                        ) : selectedVideo.isPublic ? (
+                          <Lock className="h-4 w-4 mr-2" />
+                        ) : (
+                          <Globe className="h-4 w-4 mr-2" />
+                        )}
+                        {selectedVideo.isPublic ? t.videos.makePrivate : t.videos.makePublic}
+                      </Button>
                       <Button
                         variant="outline"
                         onClick={() => handleCopyShareLink(selectedVideo)}

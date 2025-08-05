@@ -140,6 +140,39 @@ export class DatabaseService {
     }
   }
 
+  static async toggleVideoPrivacy(videoId: string, userId: string) {
+    try {
+      // First verify the user owns this video
+      const video = await this.getVideoById(videoId);
+      if (video.userId !== userId) {
+        throw new Error('Unauthorized: You can only modify your own videos');
+      }
+
+      const newIsPublic = !video.isPublic;
+      
+      // Update the video privacy setting
+      await this.updateVideo(videoId, { isPublic: newIsPublic });
+
+      // Note: Document permissions will remain as they were set during creation
+      // The privacy setting in the data will control access logic in the frontend
+
+      // Return the updated video record
+      return await this.getVideoById(videoId);
+    } catch (error: any) {
+      console.error('Failed to toggle video privacy:', error);
+      
+      if (error.code === 401 || error.code === 'document_invalid_permissions') {
+        throw new Error('You do not have permission to modify this video');
+      }
+      
+      if (error.code === 404) {
+        throw new Error('Video not found');
+      }
+      
+      throw new Error(error.message || 'Failed to update privacy setting');
+    }
+  }
+
   static async deleteVideo(videoId: string, fileId?: string) {
     let storageDeleteSuccess = true;
     let storageError: any = null;

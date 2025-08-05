@@ -208,7 +208,13 @@ export interface Translations {
     searchPlaceholder: string;
     views: string;
     public: string;
+    private: string;
     share: string;
+    togglePrivacy: string;
+    makePrivate: string;
+    makePublic: string;
+    privacyUpdated: string;
+    privacyUpdateFailed: string;
   };
   share: {
     loading: string;
@@ -450,7 +456,13 @@ export const translations: Record<Locale, Translations> = {
       searchPlaceholder: 'Search videos...',
       views: 'views',
       public: 'Public',
+      private: 'Private',
       share: 'Share',
+      togglePrivacy: 'Toggle Privacy',
+      makePrivate: 'Make Private',
+      makePublic: 'Make Public',
+      privacyUpdated: 'Privacy setting updated successfully!',
+      privacyUpdateFailed: 'Failed to update privacy setting',
     },
     share: {
       loading: 'Loading video...',
@@ -685,7 +697,13 @@ export const translations: Record<Locale, Translations> = {
       searchPlaceholder: '搜索视频...',
       views: '观看',
       public: '公开',
+      private: '私有',
       share: '分享',
+      togglePrivacy: '切换隐私设置',
+      makePrivate: '设为私有',
+      makePublic: '设为公开',
+      privacyUpdated: '隐私设置更新成功！',
+      privacyUpdateFailed: '隐私设置更新失败',
     },
     share: {
       loading: '加载视频中...',
