@@ -144,6 +144,10 @@ export default function ScreenRecorder() {
   });
   const [showSubtitleSettings, setShowSubtitleSettings] = useState(false);
   
+  // 画中画和网页内预览状态
+  const [supportsPictureInPicture, setSupportsPictureInPicture] = useState(false);
+  const [showInPagePreview, setShowInPagePreview] = useState(false);
+  
   // Show toast message
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -510,6 +514,18 @@ export default function ScreenRecorder() {
     }
   }, [screenSource, source, includeCamera]);
 
+  // 画中画支持检测
+  useEffect(() => {
+    // 检查浏览器是否支持Picture-in-Picture API
+    const checkPiPSupport = () => {
+      const isSupported = 'pictureInPictureEnabled' in document && document.pictureInPictureEnabled;
+      console.log('Picture-in-Picture支持检测:', isSupported);
+      setSupportsPictureInPicture(isSupported);
+    };
+    
+    checkPiPSupport();
+  }, []);
+
   // 组件挂载状态管理
   useEffect(() => {
     setIsMounted(true);
@@ -565,20 +581,17 @@ export default function ScreenRecorder() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // 启动摄像头预览 - 使用画中画API（除非是仅录制摄像头模式）
+  // 启动摄像头预览 - 支持画中画API或网页内预览窗口
   const startCameraPreview = async () => {
     const cameraOnlyMode = source === 'camera-only';
-    console.log(`开始启动摄像头${cameraOnlyMode ? '预览' : '画中画预览'}...`);
+    const usePiP = supportsPictureInPicture && !cameraOnlyMode;
+    
+    console.log(`开始启动摄像头${cameraOnlyMode ? '预览' : (usePiP ? '画中画预览' : '网页内预览')}...`);
     
     try {
       // 检查浏览器支持
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('浏览器不支持摄像头功能');
-      }
-
-      // 仅录制摄像头模式下不需要检查画中画API支持
-      if (!cameraOnlyMode && !document.pictureInPictureEnabled) {
-        throw new Error('浏览器不支持画中画API');
       }
 
       console.log('请求摄像头权限...');
@@ -594,7 +607,9 @@ export default function ScreenRecorder() {
       console.log('摄像头流获取成功:', {
         id: stream.id,
         active: stream.active,
-        videoTracks: stream.getVideoTracks().length
+        videoTracks: stream.getVideoTracks().length,
+        pipSupported: supportsPictureInPicture,
+        willUsePiP: usePiP
       });
       
       // 检查视频轨道
@@ -605,9 +620,9 @@ export default function ScreenRecorder() {
       
       setCameraPreviewStream(stream);
       
-      // 所有模式都使用画中画预览
-      // 创建画中画视频元素
-      const startPictureInPicture = (retryCount = 0) => {
+      if (usePiP) {
+        // 使用画中画模式
+        const startPictureInPicture = (retryCount = 0) => {
           const maxRetries = 10;
           
           if (cameraPreviewRef.current) {
@@ -627,12 +642,15 @@ export default function ScreenRecorder() {
                 }
               } catch (pipError) {
                 console.error('画中画模式启动失败:', pipError);
-                showToast('画中画模式启动失败，将使用默认预览');
+                console.log('回退到网页内预览模式');
+                setShowInPagePreview(true);
+                showToast('已启用网页内摄像头预览');
               }
             };
             
             cameraPreviewRef.current.onenterpictureinpicture = () => {
               console.log('进入画中画模式');
+              setShowInPagePreview(false);
             };
             
             cameraPreviewRef.current.onleavepictureinpicture = () => {
@@ -656,47 +674,66 @@ export default function ScreenRecorder() {
               startPictureInPicture(retryCount + 1);
             }, 200);
           } else {
-            console.error('达到最大重试次数，放弃设置画中画');
-            showToast('摄像头预览初始化失败，请稍后重试');
+            console.error('达到最大重试次数，回退到网页内预览');
+            setShowInPagePreview(true);
+            showToast('已启用网页内摄像头预览');
           }
         };
         
-      startPictureInPicture();
+        startPictureInPicture();
+      } else {
+        // 使用网页内预览模式
+        console.log('使用网页内预览模式（浏览器不支持画中画或仅摄像头模式）');
+        if (cameraPreviewRef.current) {
+          cameraPreviewRef.current.srcObject = stream;
+          cameraPreviewRef.current.play().then(() => {
+            console.log('网页内预览视频播放成功');
+            setShowInPagePreview(true);
+            showToast(cameraOnlyMode ? '摄像头预览已启动' : '网页内摄像头预览已启动');
+          }).catch((playError) => {
+            console.error('网页内预览视频播放失败:', playError);
+          });
+        }
+      }
       
     } catch (error: any) {
-      console.error('摄像头画中画预览启动失败:', {
+      console.error('摄像头预览启动失败:', {
         name: error.name,
         message: error.message,
         constraint: error.constraint
       });
       
-      let errorMessage = '无法启动摄像头画中画预览';
+      let errorMessage = '无法启动摄像头预览';
       if (error.name === 'NotAllowedError') {
         errorMessage = '摄像头权限被拒绝，请允许摄像头访问';
       } else if (error.name === 'NotFoundError') {
         errorMessage = '未找到摄像头设备';
       } else if (error.name === 'NotReadableError') {
         errorMessage = '摄像头正被其他应用程序使用';
-      } else if (error.message.includes('画中画')) {
-        errorMessage = '浏览器不支持画中画API，请使用Chrome或Edge浏览器';
       }
       
       showToast(errorMessage);
     }
   };
 
-  // 停止摄像头预览 - 退出画中画模式
+  // 停止摄像头预览 - 退出画中画模式或关闭网页内预览
   const stopCameraPreview = async () => {
-    console.log('停止摄像头画中画预览...');
+    console.log('停止摄像头预览...');
     
     try {
-      // 所有模式都退出画中画模式
+      // 退出画中画模式（如果处于画中画状态）
       if (document.pictureInPictureElement) {
         console.log('退出画中画模式...');
         await document.exitPictureInPicture();
       }
+      
+      // 关闭网页内预览
+      if (showInPagePreview) {
+        console.log('关闭网页内预览...');
+        setShowInPagePreview(false);
+      }
     } catch (error) {
-      console.error('退出画中画模式失败:', error);
+      console.error('退出预览模式失败:', error);
     }
     
     if (cameraPreviewStream) {
@@ -1205,7 +1242,7 @@ export default function ScreenRecorder() {
             
             if (blob.size === 0) {
               console.error('Created blob is empty');
-              showToast(t.recording.recordingFailed || '录制失败：文件为空');
+              showToast('录制失败：文件为空');
               return;
             }
             
@@ -1249,7 +1286,7 @@ export default function ScreenRecorder() {
             
           } catch (error) {
             console.error('Failed to create blob from chunks:', error);
-            showToast(t.recording.recordingFailed || '录制失败：无法处理录制数据');
+            showToast('录制失败：无法处理录制数据');
           }
         };
         
@@ -1849,6 +1886,42 @@ export default function ScreenRecorder() {
         onCanPlay={() => console.log('视频可以播放')}
         onError={(e) => console.error('视频元素错误:', e)}
       />
+      
+      {/* 网页内摄像头预览窗口（不支持画中画的浏览器） */}
+      {showInPagePreview && cameraPreviewStream && (
+        <div className="fixed top-4 right-4 z-50 bg-black rounded-lg shadow-lg border-2 border-white/20">
+          <div className="relative">
+            <video
+              ref={(el) => {
+                if (el && cameraPreviewStream) {
+                  el.srcObject = cameraPreviewStream;
+                }
+              }}
+              className="w-48 h-36 rounded-lg"
+              autoPlay
+              muted
+              playsInline
+              controls={false}
+            />
+            <div className="absolute top-2 left-2 flex items-center space-x-2">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <span className="text-white text-xs font-medium bg-black/50 px-2 py-0.5 rounded">
+                摄像头预览
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                setShowInPagePreview(false);
+                stopCameraPreview();
+              }}
+              className="absolute top-2 right-2 w-6 h-6 bg-black/70 hover:bg-black/90 text-white rounded-full flex items-center justify-center text-xs font-bold transition-colors"
+              title="关闭预览"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Recording Status */}
       {recordingState.isRecording && (
