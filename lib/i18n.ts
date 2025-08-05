@@ -175,10 +175,7 @@ export interface Translations {
     githubLoginFailed: string;
     githubAuthCancelled: string;
     authenticationFailed: string;
-    // Third-party cookie related
-    thirdPartyCookieNotice: string;
-    thirdPartyCookieTitle: string;
-    thirdPartyCookieDescription: string;
+
   };
   
   // Devices
@@ -424,10 +421,7 @@ export const translations: Record<Locale, Translations> = {
       githubLoginFailed: 'GitHub login failed',
       githubAuthCancelled: 'GitHub authentication was cancelled',
       authenticationFailed: 'Authentication failed. Please try again.',
-      // Third-party cookie related
-      thirdPartyCookieNotice: 'Third-party Cookie Notice',
-      thirdPartyCookieTitle: 'Third-party Cookie Notice',
-      thirdPartyCookieDescription: 'GitHub login requires third-party cookies. If it doesn\'t work, enable cookies in your browser settings or use email/password login.',
+
     },
     devices: {
       title: 'Devices',
@@ -662,10 +656,7 @@ export const translations: Record<Locale, Translations> = {
       githubLoginFailed: 'GitHub 登录失败',
       githubAuthCancelled: 'GitHub 认证已取消',
       authenticationFailed: '认证失败，请重试。',
-      // Third-party cookie related
-      thirdPartyCookieNotice: '第三方Cookie提醒',
-      thirdPartyCookieTitle: '第三方Cookie提醒',
-      thirdPartyCookieDescription: 'GitHub 登录需要第三方Cookie支持。如果无法正常使用，请在浏览器设置中启用Cookie或使用邮箱密码登录。',
+
     },
     devices: {
       title: '设备',
