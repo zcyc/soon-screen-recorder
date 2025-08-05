@@ -602,11 +602,7 @@ export default function ScreenRecorder() {
       // Firefox 71+有原生画中画支持，但需要通过视频控件
       supported = firefoxVersion >= 71;
       
-      console.log('Firefox画中画检测:', {
-        firefoxVersion,
-        supported,
-        note: 'Firefox使用原生视频控件画中画按钮'
-      });
+
     } else {
       // 其他浏览器使用常规检查
       const testVideo = document.createElement('video');
@@ -615,13 +611,7 @@ export default function ScreenRecorder() {
       supported = hasPiPEnabled && hasRequestMethod;
     }
     
-    console.log('画中画API检测结果:', {
-      browser: isFirefox ? 'Firefox' : isSafari ? 'Safari' : isChrome ? 'Chrome' : 'Other',
-      pictureInPictureEnabled: document.pictureInPictureEnabled,
-      supported,
-      canAutoStart: isChrome,
-      needsUserInteraction: isSafari || isFirefox
-    });
+
     
     return {
       supported,
@@ -2026,8 +2016,8 @@ export default function ScreenRecorder() {
                 )}
               </div>
               <div className="flex items-center space-x-2">
-                {/* 画中画快捷启动按钮 - 仅在支持画中画时显示 */}
-                {includeCamera && cameraPreviewStream && detectPiPSupport().supported && !document.pictureInPictureElement && (
+                {/* 画中画快捷启动按钮 - 仅Chrome显示 */}
+                {includeCamera && cameraPreviewStream && detectPiPSupport().canAutoStart && detectPiPSupport().supported && !document.pictureInPictureElement && (
                   <Button
                     size="sm"
                     variant="outline"
