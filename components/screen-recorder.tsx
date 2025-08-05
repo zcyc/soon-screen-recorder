@@ -80,6 +80,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/lib/i18n';
 import { recordingConfig } from '@/lib/config';
 import { ID, Permission, Role } from 'appwrite';
+import { detectBrowser, isFirefox, getOptimalRecordingSettings, getMediaRecorderSupport } from '@/lib/browser-detection';
 
 type RecordingQuality = '720p' | '1080p';
 type RecordingSource = 'screen' | 'camera' | 'both' | 'camera-only';
@@ -156,6 +157,50 @@ export default function ScreenRecorder() {
   };
   
   const startNewRecording = () => {
+    console.log('Starting new recording, cleaning up previous state...');
+    
+    // Ensure all streams are properly cleaned up
+    const cleanupPreviousRecording = () => {
+      // Stop MediaRecorder if still active
+      if (mediaRecorderRef.current) {
+        try {
+          if (mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop();
+          }
+        } catch (error) {
+          console.warn('Error stopping MediaRecorder during cleanup:', error);
+        }
+        mediaRecorderRef.current = null;
+      }
+      
+      // Clean up stream references
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach(track => {
+          console.log('Cleanup: stopping screen track:', track.kind);
+          track.stop();
+        });
+        screenStreamRef.current = null;
+      }
+      
+      if (cameraStreamRef.current) {
+        cameraStreamRef.current.getTracks().forEach(track => {
+          console.log('Cleanup: stopping camera track:', track.kind);
+          track.stop();
+        });
+        cameraStreamRef.current = null;
+      }
+      
+      // Clear chunks array
+      chunksRef.current = [];
+      
+      // Stop timer
+      stopTimer();
+      
+      console.log('Previous recording cleanup completed');
+    };
+    
+    cleanupPreviousRecording();
+    
     setRecordingState({
       isRecording: false,
       isPaused: false,
@@ -168,6 +213,7 @@ export default function ScreenRecorder() {
     setToastMessage(null);
     setShowTimeWarning(false);
     setIsNearTimeLimit(false);
+    
     // Reset subtitle state
     setSubtitleState(prev => ({
       ...prev,
@@ -176,6 +222,7 @@ export default function ScreenRecorder() {
       isListening: false
     }));
     stopSpeechRecognition();
+    
     // 重置开始时间
     recordingStartTimeRef.current = 0;
   };
@@ -421,6 +468,7 @@ export default function ScreenRecorder() {
   const screenStreamRef = useRef<MediaStream | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const cameraPreviewRef = useRef<HTMLVideoElement | null>(null);
+  const browserInfoRef = useRef(detectBrowser());
   
   // Speech recognition refs
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
@@ -763,8 +811,26 @@ export default function ScreenRecorder() {
       }
       
       return stream;
-    } catch (error) {
+    } catch (error: any) {
       console.error('getDisplayMedia error:', error);
+      
+      // Firefox-specific error handling
+      if (isFirefox()) {
+        if (error.name === 'NotAllowedError') {
+          console.error('Firefox: 用户拒绝了屏幕共享权限');
+          throw new Error(t.permissions.screenDenied || '屏幕共享权限被拒绝');
+        } else if (error.name === 'NotFoundError') {
+          console.error('Firefox: 未找到可用的屏幕共享源');
+          throw new Error('Firefox: 未找到可用的屏幕共享源，请重试');
+        } else if (error.name === 'InvalidStateError') {
+          console.error('Firefox: 屏幕共享处于无效状态');
+          throw new Error('Firefox: 屏幕共享状态异常，请刷新页面重试');
+        } else {
+          console.error('Firefox: 屏幕共享未知错误:', error);
+          throw new Error(`Firefox 屏幕共享错误: ${error.message || '未知错误'}`);
+        }
+      }
+      
       throw error;
     }
   };
@@ -772,14 +838,52 @@ export default function ScreenRecorder() {
   const getCameraStream = async (audioOnly: boolean = false): Promise<MediaStream> => {
     const constraints = getQualityConstraints(quality);
     
-    // 如果只需要音频，则不请求视频流
-    return await navigator.mediaDevices.getUserMedia({
-      video: audioOnly ? false : {
-        ...constraints,
-        facingMode: 'user'
-      },
-      audio: includeAudio // 独立控制音频
-    });
+    try {
+      // 如果只需要音频，则不请求视频流
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: audioOnly ? false : {
+          ...constraints,
+          facingMode: 'user'
+        },
+        audio: includeAudio // 独立控制音频
+      });
+      
+      // Firefox-specific validation
+      if (isFirefox()) {
+        if (!stream || !stream.active) {
+          throw new Error('Firefox: 获取的摄像头流无效或未激活');
+        }
+        
+        if (!audioOnly && stream.getVideoTracks().length === 0) {
+          throw new Error('Firefox: 摄像头流中没有可用的视频轨道');
+        }
+        
+        console.log('Firefox camera stream validation passed');
+      }
+      
+      return stream;
+    } catch (error: any) {
+      console.error('getCameraStream error:', error);
+      
+      // Firefox-specific error handling
+      if (isFirefox()) {
+        if (error.name === 'NotAllowedError') {
+          console.error('Firefox: 用户拒绝了摄像头权限');
+          throw new Error(t.permissions.cameraDenied || '摄像头权限被拒绝');
+        } else if (error.name === 'NotFoundError') {
+          console.error('Firefox: 未找到可用的摄像头');
+          throw new Error(t.permissions.cameraNotFound || '未找到摄像头设备');
+        } else if (error.name === 'OverconstrainedError') {
+          console.error('Firefox: 摄像头约束过于严格');
+          throw new Error('Firefox: 摄像头设置不兼容，请降低画质重试');
+        } else {
+          console.error('Firefox: 摄像头未知错误:', error);
+          throw new Error(`Firefox 摄像头错误: ${error.message || '未知错误'}`);
+        }
+      }
+      
+      throw error;
+    }
   };
   
   // 只获取音频流（当不需要摄像头视频但需要音频时）
@@ -983,49 +1087,165 @@ export default function ScreenRecorder() {
         active: finalStream.active
       });
       
-      // Create MediaRecorder with optimal settings
+      // Create MediaRecorder with browser-optimized settings
+      const optimalSettings = getOptimalRecordingSettings(quality);
+      
+      console.log('Browser detected:', browserInfoRef.current.isFirefox ? 'Firefox' : browserInfoRef.current.isChrome ? 'Chrome' : 'Other', 'version:', browserInfoRef.current.version);
+      console.log('Using MediaRecorder settings:', optimalSettings);
+      
       const options = {
-        mimeType: 'video/webm;codecs=vp9,opus',
-        videoBitsPerSecond: quality === '1080p' ? 5000000 : 2500000
+        mimeType: optimalSettings.mimeType,
+        videoBitsPerSecond: optimalSettings.videoBitsPerSecond,
+        audioBitsPerSecond: optimalSettings.audioBitsPerSecond
       };
       
-      // Fallback for browsers that don't support VP9
+      // Verify mimeType support
       if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-        options.mimeType = 'video/webm;codecs=vp8,opus';
-      }
-      
-      // Final fallback
-      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-        options.mimeType = 'video/webm';
+        console.warn('Optimal mimeType not supported:', options.mimeType);
+        // Fallback chain
+        const fallbacks = [
+          'video/webm;codecs=vp8,opus',
+          'video/webm;codecs=vp9',
+          'video/webm'
+        ];
+        
+        for (const fallback of fallbacks) {
+          if (MediaRecorder.isTypeSupported(fallback)) {
+            options.mimeType = fallback;
+            console.log('Using fallback mimeType:', fallback);
+            break;
+          }
+        }
       }
 
-      mediaRecorderRef.current = new MediaRecorder(finalStream, options);
+      // Create MediaRecorder with error handling
+      try {
+        mediaRecorderRef.current = new MediaRecorder(finalStream, options);
+        console.log('MediaRecorder created successfully with options:', options);
+      } catch (error) {
+        console.error('Failed to create MediaRecorder:', error);
+        
+        // Firefox-specific fallback options
+        if (browserInfoRef.current.isFirefox) {
+          console.log('Attempting Firefox fallback MediaRecorder creation...');
+          try {
+            const fallbackOptions = { mimeType: 'video/webm' };
+            mediaRecorderRef.current = new MediaRecorder(finalStream, fallbackOptions);
+            console.log('Firefox fallback MediaRecorder created successfully');
+          } catch (fallbackError) {
+            console.error('Firefox fallback MediaRecorder creation failed:', fallbackError);
+            throw fallbackError;
+          }
+        } else {
+          throw error;
+        }
+      }
 
       mediaRecorderRef.current.ondataavailable = (event) => {
-        if (event.data.size > 0) {
+        console.log('Data available event:', {
+          dataSize: event.data.size,
+          type: event.data.type,
+          totalChunks: chunksRef.current.length + 1
+        });
+        
+        if (event.data && event.data.size > 0) {
           chunksRef.current.push(event.data);
+          
+          // Firefox-specific: Log chunk collection for debugging
+          if (browserInfoRef.current.isFirefox) {
+            console.log('Firefox chunk collected:', {
+              chunkSize: event.data.size,
+              totalChunks: chunksRef.current.length,
+              totalSize: chunksRef.current.reduce((sum, chunk) => sum + chunk.size, 0)
+            });
+          }
+        } else {
+          console.warn('Received empty or invalid data chunk:', event.data);
         }
       };
 
       mediaRecorderRef.current.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'video/webm' });
-        setRecordingState(prev => ({ ...prev, recordedBlob: blob }));
+        console.log('MediaRecorder onstop event fired');
+        console.log('Chunks collected:', chunksRef.current.length, 'chunks');
         
-        // Clean up streams
-        if (screenStreamRef.current) {
-          screenStreamRef.current.getTracks().forEach(track => track.stop());
-          screenStreamRef.current = null;
-        }
-        if (cameraStreamRef.current) {
-          cameraStreamRef.current.getTracks().forEach(track => track.stop());
-          cameraStreamRef.current = null;
-        }
+        // Firefox-specific: Add slight delay to ensure all chunks are collected
+        const createBlob = () => {
+          try {
+            // Determine mimeType from the actual recording
+            const mimeType = options.mimeType || 'video/webm';
+            
+            if (chunksRef.current.length === 0) {
+              console.error('No chunks available for blob creation');
+              showToast(t.recording.noRecording || '录制失败：未收集到数据');
+              return;
+            }
+            
+            const blob = new Blob(chunksRef.current, { type: mimeType });
+            console.log('Blob created successfully:', {
+              size: blob.size,
+              type: blob.type,
+              chunks: chunksRef.current.length
+            });
+            
+            if (blob.size === 0) {
+              console.error('Created blob is empty');
+              showToast(t.recording.recordingFailed || '录制失败：文件为空');
+              return;
+            }
+            
+            setRecordingState(prev => ({ ...prev, recordedBlob: blob }));
+            
+            // Firefox-specific stream cleanup
+            const cleanupStreams = () => {
+              console.log('Cleaning up streams...');
+              
+              if (screenStreamRef.current) {
+                screenStreamRef.current.getTracks().forEach(track => {
+                  console.log('Stopping screen track:', track.kind, track.label);
+                  track.stop();
+                });
+                screenStreamRef.current = null;
+              }
+              
+              if (cameraStreamRef.current) {
+                cameraStreamRef.current.getTracks().forEach(track => {
+                  console.log('Stopping camera track:', track.kind, track.label);
+                  track.stop();
+                });
+                cameraStreamRef.current = null;
+              }
+              
+              console.log('Stream cleanup completed');
+            };
+            
+            // Firefox needs delayed cleanup to avoid issues
+            if (browserInfoRef.current.isFirefox) {
+              setTimeout(cleanupStreams, 100);
+            } else {
+              cleanupStreams();
+            }
+            
+            // 录制完成后保持画中画预览开启
+            console.log('录制完成，摄像头画中画预览继续保持开启状态');
+            
+          } catch (error) {
+            console.error('Failed to create blob from chunks:', error);
+            showToast(t.recording.recordingFailed || '录制失败：无法处理录制数据');
+          }
+        };
         
-        // 录制完成后保持画中画预览开启
-        console.log('录制完成，摄像头画中画预览继续保持开启状态');
+        // Firefox needs a slight delay for reliable blob creation
+        if (browserInfoRef.current.isFirefox) {
+          setTimeout(createBlob, 100);
+        } else {
+          createBlob();
+        }
       };
 
-      mediaRecorderRef.current.start(1000); // Record in 1-second chunks
+      // Start recording with browser-optimized timeslice
+      const timeslice = optimalSettings.timeslice || 1000;
+      console.log('Starting MediaRecorder with timeslice:', timeslice);
+      mediaRecorderRef.current.start(timeslice);
       startTimer();
       
       // 记录开始时间
@@ -1077,7 +1297,26 @@ export default function ScreenRecorder() {
 
   const stopRecording = () => {
     if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
+      const currentState = mediaRecorderRef.current.state;
+      console.log('Stopping recording, current state:', currentState);
+      
+      if (currentState === 'recording' || currentState === 'paused') {
+        // Firefox-specific: Ensure final chunk collection
+        if (isFirefox()) {
+          console.log('Firefox detected, ensuring final data collection...');
+          // Request final data before stopping
+          try {
+            mediaRecorderRef.current.requestData();
+          } catch (error) {
+            console.warn('Could not request final data:', error);
+          }
+        }
+        
+        mediaRecorderRef.current.stop();
+      } else {
+        console.warn('MediaRecorder is not in a stoppable state:', currentState);
+      }
+      
       stopTimer();
       setRecordingState(prev => ({ 
         ...prev, 
@@ -1096,11 +1335,13 @@ export default function ScreenRecorder() {
       setIsNearTimeLimit(false);
       
       // 录制结束后，如果摄像头仍然开启，重新启动预览
+      // Firefox需要更长的延迟以确保录制完全停止
+      const delay = isFirefox() ? 1000 : 500;
       setTimeout(() => {
         if (includeCamera) {
           startCameraPreview();
         }
-      }, 500); // 稍微延迟以确保录制完全停止
+      }, delay);
     }
   };
 
