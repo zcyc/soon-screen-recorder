@@ -132,6 +132,32 @@ export default function ScreenRecorder() {
   const [isMounted, setIsMounted] = useState(false); // Track component mount status
   const [showTimeWarning, setShowTimeWarning] = useState(false); // Show time warning
   const [isNearTimeLimit, setIsNearTimeLimit] = useState(false); // Near time limit state
+  const [isPiPRequesting, setIsPiPRequesting] = useState(false); // 画中画请求状态
+  const pipTimeoutRef = useRef<NodeJS.Timeout | null>(null); // 超时定时器引用
+  
+  // 清理PiP状态的函数
+  const clearPiPState = useCallback(() => {
+    if (pipTimeoutRef.current) {
+      clearTimeout(pipTimeoutRef.current);
+      pipTimeoutRef.current = null;
+    }
+    setIsPiPRequesting(false);
+  }, []);
+  
+  // 设置带超时保护的PiP请求状态
+  const setIsPiPRequestingWithTimeout = useCallback((requesting: boolean) => {
+    if (requesting) {
+      setIsPiPRequesting(true);
+      // 设置3秒超时保护
+      pipTimeoutRef.current = setTimeout(() => {
+        console.log('PiP请求超时，自动清理状态');
+        setIsPiPRequesting(false);
+        pipTimeoutRef.current = null;
+      }, 3000);
+    } else {
+      clearPiPState();
+    }
+  }, [clearPiPState]);
   
   // Subtitle states
   const [subtitleState, setSubtitleState] = useState<SubtitleState>({
@@ -148,6 +174,16 @@ export default function ScreenRecorder() {
     setToastMessage(message);
     setTimeout(() => setToastMessage(null), 3000); // Hide after 3 seconds
   };
+  
+  // 组件卸载时清理定时器
+  useEffect(() => {
+    return () => {
+      if (pipTimeoutRef.current) {
+        clearTimeout(pipTimeoutRef.current);
+        pipTimeoutRef.current = null;
+      }
+    };
+  }, []);
   
   // Generate default title for placeholder and fallback
   const getDefaultTitle = () => {
@@ -471,6 +507,35 @@ export default function ScreenRecorder() {
     };
   }, []);
 
+  // 状态变化监控 - 用于调试Firefox问题
+  useEffect(() => {
+    console.log('=== RecordingState 变化 ===', {
+      isRecording: recordingState.isRecording,
+      isPaused: recordingState.isPaused,
+      hasBlob: !!recordingState.recordedBlob,
+      blobSize: recordingState.recordedBlob?.size || 0,
+      duration: recordingState.duration,
+      timestamp: new Date().toISOString()
+    });
+    
+    if (recordingState.recordedBlob && !recordingState.isRecording) {
+      console.log('🎆 录制完成！预览页应该显示。');
+      console.log('Blob 详情:', {
+        size: recordingState.recordedBlob.size,
+        type: recordingState.recordedBlob.type,
+        sizeInKB: Math.round(recordingState.recordedBlob.size / 1024)
+      });
+      
+      // 检查预览页显示条件
+      const shouldShowPreview = recordingState.recordedBlob && !uploadedVideo;
+      console.log('预览页显示条件:', {
+        hasBlob: !!recordingState.recordedBlob,
+        noUploadedVideo: !uploadedVideo,
+        shouldShow: shouldShowPreview
+      });
+    }
+  }, [recordingState, uploadedVideo]);
+
   const getQualityConstraints = (quality: RecordingQuality) => {
     return quality === '1080p' 
       ? { width: 1920, height: 1080 }
@@ -517,20 +582,53 @@ export default function ScreenRecorder() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // 启动摄像头预览 - 使用画中画API（除非是仅录制摄像头模式）
+  // 检测画中画API支持情况
+  const detectPiPSupport = useCallback(() => {
+    // 检测浏览器类型
+    const isFirefox = navigator.userAgent.includes('Firefox');
+    const isSafari = navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome');
+    const isChrome = navigator.userAgent.includes('Chrome');
+    
+    // 对Firefox做特殊处理 - Firefox可能不提供document.pictureInPictureEnabled
+    let supported = false;
+    
+    if (isFirefox) {
+      // Firefox: Firefox有原生画中画按钮，不依赖JS API
+      // Firefox的画中画是通过视频控件实现，而不是通过requestPictureInPicture API
+      const userAgent = navigator.userAgent;
+      const firefoxVersionMatch = userAgent.match(/Firefox\/(\d+)/);
+      const firefoxVersion = firefoxVersionMatch ? parseInt(firefoxVersionMatch[1]) : 0;
+      
+      // Firefox 71+有原生画中画支持，但需要通过视频控件
+      supported = firefoxVersion >= 71;
+      
+
+    } else {
+      // 其他浏览器使用常规检查
+      const testVideo = document.createElement('video');
+      const hasPiPEnabled = document.pictureInPictureEnabled !== false;
+      const hasRequestMethod = 'requestPictureInPicture' in testVideo;
+      supported = hasPiPEnabled && hasRequestMethod;
+    }
+    
+
+    
+    return {
+      supported,
+      canAutoStart: isChrome, // 只有Chrome支持自动启动
+      needsUserInteraction: isSafari || isFirefox,
+      browser: isFirefox ? 'Firefox' : isSafari ? 'Safari' : isChrome ? 'Chrome' : 'Other'
+    };
+  }, []);
+  
+  // 启动摄像头预览 - 重写画中画逻辑
   const startCameraPreview = async () => {
-    const cameraOnlyMode = source === 'camera-only';
-    console.log(`开始启动摄像头${cameraOnlyMode ? '预览' : '画中画预览'}...`);
+    console.log('开始启动摄像头预览...');
     
     try {
       // 检查浏览器支持
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('浏览器不支持摄像头功能');
-      }
-
-      // 仅录制摄像头模式下不需要检查画中画API支持
-      if (!cameraOnlyMode && !document.pictureInPictureEnabled) {
-        throw new Error('浏览器不支持画中画API');
       }
 
       console.log('请求摄像头权限...');
@@ -557,83 +655,189 @@ export default function ScreenRecorder() {
       
       setCameraPreviewStream(stream);
       
-      // 所有模式都使用画中画预览
-      // 创建画中画视频元素
-      const startPictureInPicture = (retryCount = 0) => {
-          const maxRetries = 10;
+      // 检测画中画支持
+      const pipSupport = detectPiPSupport();
+      
+      // 设置视频流到元素
+      const setupVideoElement = (retryCount = 0) => {
+        const maxRetries = 10;
+        
+        if (cameraPreviewRef.current) {
+          console.log('设置视频元素...');
+          cameraPreviewRef.current.srcObject = stream;
           
-          if (cameraPreviewRef.current) {
-            console.log('启动画中画模式...');
-            cameraPreviewRef.current.srcObject = stream;
-            
-            // 添加事件监听器
+          // 根据画中画支持情况决定显示策略
+          if (!pipSupport.supported) {
+            // 不支持画中画，显示普通视频预览
+            console.log('浏览器不支持画中画，显示普通视频预览');
+            showToast('摄像头预览已启动（普通模式）');
+          } else if (pipSupport.canAutoStart) {
+            // Chrome - 尝试自动启动画中画
             cameraPreviewRef.current.onloadedmetadata = async () => {
-              console.log('视频元数据加载完成，准备进入画中画模式');
-              
+              console.log('Chrome检测到，尝试自动启动画中画');
               try {
-                // 进入画中画模式
-                if (!document.pictureInPictureElement) {
+                if (!document.pictureInPictureElement && !isPiPRequesting) {
+                  setIsPiPRequestingWithTimeout(true);
                   await cameraPreviewRef.current!.requestPictureInPicture();
-                  console.log('画中画模式启动成功');
+                  console.log('Chrome画中画自动启动成功');
                   showToast('摄像头画中画预览已启动');
                 }
-              } catch (pipError) {
-                console.error('画中画模式启动失败:', pipError);
-                showToast('画中画模式启动失败，将使用默认预览');
+              } catch (error: any) {
+                console.log('Chrome自动启动失败，回退到手动模式:', error.message);
+                showToast('摄像头预览已启动，请点击按钮启用画中画');
+              } finally {
+                setIsPiPRequestingWithTimeout(false);
               }
             };
-            
-            cameraPreviewRef.current.onenterpictureinpicture = () => {
-              console.log('进入画中画模式');
-            };
-            
-            cameraPreviewRef.current.onleavepictureinpicture = () => {
-              console.log('退出画中画模式');
-            };
-            
-            cameraPreviewRef.current.onerror = (e) => {
-              console.error('视频元素错误:', e);
-            };
-            
-            // 播放视频
-            cameraPreviewRef.current.play().then(() => {
-              console.log('视频播放成功');
-            }).catch((playError) => {
-              console.error('视频播放失败:', playError);
-            });
-            
-          } else if (retryCount < maxRetries) {
-            console.log(`视频元素还未渲染，稍后重试 (${retryCount + 1}/${maxRetries})...`);
-            setTimeout(() => {
-              startPictureInPicture(retryCount + 1);
-            }, 200);
           } else {
-            console.error('达到最大重试次数，放弃设置画中画');
-            showToast('摄像头预览初始化失败，请稍后重试');
+            // Safari/Firefox - 显示引导信息
+            console.log(`${pipSupport.browser}检测到，需要用户手动启动画中画`);
+            showToast(`摄像头预览已启动，请点击下方按钮启用画中画`);
           }
-        };
-        
-      startPictureInPicture();
+          
+          // 设置通用事件监听器
+          cameraPreviewRef.current.onenterpictureinpicture = () => {
+            console.log('进入画中画模式');
+            setIsPiPRequestingWithTimeout(false);
+          };
+          
+          cameraPreviewRef.current.onleavepictureinpicture = () => {
+            console.log('退出画中画模式');
+            setIsPiPRequestingWithTimeout(false);
+          };
+          
+          cameraPreviewRef.current.onerror = (e) => {
+            console.error('视频元素错误:', e);
+          };
+          
+          // 播放视频
+          cameraPreviewRef.current.play().then(() => {
+            console.log('视频播放成功');
+          }).catch((playError) => {
+            console.error('视频播放失败:', playError);
+          });
+          
+        } else if (retryCount < maxRetries) {
+          console.log(`视频元素还未渲染，稍后重试 (${retryCount + 1}/${maxRetries})...`);
+          setTimeout(() => {
+            setupVideoElement(retryCount + 1);
+          }, 200);
+        } else {
+          console.error('达到最大重试次数，放弃设置视频元素');
+          showToast('摄像头预览初始化失败，请稍后重试');
+        }
+      };
+      
+      setupVideoElement();
       
     } catch (error: any) {
-      console.error('摄像头画中画预览启动失败:', {
+      console.error('摄像头预览启动失败:', {
         name: error.name,
         message: error.message,
         constraint: error.constraint
       });
       
-      let errorMessage = '无法启动摄像头画中画预览';
+      let errorMessage = '无法启动摄像头预览';
       if (error.name === 'NotAllowedError') {
         errorMessage = '摄像头权限被拒绝，请允许摄像头访问';
       } else if (error.name === 'NotFoundError') {
         errorMessage = '未找到摄像头设备';
       } else if (error.name === 'NotReadableError') {
         errorMessage = '摄像头正被其他应用程序使用';
-      } else if (error.message.includes('画中画')) {
-        errorMessage = '浏览器不支持画中画API，请使用Chrome或Edge浏览器';
       }
       
       showToast(errorMessage);
+    }
+  };
+
+  // 手动启动画中画模式 - 重写支持所有浏览器
+  const startPictureInPictureManually = async () => {
+    if (!cameraPreviewRef.current || !cameraPreviewStream) {
+      showToast('请先开启摄像头预览');
+      return;
+    }
+
+    if (document.pictureInPictureElement) {
+      showToast('画中画已经在运行中');
+      return;
+    }
+
+    if (isPiPRequesting) {
+      showToast('画中画请求正在进行中，请稍后...');
+      return;
+    }
+    
+    // 检测浏览器和画中画支持
+    const pipSupport = detectPiPSupport();
+    
+    if (!pipSupport.supported) {
+      showToast('当前浏览器不支持画中画功能');
+      return;
+    }
+    
+    // Firefox特别检查 - 确保可用
+    if (pipSupport.browser === 'Firefox') {
+      // 检查Firefox版本和设置
+      const userAgent = navigator.userAgent;
+      const firefoxVersionMatch = userAgent.match(/Firefox\/(\d+)/);
+      const firefoxVersion = firefoxVersionMatch ? parseInt(firefoxVersionMatch[1]) : 0;
+      
+      if (firefoxVersion < 71) {
+        showToast('Firefox 71+才支持画中画功能，请更新浏览器');
+        return;
+      }
+      
+      if (!document.pictureInPictureEnabled) {
+        showToast('Firefox画中画被禁用，请在about:config中检查media.videocontrols.picture-in-picture.enabled');
+        return;
+      }
+    }
+    
+    // 确保video元素有requestPictureInPicture方法
+    if (typeof cameraPreviewRef.current.requestPictureInPicture !== 'function') {
+      console.error('video元素缺少requestPictureInPicture方法');
+      if (pipSupport.browser === 'Firefox') {
+        showToast('Firefox画中画API不可用，请检查浏览器设置或更新版本');
+      } else {
+        showToast(`${pipSupport.browser}浏览器画中画API不可用，请更新浏览器`);
+      }
+      return;
+    }
+
+    console.log(`开始${pipSupport.browser}浏览器手动画中画启动`);
+    setIsPiPRequestingWithTimeout(true);
+    
+    try {
+      await cameraPreviewRef.current.requestPictureInPicture();
+      console.log('手动启动画中画成功');
+      showToast('画中画模式已启动');
+    } catch (error: any) {
+      console.error('手动启动画中画失败:', error);
+      
+      // 浏览器特定错误处理
+      if (error.name === 'NotAllowedError') {
+        if (pipSupport.browser === 'Safari') {
+          showToast('Safari需要用户直接与视频交互，请点击上方视频画面');
+        } else if (pipSupport.browser === 'Firefox') {
+          showToast('Firefox请使用视频右下角的原生画中画按钮');
+        } else {
+          showToast('浏览器阻止了画中画请求，请检查权限设置');
+        }
+      } else if (error.name === 'InvalidStateError') {
+        if (pipSupport.browser === 'Firefox') {
+          showToast('Firefox请使用视频控件的画中画按钮');
+        } else {
+          showToast('视频状态不正确，请稍后重试');
+        }
+      } else if (error.message.includes('processing')) {
+        showToast('画中画请求正在处理中，请稍等片刻');
+      } else if (error.name === 'NotSupportedError') {
+        showToast(`${pipSupport.browser}不支持该视频类型的画中画`);
+      } else {
+        showToast(`画中画启动失败: ${error.message}`);
+      }
+    } finally {
+      setIsPiPRequestingWithTimeout(false);
     }
   };
 
@@ -642,13 +846,15 @@ export default function ScreenRecorder() {
     console.log('停止摄像头画中画预览...');
     
     try {
-      // 所有模式都退出画中画模式
+      // 所有模式都尝试退出画中画模式
       if (document.pictureInPictureElement) {
         console.log('退出画中画模式...');
         await document.exitPictureInPicture();
+        console.log('画中画模式退出成功');
       }
     } catch (error) {
-      console.error('退出画中画模式失败:', error);
+      console.warn('退出画中画模式失败:', error);
+      // 不阻塞后续清理操作
     }
     
     if (cameraPreviewStream) {
@@ -983,49 +1189,284 @@ export default function ScreenRecorder() {
         active: finalStream.active
       });
       
-      // Create MediaRecorder with optimal settings
-      const options = {
-        mimeType: 'video/webm;codecs=vp9,opus',
-        videoBitsPerSecond: quality === '1080p' ? 5000000 : 2500000
-      };
+      // Firefox 兼容性增强
+      const isFirefoxRecording = navigator.userAgent.includes('Firefox');
+      let options: MediaRecorderOptions = {};
       
-      // Fallback for browsers that don't support VP9
-      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-        options.mimeType = 'video/webm;codecs=vp8,opus';
+      if (isFirefoxRecording) {
+        console.log('🤊 Firefox 检测到，使用优化设置...');
+        
+        // Firefox 兼容性检查
+        const firefoxSupportedTypes = [
+          'video/webm;codecs=vp8',
+          'video/webm', 
+          'video/mp4',
+          ''
+        ];
+        
+        for (const mimeType of firefoxSupportedTypes) {
+          const isSupported = mimeType === '' || MediaRecorder.isTypeSupported(mimeType);
+          console.log(`Firefox 检查 MIME 类型: ${mimeType || 'default'} - ${isSupported ? '支持' : '不支持'}`);
+          
+          if (isSupported) {
+            if (mimeType) options.mimeType = mimeType;
+            break;
+          }
+        }
+        
+        // Firefox 优化参数
+        options.videoBitsPerSecond = 1000000; // 1Mbps 降低码率以提高兼容性
+        if (includeAudio) {
+          options.audioBitsPerSecond = 64000; // 64kbps
+        }
+      } else {
+        // 其他浏览器使用高质量设置
+        options = {
+          mimeType: 'video/webm;codecs=vp9,opus',
+          videoBitsPerSecond: quality === '1080p' ? 5000000 : 2500000
+        };
+        
+        // Fallback for browsers that don't support VP9
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+          options.mimeType = 'video/webm;codecs=vp8,opus';
+        }
+        
+        // Final fallback
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+          options.mimeType = 'video/webm';
+        }
       }
       
-      // Final fallback
-      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-        options.mimeType = 'video/webm';
-      }
+      console.log('🎥 MediaRecorder 配置:', {
+        options,
+        isFirefox: isFirefoxRecording,
+        streamActive: finalStream.active,
+        videoTracks: finalStream.getVideoTracks().length,
+        audioTracks: finalStream.getAudioTracks().length
+      });
 
       mediaRecorderRef.current = new MediaRecorder(finalStream, options);
 
+      // 增强的数据收集事件
       mediaRecorderRef.current.ondataavailable = (event) => {
+        const timestamp = new Date().toISOString();
+        console.log(`=== 数据可用事件 [${timestamp}] ===`, { 
+          size: event.data.size, 
+          type: event.data.type,
+          browser: isFirefoxRecording ? 'Firefox' : 'Other'
+        });
+        
         if (event.data.size > 0) {
           chunksRef.current.push(event.data);
+          const totalSize = chunksRef.current.reduce((sum, chunk) => sum + chunk.size, 0);
+          
+          console.log('✅ 成功收集数据块:', {
+            currentSize: event.data.size,
+            totalChunks: chunksRef.current.length,
+            totalSizeKB: Math.round(totalSize / 1024),
+            isFirefox: isFirefoxRecording
+          });
+          
+          if (isFirefoxRecording) {
+            console.log('🤊 Firefox 数据收集进展:', {
+              chunkIndex: chunksRef.current.length,
+              chunkType: event.data.type,
+              chunkSize: event.data.size,
+              totalAccumulated: totalSize,
+              allSizes: chunksRef.current.map(c => c.size)
+            });
+          }
+        } else {
+          console.error('❌ 收到空数据块！这是一个严重问题。');
+          
+          if (isFirefoxRecording) {
+            console.error('🤊 Firefox 检测到空数据块，可能原因:');
+            console.error('1. 媒体流不活跃或已停止');
+            console.error('2. 编码器不支持当前格式');
+            console.error('3. Firefox 版本兼容性问题');
+            
+            // 检查媒体流状态
+            console.log('Firefox 媒体流状态检查:', {
+              streamActive: finalStream.active,
+              videoTracks: finalStream.getVideoTracks().map(t => ({ label: t.label, enabled: t.enabled, readyState: t.readyState })),
+              audioTracks: finalStream.getAudioTracks().map(t => ({ label: t.label, enabled: t.enabled, readyState: t.readyState }))
+            });
+          }
         }
       };
 
       mediaRecorderRef.current.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'video/webm' });
-        setRecordingState(prev => ({ ...prev, recordedBlob: blob }));
+        console.log('=== MediaRecorder 停止事件 ===');
+        console.log('📀 可用数据块数量:', chunksRef.current.length);
+        console.log('📄 数据块大小列表:', chunksRef.current.map(c => c.size));
         
-        // Clean up streams
+        if (chunksRef.current.length === 0) {
+          console.error('❌ 致命错误: 没有收集到任何数据！');
+          
+          if (isFirefoxRecording) {
+            console.error('🤊 Firefox 没有数据块，可能原因:');
+            console.error('- 媒体流没有正确启动或已被停止');
+            console.error('- MediaRecorder 不支持当前媒体格式');
+            console.error('- Firefox 特定的权限或安全策略限制');
+            console.error('- 网络或性能问题导致数据丢失');
+            
+            // 检查 MediaRecorder 状态
+            console.log('MediaRecorder 状态:', {
+              state: mediaRecorderRef.current?.state,
+              mimeType: mediaRecorderRef.current?.mimeType,
+              videoBitsPerSecond: mediaRecorderRef.current?.videoBitsPerSecond,
+              audioBitsPerSecond: mediaRecorderRef.current?.audioBitsPerSecond
+            });
+          }
+          
+          // 为了避免完全失败，创建一个空 blob
+          console.warn('⚠️ 创建空 blob 作为备用方案');
+          const emptyBlob = new Blob([], { type: options.mimeType || 'video/webm' });
+          setRecordingState(prev => {
+            console.log('设置空 blob 防止完全失败');
+            return { ...prev, recordedBlob: emptyBlob };
+          });
+          return;
+        }
+        
+        // 使用正确的 MIME 类型创建 blob
+        const blobType = options.mimeType || 'video/webm';
+        const blob = new Blob(chunksRef.current, { type: blobType });
+        
+        console.log('✅ 成功创建录制 Blob:', { 
+          size: blob.size, 
+          type: blob.type,
+          sizeInKB: Math.round(blob.size / 1024),
+          sizeInMB: Math.round(blob.size / 1024 / 1024 * 100) / 100,
+          chunksUsed: chunksRef.current.length,
+          isFirefox: isFirefoxRecording
+        });
+        
+        if (blob.size === 0) {
+          console.warn('⚠️ 创建的 blob 大小为 0！这可能会导致预览问题。');
+        }
+        
+        // 立即设置 blob，不等待清理完成
+        setRecordingState(prev => {
+          console.log('设置 recordedBlob:', blob);
+          return { ...prev, recordedBlob: blob };
+        });
+        
+        console.log('录制停止，开始清理媒体流...');
+        
+        // 全面清理所有媒体流
         if (screenStreamRef.current) {
-          screenStreamRef.current.getTracks().forEach(track => track.stop());
+          console.log('停止屏幕/桌面共享流...');
+          screenStreamRef.current.getTracks().forEach(track => {
+            console.log(`停止屏幕轨道: ${track.kind} - ${track.label}`);
+            track.stop();
+          });
           screenStreamRef.current = null;
         }
+        
         if (cameraStreamRef.current) {
-          cameraStreamRef.current.getTracks().forEach(track => track.stop());
+          console.log('停止录制中的摄像头流...');
+          cameraStreamRef.current.getTracks().forEach(track => {
+            console.log(`停止录制摄像头轨道: ${track.kind} - ${track.label}`);
+            track.stop();
+          });
           cameraStreamRef.current = null;
         }
         
-        // 录制完成后保持画中画预览开启
-        console.log('录制完成，摄像头画中画预览继续保持开启状态');
+        // 对于Firefox，需要特殊处理以确保全面清理
+        const isFirefox = navigator.userAgent.includes('Firefox');
+        if (isFirefox) {
+          console.log('Firefox检测到，执行增强清理...');
+          
+          // 尝试停止所有可能的媒体轨道
+          const allTracks = [...(navigator.mediaDevices as any).getAllActiveTracks?.() || []];
+          allTracks.forEach((track: MediaStreamTrack) => {
+            if (track.readyState === 'live') {
+              console.log(`停止活动轨道: ${track.kind} - ${track.label}`);
+              track.stop();
+            }
+          });
+          
+          // Firefox特殊处理：尝试停止所有活动的屏幕共享
+          try {
+            // 检查是否有活动的屏幕共享
+            if (navigator.mediaDevices && (navigator.mediaDevices as any).getDisplayMedia) {
+              console.log('Firefox检查并停止所有活动的显示流...');
+              
+              // 在Firefox中，尝试通过检查document.hidden和视频轨道状态来确保清理
+              const videoTracks = document.querySelectorAll('video');
+              videoTracks.forEach((video, index) => {
+                if (video !== cameraPreviewRef.current && video.srcObject) {
+                  console.log(`停止视频元素 ${index} 的流`);
+                  const stream = video.srcObject as MediaStream;
+                  if (stream) {
+                    stream.getTracks().forEach(track => {
+                      console.log(`停止视频元素轨道: ${track.kind} - ${track.label}`);
+                      track.stop();
+                    });
+                    video.srcObject = null;
+                  }
+                }
+              });
+            }
+          } catch (cleanupError) {
+            console.warn('Firefox清理过程中出现非致命错误:', cleanupError);
+          }
+          
+          // 延迟更长时间再重启摄像头预览，但不影响预览页显示
+          setTimeout(() => {
+            if (includeCamera) {
+              console.log('Firefox延迟重启摄像头预览...');
+              startCameraPreview();
+            }
+          }, 2000); // Firefox需要更长的延迟
+        } else {
+          // 其他浏览器的正常处理
+          console.log('录制完成，摄像头画中画预览继续保持开启状态');
+        }
+        
+        // 确保预览页能够立即显示
+        console.log('Recording stopped, preview should now be available');
+        
+        // 对于Firefox，添加额外的状态检查和强制更新
+        if (isFirefox) {
+          // 多次尝试设置blob以确保Firefox正确更新状态
+          const attempts = [100, 300, 600, 1000];
+          attempts.forEach((delay, index) => {
+            setTimeout(() => {
+              console.log(`Firefox: 第${index + 1}次尝试检查和设置blob`);
+              
+              setRecordingState(prev => {
+                const hasValidBlob = prev.recordedBlob && prev.recordedBlob.size > 0;
+                console.log('Firefox 状态检查:', {
+                  isRecording: prev.isRecording,
+                  hasBlob: !!prev.recordedBlob,
+                  blobSize: prev.recordedBlob?.size || 0,
+                  shouldShowPreview: hasValidBlob && !recordingState.isRecording
+                });
+                
+                if (!hasValidBlob) {
+                  console.log('Firefox: 重新设置 blob');
+                  return { ...prev, recordedBlob: blob };
+                }
+                return prev;
+              });
+            }, delay);
+          });
+        }
       };
 
-      mediaRecorderRef.current.start(1000); // Record in 1-second chunks
+      // Firefox 优化: 使用更短的时间片段来提高数据收集频率
+      const timeSlice = isFirefoxRecording ? 100 : 1000; // Firefox 使用 100ms，其他 1000ms
+      console.log(`🎥 开始录制 - 时间片段: ${timeSlice}ms, 浏览器: ${isFirefoxRecording ? 'Firefox' : 'Other'}`);
+      
+      try {
+        mediaRecorderRef.current.start(timeSlice);
+        console.log('✅ MediaRecorder 启动成功');
+      } catch (startError) {
+        console.error('❌ MediaRecorder 启动失败:', startError);
+        throw startError;
+      }
       startTimer();
       
       // 记录开始时间
@@ -1077,13 +1518,22 @@ export default function ScreenRecorder() {
 
   const stopRecording = () => {
     if (mediaRecorderRef.current) {
+      console.log('Stopping recording...');
+      console.log('Current recording state:', recordingState);
+      console.log('Chunks before stop:', chunksRef.current.length);
+      
       mediaRecorderRef.current.stop();
       stopTimer();
-      setRecordingState(prev => ({ 
-        ...prev, 
-        isRecording: false, 
-        isPaused: false 
-      }));
+      
+      // 立即更新录制状态
+      setRecordingState(prev => {
+        console.log('Updating recording state to stopped');
+        return { 
+          ...prev, 
+          isRecording: false, 
+          isPaused: false 
+        };
+      });
       
       // Stop speech recognition
       stopSpeechRecognition();
@@ -1095,12 +1545,18 @@ export default function ScreenRecorder() {
       setShowTimeWarning(false);
       setIsNearTimeLimit(false);
       
-      // 录制结束后，如果摄像头仍然开启，重新启动预览
-      setTimeout(() => {
-        if (includeCamera) {
-          startCameraPreview();
-        }
-      }, 500); // 稍微延迟以确保录制完全停止
+      // 对于非Firefox浏览器，在stopRecording中也重启预览
+      const isFirefox = navigator.userAgent.includes('Firefox');
+      if (!isFirefox) {
+        setTimeout(() => {
+          if (includeCamera) {
+            console.log('非Firefox浏览器重启摄像头预览...');
+            startCameraPreview();
+          }
+        }, 500); // 稍微延迟以确保录制完全停止
+      } else {
+        console.log('Firefox检测到，在onstop中延迟处理摄像头预览');
+      }
     }
   };
 
@@ -1377,58 +1833,108 @@ export default function ScreenRecorder() {
                   }
                 }}
               />
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                {includeCamera ? <Camera className="h-4 w-4" /> : <CameraOff className="h-4 w-4" />}
-                <div className="flex flex-col">
-                  <Label>{t.recording.enableCamera}</Label>
-                  {/* 不支持摄像头的提示 */}
-                  {(screenSource === 'window' || screenSource === 'browser') && source !== 'camera-only' && (
-                    <span className="text-xs text-muted-foreground">
-                      {screenSource === 'window' ? t.recording.windowNotSupportCamera : t.recording.browserTabNotSupportCamera}
-                    </span>
-                  )}
-                </div>
-                {/* 摄像头状态指示器 */}
-                {includeCamera && cameraPreviewStream && (
-                  <div 
-                    className="w-2 h-2 bg-green-500 rounded-full animate-pulse"
-                    title={t.recording.cameraEnabled}
-                  ></div>
-                )}
-              </div>
-              <Switch
-                checked={includeCamera}
-                onCheckedChange={async (checked) => {
-                  // 当选择仅录制摄像头时，不允许关闭摄像头
-                  if (source === 'camera-only' && !checked) {
-                    return; // 不允许关闭
-                  }
-                  
-                  if (checked) {
-                    // 用户开启摄像头时立即申请权限
-                    try {
-                      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                      // 立即停止测试流，实际流将在startCameraPreview中获取
-                      stream.getTracks().forEach(track => track.stop());
-                      setIncludeCamera(true);
-                      showToast(t.recording.cameraPermissionGranted || '摄像头权限已获取');
-                    } catch (error) {
-                      console.error('摄像头权限申请失败:', error);
-                      showToast(t.recording.cameraPermissionDenied || '摄像头权限被拒绝');
-                      setIncludeCamera(false);
-                    }
-                  } else {
-                    setIncludeCamera(false);
-                  }
-                }}
-                disabled={
-                  source === 'camera-only' || // 仅录制摄像头时禁用切换
-                  (screenSource === 'window' || screenSource === 'browser') // 应用窗口和浏览器标签页不支持摄像头
-                }
-              />
+      
+      {/* Firefox专用CSS - 只显示画中画按钮 */}
+      <style jsx global>{`
+        .firefox-pip-video {
+          position: relative;
+        }
+        
+        /* 隐藏 Firefox 的所有控件面板 */
+        .firefox-pip-video::-webkit-media-controls {
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+        }
+        
+        /* Firefox 特有的控件隐藏 */
+        .firefox-pip-video::-moz-media-controls {
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+        }
+        
+        .firefox-pip-video::-webkit-media-controls-panel {
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+        }
+        
+        /* 隐藏播放按钮 */
+        .firefox-pip-video::-webkit-media-controls-play-button,
+        .firefox-pip-video::-webkit-media-controls-overlay-play-button,
+        .firefox-pip-video::-moz-media-controls-play-button {
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+        }
+        
+        /* 隐藏时间轴 */
+        .firefox-pip-video::-webkit-media-controls-timeline,
+        .firefox-pip-video::-webkit-media-controls-timeline-container,
+        .firefox-pip-video::-webkit-media-controls-current-time-display,
+        .firefox-pip-video::-webkit-media-controls-time-remaining-display,
+        .firefox-pip-video::-moz-media-controls-scrubber {
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+        }
+        
+        /* 隐藏音量控件 */
+        .firefox-pip-video::-webkit-media-controls-volume-slider,
+        .firefox-pip-video::-webkit-media-controls-mute-button,
+        .firefox-pip-video::-moz-media-controls-volume-control,
+        .firefox-pip-video::-moz-media-controls-mute-button {
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+        }
+        
+        /* 隐藏全屏按钮 */
+        .firefox-pip-video::-webkit-media-controls-fullscreen-button,
+        .firefox-pip-video::-moz-media-controls-fullscreen-button {
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+        }
+        
+        /* 显示并定位画中画按钮 */
+        .firefox-pip-video::-webkit-media-controls-picture-in-picture-button {
+          visibility: visible !important;
+          opacity: 1 !important;
+          pointer-events: all !important;
+          position: absolute !important;
+          bottom: 8px !important;
+          right: 8px !important;
+          z-index: 1000 !important;
+          background: rgba(0, 0, 0, 0.7) !important;
+          border-radius: 4px !important;
+        }
+        
+        .firefox-pip-video::-moz-media-controls-picture-in-picture-button {
+          visibility: visible !important;
+          opacity: 1 !important;
+          pointer-events: all !important;
+          position: absolute !important;
+          bottom: 8px !important;
+          right: 8px !important;
+          z-index: 1000 !important;
+          background: rgba(0, 0, 0, 0.7) !important;
+          border-radius: 4px !important;
+        }
+        
+        /* 隐藏所有其他控件 */
+        .firefox-pip-video :not([class*="picture-in-picture"]):not([data-testid*="pip"]) {
+          visibility: hidden !important;
+        }
+        
+        /* Firefox 的覆盖层也要隐藏 */
+        .firefox-pip-video::-moz-media-controls-overlay {
+          visibility: hidden !important;
+          opacity: 0 !important;
+        }
+      `}</style>
+
             </div>
             
             {/* 字幕设置 */}
@@ -1489,6 +1995,73 @@ export default function ScreenRecorder() {
               </div>
             </div>
             
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                {includeCamera ? <Camera className="h-4 w-4" /> : <CameraOff className="h-4 w-4" />}
+                <div className="flex flex-col">
+                  <Label>{t.recording.enableCamera}</Label>
+                  {/* 不支持摄像头的提示 */}
+                  {(screenSource === 'window' || screenSource === 'browser') && source !== 'camera-only' && (
+                    <span className="text-xs text-muted-foreground">
+                      {screenSource === 'window' ? t.recording.windowNotSupportCamera : t.recording.browserTabNotSupportCamera}
+                    </span>
+                  )}
+                </div>
+                {/* 摄像头状态指示器 */}
+                {includeCamera && cameraPreviewStream && (
+                  <div 
+                    className="w-2 h-2 bg-green-500 rounded-full animate-pulse"
+                    title={t.recording.cameraEnabled}
+                  ></div>
+                )}
+              </div>
+              <div className="flex items-center space-x-2">
+                {/* 画中画快捷启动按钮 - 仅Chrome显示 */}
+                {includeCamera && cameraPreviewStream && detectPiPSupport().canAutoStart && detectPiPSupport().supported && !document.pictureInPictureElement && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={startPictureInPictureManually}
+                    title="启动画中画模式"
+                    className="text-xs px-2 py-1 h-6"
+                    disabled={isPiPRequesting}
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                  </Button>
+                )}
+                <Switch
+                  checked={includeCamera}
+                  onCheckedChange={async (checked) => {
+                    // 当选择仅录制摄像头时，不允许关闭摄像头
+                    if (source === 'camera-only' && !checked) {
+                      return; // 不允许关闭
+                    }
+                    
+                    if (checked) {
+                      // 用户开启摄像头时立即申请权限
+                      try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                        // 立即停止测试流，实际流将在startCameraPreview中获取
+                        stream.getTracks().forEach(track => track.stop());
+                        setIncludeCamera(true);
+                        showToast(t.recording.cameraPermissionGranted || '摄像头权限已获取');
+                      } catch (error) {
+                        console.error('摄像头权限申请失败:', error);
+                        showToast(t.recording.cameraPermissionDenied || '摄像头权限被拒绝');
+                        setIncludeCamera(false);
+                      }
+                    } else {
+                      setIncludeCamera(false);
+                    }
+                  }}
+                  disabled={
+                    source === 'camera-only' || // 仅录制摄像头时禁用切换
+                    (screenSource === 'window' || screenSource === 'browser') // 应用窗口和浏览器标签页不支持摄像头
+                  }
+                />
+              </div>
+            </div>
+            
             {/* 字幕设置面板 */}
             {showSubtitleSettings && subtitleState.isEnabled && includeAudio && (
               <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-3">
@@ -1538,18 +2111,123 @@ export default function ScreenRecorder() {
       
 
       
-      {/* 隐藏的视频元素用于画中画 */}
+      {/* 摄像头预览视频元素 - 根据画中画支持动态显示/隐藏 */}
       <video
         ref={cameraPreviewRef}
-        className="hidden"
+        className={`${detectPiPSupport().canAutoStart ? 'hidden' : cameraPreviewStream ? 'block' : 'hidden'} w-64 h-48 bg-black rounded-lg border border-gray-300 dark:border-gray-600 ${detectPiPSupport().browser === 'Safari' ? 'cursor-pointer hover:border-primary/50 transition-colors' : ''} ${detectPiPSupport().browser === 'Firefox' ? 'firefox-pip-video' : ''} relative`}
         autoPlay
         muted
         playsInline
-        controls={false}
+        controls={detectPiPSupport().browser === 'Firefox'} // 只有Firefox显示原生控件以便使用画中画按钮
+        controlsList={detectPiPSupport().browser === 'Firefox' ? 'nodownload nofullscreen noremoteplayback noplaybackrate' : undefined} // Firefox尽可能隐藏其他控件
+        onClick={async (e) => {
+          // 直接点击视频元素启动画中画（适用于Safari等需要用户手势的浏览器）
+          const pipSupport = detectPiPSupport();
+          
+          if (pipSupport.browser === 'Firefox') {
+            // Firefox使用原生画中画按钮
+            showToast('请使用视频控件中的画中画按钮');
+            return;
+          }
+          
+          e.preventDefault();
+          if (cameraPreviewStream && !document.pictureInPictureElement && !isPiPRequesting) {
+            console.log(`${pipSupport.browser}点击视频尝试启动画中画`);
+            
+            if (pipSupport.supported && typeof cameraPreviewRef.current?.requestPictureInPicture === 'function') {
+              try {
+                setIsPiPRequestingWithTimeout(true);
+                await cameraPreviewRef.current.requestPictureInPicture();
+                console.log(`${pipSupport.browser}点击视频启动画中画成功`);
+                showToast('画中画模式已启动');
+              } catch (error: any) {
+                console.error(`${pipSupport.browser}点击视频启动失败:`, error);
+                if (pipSupport.browser === 'Safari') {
+                  showToast('Safari请先与视频交互，再点击下方按钮');
+                } else {
+                  showToast('请使用下方按钮启动画中画');
+                }
+              } finally {
+                setIsPiPRequestingWithTimeout(false);
+              }
+            } else if (!pipSupport.supported) {
+              showToast(`${pipSupport.browser}不支持画中画功能`);
+            }
+          }
+        }}
         onLoadedData={() => console.log('视频数据加载完成')}
         onCanPlay={() => console.log('视频可以播放')}
         onError={(e) => console.error('视频元素错误:', e)}
+        disablePictureInPicture={detectPiPSupport().browser !== 'Firefox'} // 非Firefox禁用原生画中画按钮
       />
+      
+      {/* 画中画引导提示 - 根据浏览器显示不同内容 */}
+      {(() => {
+        const pipSupport = detectPiPSupport();
+        const shouldShow = cameraPreviewStream && !pipSupport.canAutoStart && (
+          pipSupport.supported || pipSupport.browser === 'Firefox'
+        );
+        return shouldShow;
+      })() && (
+        <Card className="mt-4 border-primary/20 dark:border-primary/30 bg-primary/5 dark:bg-primary/10">
+          <CardContent className="p-4">
+            <div className="flex items-start space-x-3">
+              <ExternalLink className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                {detectPiPSupport().browser === 'Safari' ? (
+                  <div>
+                    <h4 className="font-medium text-foreground mb-2">
+                      点击上方视频启用画中画
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      启用画中画后可在其他应用中录制摄像头
+                    </p>
+                  </div>
+                ) : detectPiPSupport().browser === 'Firefox' ? (
+                  <div>
+                    <h4 className="font-medium text-foreground mb-2">
+                      点击视频控件中的画中画按钮
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      启用画中画后可在其他应用中录制摄像头
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <h4 className="font-medium text-foreground mb-2">
+                      启用画中画预览
+                    </h4>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      点击上方视频或下方按钮启用画中画模式。
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={startPictureInPictureManually}
+                      disabled={isPiPRequesting || !!document.pictureInPictureElement}
+                      className="bg-primary/10 dark:bg-primary/20 border-primary/30 dark:border-primary/40 text-primary hover:bg-primary/20 dark:hover:bg-primary/30"
+                    >
+                      {isPiPRequesting ? (
+                        <span className="flex items-center">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                          启动中...
+                        </span>
+                      ) : document.pictureInPictureElement ? (
+                        '画中画已启动'
+                      ) : (
+                        <span className="flex items-center">
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          启动画中画
+                        </span>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Recording Status */}
       {recordingState.isRecording && (
@@ -1675,6 +2353,8 @@ export default function ScreenRecorder() {
           {t.recording.start}
         </Button>
       )}
+
+
 
       {/* Recording Complete - Not Uploaded Yet */}
       {recordingState.recordedBlob && !uploadedVideo && (
