@@ -86,8 +86,14 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
       if (result.error) {
         setError(result.error);
         setGithubLoading(false);
+      } else if (result.success && result.data?.oauthUrl) {
+        // 获取OAuth URL并进行跳转
+        window.location.href = result.data.oauthUrl;
+        // 不需要设置 setGithubLoading(false)，因为页面将跳转
+      } else {
+        setError(t.auth.githubLoginFailed);
+        setGithubLoading(false);
       }
-      // OAuth 重定向将处理其余部分
     } catch (error: any) {
       console.error('GitHub OAuth error:', error);
       setError(error.message || t.auth.githubLoginFailed);

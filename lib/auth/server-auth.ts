@@ -139,7 +139,7 @@ export async function updatePreferences(prefs: Record<string, any>) {
 /**
  * 创建 OAuth2 会话
  */
-export async function createOAuth2Session(provider: string, success?: string, failure?: string) {
+export async function createOAuth2Session(provider: string, success?: string, failure?: string): Promise<string> {
   'use server';
   
   try {
@@ -159,11 +159,14 @@ export async function createOAuth2Session(provider: string, success?: string, fa
         throw new Error(`Unsupported OAuth provider: ${provider}`);
     }
     
-    return await account.createOAuth2Token(
+    // createOAuth2Token 返回 OAuth URL 字符串
+    const oauthUrl = await account.createOAuth2Token(
       oauthProvider,
       success,
       failure
     );
+    
+    return oauthUrl;
   } catch (error: any) {
     console.error('OAuth2 session error:', error);
     throw new Error(error.message || 'Failed to create OAuth2 session');
