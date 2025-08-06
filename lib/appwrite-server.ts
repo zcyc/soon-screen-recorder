@@ -7,7 +7,7 @@ export const config = {
   projectId: process.env.NEXT_APPWRITE_PROJECT_ID!,
   databaseId: process.env.NEXT_APPWRITE_DATABASE_ID!,
   bucketId: process.env.NEXT_APPWRITE_BUCKET_ID!,
-  apiKey: process.env.NEXT_APPWRITE_API_KEY!,
+  apiKey: process.env.NEXT_APPWRITE_API_KEY || '',
   collectionsId: {
     videos: process.env.NEXT_APPWRITE_COLLECTION_VIDEO_ID || 'videos',
     reactions: process.env.NEXT_APPWRITE_COLLECTION_VIDEO_REACTIONS_ID || 'reactions',
@@ -17,6 +17,10 @@ export const config = {
 
 // 创建服务端客户端（使用 API Key 进行管理员级别的操作）
 export async function createAdminClient() {
+  if (!config.apiKey) {
+    throw new Error('NEXT_APPWRITE_API_KEY is required for admin operations');
+  }
+
   const client = new Client()
     .setEndpoint(config.endpoint)
     .setProject(config.projectId)

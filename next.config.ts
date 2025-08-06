@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
     clientSegmentCache: true,
     nodeMiddleware: true,
     serverActions: {
-      bodySizeLimit: '100mb', // 增加 Server Actions 的请求体大小限制到 100MB
+      bodySizeLimit: '1000mb', // 增加 Server Actions 的请求体大小限制到 1000MB
     },
   },
   allowedDevOrigins: [
