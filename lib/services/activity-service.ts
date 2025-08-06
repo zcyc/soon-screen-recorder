@@ -1,5 +1,4 @@
-import { databases, config, Query } from '@/lib/appwrite';
-import { ID, Models } from 'appwrite';
+import { createAdminClient, config, Query, ID } from '@/lib/appwrite-server';
 
 export enum ActivityType {
   SIGN_UP = 'SIGN_UP',
@@ -47,6 +46,7 @@ class ActivityService {
         timestamp: new Date().toISOString()
       };
 
+      const { databases } = await createAdminClient();
       const result = await databases.createDocument(
         this.databaseId,
         this.collectionId,
@@ -63,6 +63,7 @@ class ActivityService {
 
   async getUserActivityLogs(userId: string, limit: number = 10): Promise<ActivityLog[]> {
     try {
+      const { databases } = await createAdminClient();
       const result = await databases.listDocuments(
         this.databaseId,
         this.collectionId,
@@ -82,6 +83,7 @@ class ActivityService {
 
   async getAllActivityLogs(limit: number = 50): Promise<ActivityLog[]> {
     try {
+      const { databases } = await createAdminClient();
       const result = await databases.listDocuments(
         this.databaseId,
         this.collectionId,

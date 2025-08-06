@@ -1,3 +1,7 @@
+// This file has been migrated to use Node SDK with Server Actions
+// All authentication now uses lib/auth/server-auth.ts
+
+/*
 import { account } from '../appwrite';
 import { Models, OAuthProvider } from 'appwrite';
 
@@ -94,4 +98,35 @@ export class AuthService {
       throw new Error('Failed to complete OAuth authentication');
     }
   }
+}
+*/
+
+// For backward compatibility, throw an error suggesting migration
+export class AuthService {
+  static async createAccount() {
+    throw new Error('AuthService has been migrated to Server Actions. Use server-auth.ts functions instead.');
+  }
+  
+  static async login() {
+    throw new Error('AuthService has been migrated to Server Actions. Use server-auth.ts functions instead.');
+  }
+  
+  static async logout() {
+    throw new Error('AuthService has been migrated to Server Actions. Use server-auth.ts functions instead.');
+  }
+  
+  static async getCurrentUser() {
+    throw new Error('AuthService has been migrated to Server Actions. Use server-auth.ts functions instead.');
+  }
+}
+
+export interface User {
+  $id: string;
+  name: string;
+  email: string;
+  emailVerification: boolean;
+  registration: string;
+  status: boolean;
+  passwordUpdate: string;
+  prefs: Record<string, any>;
 }

@@ -15,17 +15,28 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/auth-context';
 import ThemeControls from '@/components/theme-controls';
+import { logoutAction } from '@/app/actions/user-actions';
+import { useRouter } from 'next/navigation';
 
 
 
 
 function UserMenu() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { user, logout, loading } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { t } = useI18n();
+  const router = useRouter();
 
   async function handleSignOut() {
-    await logout();
+    try {
+      const result = await logoutAction();
+      if (result.success) {
+        await refreshUser();
+        router.push('/');
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   }
 
   // Skeleton removed as requested

@@ -1,10 +1,9 @@
 'use server';
 
 import { z } from 'zod';
-import { AuthService } from '@/lib/auth/appwrite-auth';
+import { createAccount, login, logout, getCurrentUser, updatePassword } from '@/lib/auth/server-auth';
 import { activityService, ActivityType } from '@/lib/services/activity-service';
 import { redirect } from 'next/navigation';
-import { account } from '@/lib/appwrite';
 import { headers } from 'next/headers';
 
 export type ActionState = {
@@ -55,10 +54,10 @@ export async function signInAction(prevState: ActionState, formData: FormData) {
 
   try {
     // Sign in with Appwrite
-    await AuthService.login(email, password);
+    await login(email, password);
     
     // Get current user for activity logging
-    const user = await AuthService.getCurrentUser();
+    const user = await getCurrentUser();
     if (user) {
       await logActivity(user.$id, ActivityType.SIGN_IN);
     }
@@ -90,10 +89,10 @@ export async function signUpAction(prevState: ActionState, formData: FormData) {
 
   try {
     // Create account with Appwrite
-    const user = await AuthService.createAccount(email, password, name);
+    const user = await createAccount(email, password, name);
     
     // Sign in automatically after registration
-    await AuthService.login(email, password);
+    await login(email, password);
     
     // Log activity
     await logActivity(user.$id, ActivityType.SIGN_UP);
@@ -113,10 +112,10 @@ export async function signUpAction(prevState: ActionState, formData: FormData) {
 export async function signOutAction() {
   try {
     // Get current user before logout for activity logging
-    const user = await AuthService.getCurrentUser();
+    const user = await getCurrentUser();
     
     // Sign out from Appwrite
-    await AuthService.logout();
+    await logout();
     
     // Log activity if user was found
     if (user) {
@@ -151,13 +150,13 @@ export async function updatePasswordAction(prevState: ActionState, formData: For
 
   try {
     // Get current user
-    const user = await AuthService.getCurrentUser();
+    const user = await getCurrentUser();
     if (!user) {
       return { error: 'User not authenticated' };
     }
 
     // Update password in Appwrite
-    await account.updatePassword(newPassword, currentPassword);
+    await updatePassword(currentPassword, newPassword);
     
     // Log activity
     await logActivity(user.$id, ActivityType.UPDATE_PASSWORD);
@@ -188,7 +187,7 @@ export async function deleteAccountAction(prevState: ActionState, formData: Form
 
   try {
     // Get current user
-    const user = await AuthService.getCurrentUser();
+    const user = await getCurrentUser();
     if (!user) {
       return { error: 'User not authenticated' };
     }
@@ -199,7 +198,7 @@ export async function deleteAccountAction(prevState: ActionState, formData: Form
     // Note: Appwrite doesn't have a direct "delete user" method from client side
     // This would typically require an admin API call on the server side
     // For now, we'll just sign out and show a message
-    await AuthService.logout();
+    await logout();
 
     return { 
       success: 'Account deletion requested. Please contact support to complete the process.',

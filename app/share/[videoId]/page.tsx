@@ -19,10 +19,17 @@ import {
   Frown,
   Meh
 } from 'lucide-react';
-import { DatabaseService, VideoRecord, VideoReaction } from '@/lib/database';
-import { storage, config } from '@/lib/appwrite';
+import { VideoRecord, VideoReaction } from '@/lib/database';
 import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/lib/i18n';
+import ShareVideoPlayer from '@/components/share-video-player';
+import { 
+  getVideoByIdAction, 
+  incrementVideoViewsAction, 
+  addReactionAction, 
+  getVideoReactionsAction, 
+  getFileUrlAction 
+} from '@/app/actions/video-actions';
 
 export default function SharePage() {
   const params = useParams();
@@ -61,7 +68,7 @@ export default function SharePage() {
   useEffect(() => {
     // Increment view count when video loads
     if (video) {
-      DatabaseService.incrementViews(video.$id);
+      incrementVideoViewsAction(video.$id);
     }
   }, [video]);
   
@@ -76,7 +83,13 @@ export default function SharePage() {
 
   const loadVideo = async () => {
     try {
-      const videoData = await DatabaseService.getVideoById(videoId);
+      const result = await getVideoByIdAction(videoId);
+      
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      
+      const videoData = result.data;
       if (!videoData.isPublic && (!user || user.$id !== videoData.userId)) {
         setError(t.share.privateVideoError);
         return;
@@ -86,17 +99,19 @@ export default function SharePage() {
       // Load subtitle file if available
       if (videoData.subtitleFileId) {
         try {
-          const subtitleUrl = getSubtitleUrl(videoData.subtitleFileId);
-          setSubtitleUrl(subtitleUrl);
-          console.log('Subtitle file loaded:', subtitleUrl);
+          const subtitleResult = await getFileUrlAction(videoData.subtitleFileId);
+          if (subtitleResult.success && subtitleResult.data?.url) {
+            setSubtitleUrl(subtitleResult.data.url);
+            console.log('Subtitle file loaded:', subtitleResult.data.url);
+          }
         } catch (subtitleError) {
           console.error('Failed to load subtitle file:', subtitleError);
           // Don't fail the entire video loading if subtitles fail
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load video:', error);
-      setError(t.share.videoNotFoundDesc);
+      setError(error.message || t.share.videoNotFoundDesc);
     } finally {
       setLoading(false);
     }
@@ -104,10 +119,15 @@ export default function SharePage() {
 
   const loadReactions = async () => {
     try {
-      const reactionsData = await DatabaseService.getVideoReactions(videoId);
-      setReactions(reactionsData);
+      const result = await getVideoReactionsAction(videoId);
+      if (result.success && result.data) {
+        setReactions(result.data);
+      } else {
+        setReactions([]);
+      }
     } catch (error) {
       console.error('Failed to load reactions:', error);
+      setReactions([]);
     }
   };
 
@@ -117,24 +137,25 @@ export default function SharePage() {
     }
 
     try {
-      await DatabaseService.addReaction(
-        video.$id,
-        user.$id,
-        user.name || user.email,
-        emoji
-      );
-      loadReactions();
+      const result = await addReactionAction(video.$id, emoji);
+      if (result.success) {
+        loadReactions();
+      } else {
+        console.error('Failed to add reaction:', result.error);
+      }
     } catch (error) {
       console.error('Failed to add reaction:', error);
     }
   };
 
-  const getVideoUrl = (fileId: string) => {
-    return `${config.endpoint}/storage/buckets/${config.bucketId}/files/${fileId}/view?project=${config.projectId}`;
-  };
-  
-  const getSubtitleUrl = (fileId: string) => {
-    return `${config.endpoint}/storage/buckets/${config.bucketId}/files/${fileId}/view?project=${config.projectId}`;
+  const getVideoUrl = async (fileId: string): Promise<string> => {
+    try {
+      const result = await getFileUrlAction(fileId);
+      return result.success && result.data?.url ? result.data.url : '#';
+    } catch (error) {
+      console.error('Error getting video URL:', error);
+      return '#';
+    }
   };
 
   const getReactionCount = (emoji: string) => {
@@ -155,17 +176,21 @@ export default function SharePage() {
     return new Date(dateString).toLocaleDateString();
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!video) return;
     
-    const videoUrl = getVideoUrl(video.fileId);
-    const link = document.createElement('a');
-    link.href = videoUrl;
-    link.download = `${video.title}.webm`;
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      const videoUrl = await getVideoUrl(video.fileId);
+      const link = document.createElement('a');
+      link.href = videoUrl;
+      link.download = `${video.title}.webm`;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error downloading video:', error);
+    }
   };
 
   if (loading) {
@@ -203,23 +228,13 @@ export default function SharePage() {
           {/* Video Player */}
           <Card className="mb-6">
             <CardContent className="p-0">
-              <video
+              <ShareVideoPlayer 
+                fileId={video.fileId}
+                subtitleUrl={subtitleUrl}
+                title={video.title}
+                thumbnailUrl={video.thumbnailUrl} // 传递缩略图 URL
                 className="w-full rounded-t-lg"
-                controls
-                poster="/api/placeholder/800/450"
-                src={getVideoUrl(video.fileId)}
-                crossOrigin="anonymous"
-              >
-                {subtitleUrl && (
-                  <track
-                    kind="subtitles"
-                    src={subtitleUrl}
-                    srcLang={video.subtitleFileId ? 'auto' : 'zh-CN'}
-                    label="字幕"
-                  />
-                )}
-                {t.share.browserNotSupported || 'Your browser does not support video playback.'}
-              </video>
+              />
             </CardContent>
           </Card>
 

@@ -1,7 +1,10 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { AuthService, User } from '../lib/auth/appwrite-auth';
+import { User } from '../lib/auth/server-auth';
+import { getCurrentUserAction, verifySessionAction } from '@/app/actions/user-actions';
+import { signIn, signUp, signOut } from '@/app/(login)/actions';
+import { createOAuth2SessionAction } from '@/app/actions/user-actions';
 
 interface AuthContextType {
   user: User | null;
@@ -25,32 +28,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkUserSession = async () => {
     try {
-      // First try to get current user (handles both regular sessions and OAuth callbacks)
-      const currentUser = await AuthService.getCurrentUser();
-      setUser(currentUser);
+      // First try to get current user
+      const result = await getCurrentUserAction();
       
-      // If we got a user but we're on a login page, might be an OAuth callback
-      if (currentUser && typeof window !== 'undefined') {
-        const isLoginPage = window.location.pathname.includes('sign-in') || 
-                           window.location.pathname.includes('sign-up');
-        if (isLoginPage && !window.location.search.includes('error')) {
-          // Successful OAuth callback, redirect to dashboard
-          window.location.href = '/dashboard';
+      if (result.success && result.data) {
+        setUser(result.data);
+        
+        // If we got a user but we're on a login page, might be an OAuth callback
+        if (typeof window !== 'undefined') {
+          const isLoginPage = window.location.pathname.includes('sign-in') || 
+                             window.location.pathname.includes('sign-up');
+          if (isLoginPage && !window.location.search.includes('error')) {
+            // Successful OAuth callback, redirect to dashboard
+            window.location.href = '/dashboard';
+          }
         }
+      } else {
+        setUser(null);
       }
     } catch (error) {
-      // If we're on a potential OAuth callback URL, try handling it
-      if (typeof window !== 'undefined' && 
-          window.location.pathname.includes('dashboard') && 
-          window.location.search) {
-        try {
-          const user = await AuthService.handleOAuthCallback();
-          setUser(user);
-          return;
-        } catch (callbackError) {
-          console.error('OAuth callback failed:', callbackError);
-        }
-      }
+      console.error('Session check failed:', error);
       setUser(null);
     } finally {
       setLoading(false);
@@ -58,31 +55,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const login = async (email: string, password: string) => {
-    try {
-      await AuthService.login(email, password);
-      const user = await AuthService.getCurrentUser();
-      setUser(user);
-    } catch (error) {
-      throw error;
-    }
+    // Note: This function is kept for backward compatibility
+    // The actual login should be handled by form actions
+    throw new Error('Please use the login form actions instead');
   };
 
   const register = async (email: string, password: string, name: string) => {
-    try {
-      await AuthService.createAccount(email, password, name);
-      await AuthService.login(email, password);
-      const user = await AuthService.getCurrentUser();
-      setUser(user);
-    } catch (error) {
-      throw error;
-    }
+    // Note: This function is kept for backward compatibility
+    // The actual registration should be handled by form actions
+    throw new Error('Please use the registration form actions instead');
   };
 
   const loginWithGitHub = async () => {
     try {
-      await AuthService.loginWithGitHub();
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+      const redirectUrl = `${baseUrl}/dashboard`;
+      const failureUrl = `${baseUrl}/sign-in?error=oauth_failed`;
+      
+      await createOAuth2SessionAction('github', redirectUrl, failureUrl);
       // OAuth redirect will handle the rest
-      // The session check will be handled by the redirect URL
     } catch (error) {
       console.error('GitHub OAuth initiation failed:', error);
       throw error;
@@ -90,19 +81,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    try {
-      await AuthService.logout();
-      setUser(null);
-    } catch (error) {
-      throw error;
-    }
+    // Note: This function is kept for backward compatibility
+    // The actual logout should be handled by form actions
+    throw new Error('Please use the logout form action instead');
   };
 
   const refreshUser = async () => {
     try {
-      const currentUser = await AuthService.getCurrentUser();
-      setUser(currentUser);
+      const result = await getCurrentUserAction();
+      if (result.success && result.data) {
+        setUser(result.data);
+      } else {
+        setUser(null);
+      }
     } catch (error) {
+      console.error('Refresh user failed:', error);
       setUser(null);
     }
   };

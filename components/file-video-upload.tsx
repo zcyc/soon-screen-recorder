@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,18 +8,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Upload, Video, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { storage, config } from '@/lib/appwrite';
-import { DatabaseService } from '@/lib/database';
-import { ID, Permission, Role } from 'appwrite';
+import { uploadVideoFileAction } from '@/app/actions/video-actions';
+import { generateThumbnailOnUploadAction } from '@/app/actions/thumbnail-actions';
+import { getFileUrlAction } from '@/app/actions/video-actions';
+import ClientThumbnailGenerator from './client-thumbnail-generator';
+import ManualThumbnailUpload from './manual-thumbnail-upload';
 
 export default function FileVideoUpload() {
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const [videoTitle, setVideoTitle] = useState('');
   const [isPublic, setIsPublic] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadedVideo, setUploadedVideo] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleFileSelect = () => {
     fileInputRef.current?.click();
@@ -48,82 +51,60 @@ export default function FileVideoUpload() {
   const uploadVideo = async (file: File) => {
     if (!user) return;
     
-    setIsUploading(true);
+    setError(null);
     setUploadProgress(0);
     setUploadedVideo(null);
 
-    try {
-      console.log('Starting file upload:', {
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type
-      });
-
-      // Upload file to storage
-      const fileResponse = await storage.createFile(
-        config.bucketId,
-        ID.unique(),
-        file,
-        [
-          Permission.read(Role.user(user.$id)),
-          Permission.delete(Role.user(user.$id)),
-          ...(isPublic ? [Permission.read(Role.any())] : [])
-        ]
-      );
-
-      console.log('File uploaded successfully:', fileResponse);
-      setUploadProgress(50);
-
-      // Create video record
-      const finalTitle = videoTitle.trim() || file.name.replace(/\.[^/.]+$/, '');
-      const videoRecord = {
-        title: String(finalTitle),
-        fileId: fileResponse.$id,
-        quality: 'original',
-        userId: String(user.$id),
-        userName: String(user.name || user.email || 'Anonymous User'),
-        duration: Number(0), // We don't know duration for uploaded files
-        views: Number(0),
-        isPublic: Boolean(isPublic),
-        thumbnailUrl: String(''),
-        subtitleFileId: null
-      };
-
-      const createdVideo = await DatabaseService.createVideoRecord(videoRecord);
-      console.log('Video record created:', createdVideo);
-      setUploadProgress(70);
-
-      // Generate thumbnail automatically
+    startTransition(async () => {
       try {
-        console.log('Generating thumbnail for uploaded video...');
-        const { ThumbnailService } = await import('@/lib/thumbnail-service');
-        const videoUrl = storage.getFileView(config.bucketId, fileResponse.$id);
+        console.log('Starting file upload:', {
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type
+        });
+
+        setUploadProgress(20);
+
+        // Prepare form data
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('title', videoTitle.trim() || file.name.replace(/\.[^/.]+$/, ''));
+        formData.append('quality', 'original');
+        formData.append('duration', '0');
+        formData.append('isPublic', isPublic.toString());
+        formData.append('thumbnailUrl', '');
+
+        setUploadProgress(50);
+
+        // Upload video using server action
+        const result = await uploadVideoFileAction(formData);
         
-        await ThumbnailService.generateThumbnailOnUpload(
-          createdVideo.$id,
-          videoUrl.toString(),
-          user.$id
-        );
-        console.log('✅ Thumbnail generated successfully');
-        setUploadProgress(100);
-      } catch (thumbnailError) {
-        console.warn('⚠️ Thumbnail generation failed:', thumbnailError);
-        setUploadProgress(100);
-      }
+        if (result.error) {
+          throw new Error(result.error);
+        }
 
-      setUploadedVideo(createdVideo);
-      alert('视频上传成功！缩略图已自动生成。');
+        console.log('Video uploaded successfully:', result.data);
+        setUploadProgress(70);
 
-    } catch (error: any) {
-      console.error('Upload failed:', error);
-      alert(`上传失败: ${error.message || '未知错误'}`);
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        // 缩略图将由客户端组件处理
+
+        setUploadProgress(100);
+        setUploadedVideo({ 
+          $id: result.data?.videoId, 
+          title: videoTitle.trim() || file.name,
+          fileId: result.data?.fileId 
+        });
+
+      } catch (error: any) {
+        console.error('Upload failed:', error);
+        setError(error.message || '上传失败');
+      } finally {
+        setUploadProgress(0);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       }
-    }
+    });
   };
 
   if (!user) {
@@ -155,7 +136,7 @@ export default function FileVideoUpload() {
                 placeholder="输入视频标题（可选）"
                 value={videoTitle}
                 onChange={(e) => setVideoTitle(e.target.value)}
-                disabled={isUploading}
+                disabled={isPending}
               />
             </div>
 
@@ -164,7 +145,7 @@ export default function FileVideoUpload() {
                 id="public-video"
                 checked={isPublic}
                 onCheckedChange={setIsPublic}
-                disabled={isUploading}
+                disabled={isPending}
               />
               <Label htmlFor="public-video">设为公开视频</Label>
             </div>
@@ -176,16 +157,16 @@ export default function FileVideoUpload() {
                 accept="video/*"
                 onChange={handleFileChange}
                 className="hidden"
-                disabled={isUploading}
+                disabled={isPending}
               />
               
               <Button
                 onClick={handleFileSelect}
-                disabled={isUploading}
+                disabled={isPending}
                 className="w-full h-12"
                 size="lg"
               >
-                {isUploading ? (
+                {isPending ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     上传中... ({uploadProgress}%)
@@ -198,12 +179,19 @@ export default function FileVideoUpload() {
                 )}
               </Button>
               
-              {isUploading && uploadProgress > 0 && (
+              {isPending && uploadProgress > 0 && (
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
                     className="bg-blue-500 h-2 rounded-full transition-all duration-300"
                     style={{ width: `${uploadProgress}%` }}
                   />
+                </div>
+              )}
+
+              {error && (
+                <div className="flex items-center gap-2 text-red-600 text-sm">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span>{error}</span>
                 </div>
               )}
             </div>
@@ -231,15 +219,33 @@ export default function FileVideoUpload() {
               </div>
               <p className="text-sm text-green-700">
                 ✅ 视频已保存到您的媒体库<br/>
-                ✅ 缩略图已自动生成<br/>
-                ✅ 可以在视频列表中查看
+                ✅ 可以在视频列表中查看<br/>
+                🎬 正在自动生成缩略图...
               </p>
+              
+              {/* 自动缩略图生成器 */}
+              {selectedVideoFile && (
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <ClientThumbnailGenerator
+                    videoId={uploadedVideo.$id}
+                    videoFile={selectedVideoFile} // 使用原始文件
+                    videoUrl={`https://appwrite.p6s.fun/v1/storage/buckets/videos/files/${(uploadedVideo as any).fileId}/view?project=soon`} // 作为备选
+                    onThumbnailGenerated={(url) => {
+                      console.log('✅ Thumbnail generated successfully:', url);
+                    }}
+                    onError={(error) => {
+                      console.warn('⚠️ Thumbnail generation failed:', error);
+                    }}
+                  />
+                </div>
+              )}
             </div>
 
             <Button
               onClick={() => {
                 setUploadedVideo(null);
                 setVideoTitle('');
+                setSelectedVideoFile(null); // 清理文件状态
               }}
               variant="outline"
               className="w-full"
