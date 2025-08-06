@@ -12,7 +12,7 @@ import { uploadVideoFileAction } from '@/app/actions/video-actions';
 import { generateThumbnailOnUploadAction } from '@/app/actions/thumbnail-actions';
 import { getFileUrlAction } from '@/app/actions/video-actions';
 import ClientThumbnailGenerator from './client-thumbnail-generator';
-import ManualThumbnailUpload from './manual-thumbnail-upload';
+
 
 export default function FileVideoUpload() {
   const { user } = useAuth();
@@ -23,6 +23,7 @@ export default function FileVideoUpload() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadedVideo, setUploadedVideo] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
 
   const handleFileSelect = () => {
     fileInputRef.current?.click();
@@ -45,6 +46,7 @@ export default function FileVideoUpload() {
       return;
     }
 
+    setSelectedVideoFile(file);
     await uploadVideo(file);
   };
 
@@ -245,7 +247,7 @@ export default function FileVideoUpload() {
               onClick={() => {
                 setUploadedVideo(null);
                 setVideoTitle('');
-                setSelectedVideoFile(null); // 清理文件状态
+                setSelectedVideoFile(null);
               }}
               variant="outline"
               className="w-full"
