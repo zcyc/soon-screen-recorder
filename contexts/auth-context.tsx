@@ -69,10 +69,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginWithGitHub = async () => {
     try {
       const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
-      const redirectUrl = `${baseUrl}/dashboard`;
-      const failureUrl = `${baseUrl}/sign-in?error=oauth_failed`;
+      const redirectUrl = `${baseUrl}/auth/callback`;
+      const failureUrl = `${baseUrl}/auth/callback?error=oauth_failed`;
       
-      await createOAuth2SessionAction('github', redirectUrl, failureUrl);
+      console.log('AuthContext: Initiating GitHub OAuth with:', { redirectUrl, failureUrl });
+      
+      const result = await createOAuth2SessionAction('github', redirectUrl, failureUrl);
+      
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      
       // OAuth redirect will handle the rest
     } catch (error) {
       console.error('GitHub OAuth initiation failed:', error);

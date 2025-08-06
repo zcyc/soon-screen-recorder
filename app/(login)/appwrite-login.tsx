@@ -6,10 +6,11 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Video, Loader2, Github } from 'lucide-react';
+import { Video, Github } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/lib/i18n';
-import { loginAction, registerAction, createOAuth2SessionAction } from '@/app/actions/user-actions';
+import { loginAction, registerAction } from '@/app/actions/user-actions';
+import { signInWithGithub, signUpWithGithub } from '@/lib/server/oauth';
 // import { OAuthFallbackGuide } from '@/components/oauth-fallback-guide';
 
 function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
@@ -23,23 +24,43 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
-  const [githubLoading, setGithubLoading] = useState(false);
+
   const [isPending, startTransition] = useTransition();
 
   // Handle OAuth errors and redirect if already authenticated
   useEffect(() => {
     // Check for OAuth errors
     const oauthError = searchParams.get('error');
-    if (oauthError === 'oauth_cancelled') {
-      setError(t.auth.githubAuthCancelled);
-    } else if (oauthError) {
-      setError(t.auth.authenticationFailed);
+    if (oauthError) {
+      let errorMessage;
+      switch (oauthError) {
+        case 'oauth_cancelled':
+          errorMessage = t.auth.githubAuthCancelled || 'GitHub authentication was cancelled';
+          break;
+        case 'oauth_failed':
+          errorMessage = t.auth.authenticationFailed || 'OAuth authentication failed';
+          break;
+        case 'oauth_incomplete':
+          errorMessage = 'OAuth callback parameters were incomplete';
+          break;
+        case 'oauth_session_failed':
+          errorMessage = 'Failed to establish session after OAuth';
+          break;
+        case 'oauth_processing_failed':
+          errorMessage = 'OAuth callback processing failed';
+          break;
+        default:
+          errorMessage = `OAuth error: ${oauthError}`;
+          break;
+      }
+      setError(errorMessage);
+      console.error('OAuth error from URL:', oauthError);
     }
     
     if (user) {
       router.push(redirect);
     }
-  }, [user, router, redirect, searchParams]);
+  }, [user, router, redirect, searchParams, t.auth]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,34 +93,8 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
     });
   };
 
-  const handleGitHubLogin = async () => {
-    setGithubLoading(true);
-    setError('');
-    
-    try {
-      const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
-      const redirectUrl = `${baseUrl}/dashboard`;
-      const failureUrl = `${baseUrl}/sign-in?error=oauth_failed`;
-      
-      const result = await createOAuth2SessionAction('github', redirectUrl, failureUrl);
-      
-      if (result.error) {
-        setError(result.error);
-        setGithubLoading(false);
-      } else if (result.success && result.data?.oauthUrl) {
-        // 获取OAuth URL并进行跳转
-        window.location.href = result.data.oauthUrl;
-        // 不需要设置 setGithubLoading(false)，因为页面将跳转
-      } else {
-        setError(t.auth.githubLoginFailed);
-        setGithubLoading(false);
-      }
-    } catch (error: any) {
-      console.error('GitHub OAuth error:', error);
-      setError(error.message || t.auth.githubLoginFailed);
-      setGithubLoading(false);
-    }
-  };
+  // 使用 Server Action 处理 GitHub OAuth
+  const handleGitHubOAuth = mode === 'signin' ? signInWithGithub : signUpWithGithub;
 
   return (
     <div className="min-h-[100dvh] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 bg-background">
@@ -235,25 +230,17 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
 
           <div className="mt-6">
             {/* GitHub OAuth Button */}
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full rounded-full"
-              onClick={handleGitHubLogin}
-              disabled={githubLoading || isPending}
-            >
-              {githubLoading ? (
-                <>
-                  <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                  {t.auth.connectingToGitHub}
-                </>
-              ) : (
-                <>
-                  <Github className="mr-2 h-4 w-4" />
-                  {t.auth.continueWithGitHub}
-                </>
-              )}
-            </Button>
+            <form action={handleGitHubOAuth}>
+              <Button
+                type="submit"
+                variant="outline"
+                className="w-full rounded-full"
+                disabled={isPending}
+              >
+                <Github className="mr-2 h-4 w-4" />
+                {t.auth.continueWithGitHub}
+              </Button>
+            </form>
           </div>
           
           {/* OAuth Fallback Guide - temporarily disabled */}

@@ -30,17 +30,21 @@ function getLocale(acceptLanguage: string | null): Locale {
 export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
   
-  // Handle OAuth callback scenarios
-  if (pathname === '/dashboard' && searchParams.has('userId')) {
-    // This looks like an OAuth callback from Appwrite
-    // Add headers to help with session establishment
+  // Handle OAuth callback route
+  if (pathname === '/oauth') {
     const response = NextResponse.next();
     response.headers.set('x-oauth-callback', 'true');
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    
+    // Add debug headers in development
+    if (process.env.NODE_ENV === 'development') {
+      response.headers.set('x-oauth-params', JSON.stringify(Array.from(searchParams.entries())));
+    }
+    
     return response;
   }
   
-  // Handle OAuth error callbacks
+  // Handle OAuth error callbacks to sign-in page
   if (pathname.startsWith('/sign-in') && searchParams.has('error')) {
     const response = NextResponse.next();
     response.headers.set('x-oauth-error', searchParams.get('error') || 'unknown');
@@ -55,8 +59,8 @@ export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
   response.headers.set('x-detected-locale', detectedLocale);
   
-  // Add security headers for OAuth pages
-  if (pathname.includes('sign-in') || pathname.includes('sign-up') || pathname === '/dashboard') {
+  // Add security headers for OAuth and auth pages
+  if (pathname.includes('sign-in') || pathname.includes('sign-up') || pathname === '/dashboard' || pathname === '/oauth') {
     response.headers.set('X-Frame-Options', 'DENY');
     response.headers.set('X-Content-Type-Options', 'nosniff');
     response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
