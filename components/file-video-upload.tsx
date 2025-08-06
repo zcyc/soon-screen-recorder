@@ -8,10 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Upload, Video, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { storage } from '@/lib/appwrite';
+import { storage, config } from '@/lib/appwrite';
 import { DatabaseService } from '@/lib/database';
 import { ID, Permission, Role } from 'appwrite';
-import { config } from '@/lib/config';
 
 export default function FileVideoUpload() {
   const { user } = useAuth();
@@ -47,6 +46,8 @@ export default function FileVideoUpload() {
   };
 
   const uploadVideo = async (file: File) => {
+    if (!user) return;
+    
     setIsUploading(true);
     setUploadProgress(0);
     setUploadedVideo(null);

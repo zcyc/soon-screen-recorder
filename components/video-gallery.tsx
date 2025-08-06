@@ -54,6 +54,26 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
     loadVideos();
   }, [showPublic, user]);
 
+  // Handle escape key to close modal and prevent body scroll
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && selectedVideo) {
+        handleCloseModal();
+      }
+    };
+
+    if (selectedVideo) {
+      document.addEventListener('keydown', handleEscape);
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [selectedVideo]);
+
   // Show toast message
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -330,8 +350,14 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
       
       {/* Video Modal */}
       {selectedVideo && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-          <div className="bg-background rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        <div 
+          className="fixed inset-0 bg-black/80 z-[9998] flex items-center justify-center p-4 overflow-y-auto"
+          onClick={handleCloseModal}
+        >
+          <div 
+            className="bg-background rounded-lg max-w-4xl w-full max-h-[90vh] my-auto overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-4 border-b">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold">{selectedVideo.title}</h2>
@@ -339,8 +365,9 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
                   variant="ghost"
                   size="sm"
                   onClick={handleCloseModal}
+                  className="h-8 w-8 p-0 hover:bg-muted rounded-full"
                 >
-                  ×
+                  <span className="text-2xl leading-none">×</span>
                 </Button>
               </div>
             </div>
