@@ -106,9 +106,9 @@ export async function logoutAction(): Promise<ActionResult> {
 // Create OAuth2 session (for GitHub login)
 export async function createOAuth2SessionAction(provider: string, success?: string, failure?: string): Promise<ActionResult> {
   try {
-    await createOAuth2Session(provider, success, failure);
+    const oauthUrl = await createOAuth2Session(provider, success, failure);
     
-    return { success: true };
+    return { success: true, data: { oauthUrl } };
   } catch (error: any) {
     console.error('Create OAuth2 session error:', error);
     return { error: error.message || 'Failed to create OAuth2 session' };
