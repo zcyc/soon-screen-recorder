@@ -36,21 +36,147 @@
 
 - **Framework**: [Next.js 15](https://nextjs.org/) with App Router and Turbopack
 - **UI Library**: [shadcn/ui](https://ui.shadcn.com/) + [Tailwind CSS](https://tailwindcss.com/)
-- **Database**: [PostgreSQL](https://www.postgresql.org/) with [Drizzle ORM](https://orm.drizzle.team/)
-- **Backend Services**: [Appwrite](https://appwrite.io/) for authentication and file storage
+- **Backend Services**: [Appwrite](https://appwrite.io/) for authentication, database, and file storage
 - **Recording API**: Web APIs (MediaRecorder, Screen Capture, getUserMedia)
 - **Styling**: Tailwind CSS 4.0 with CSS variables and theme system
 - **TypeScript**: Full type safety throughout the application
 - **Icons**: [Lucide React](https://lucide.dev/) icon library
 
-## 🚀 Getting Started
+## 🏗️ Architecture Overview
 
-### Prerequisites
-- Node.js 18+ 
-- PostgreSQL database
-- Appwrite project setup
+Soon uses Appwrite as the primary backend service:
+- **Appwrite**: Authentication, database operations, video storage, metadata management
+- **Next.js**: Frontend and API routes
+- **Client-side APIs**: Web recording APIs for media capture
 
-### Installation
+## 🚀 Complete Setup Guide
+
+### 📋 Prerequisites
+
+Before starting, ensure you have:
+
+- **Node.js 18+** installed
+- **Appwrite project** created and accessible
+- **Git** for version control
+
+### ☁️ Step 1: Appwrite Setup
+
+#### 1. Create Appwrite Project
+
+1. **Access Appwrite Console**
+   - Visit: https://cloud.appwrite.io (or your self-hosted instance)
+   - Create an account or sign in
+   - Click "Create Project"
+   - Project Name: `Soon Screen Recorder`
+   - Project ID: `soon`
+
+#### 2. Configure Authentication
+
+1. **Navigate to Auth > Settings**
+2. **Enable Auth Methods**:
+   - ✅ Email/Password
+   - ✅ Session Limit: 10
+   - ✅ Password History: 5
+3. **Security Settings**:
+   - Session Length: 1 year
+   - Password Dictionary: Enable
+
+#### 3. Create Database Collections
+
+##### 🎬 Videos Collection
+
+1. **Create Collection**
+   - Navigate to **Databases**
+   - Click "Create Database"
+   - Database ID: `soon`
+   - Database Name: `Soon Database`
+
+2. **Create Videos Collection**
+   - Collection ID: `videos`
+   - Collection Name: `Videos`
+
+3. **Add Attributes**:
+   
+   **String Attributes:**
+   ```
+   • title - Size: 255, Required: ✅
+   • fileId - Size: 255, Required: ✅
+   • userId - Size: 255, Required: ✅
+   • userName - Size: 255, Required: ✅
+   • quality - Size: 10, Required: ✅
+   • thumbnailUrl - Size: 500, Required: ❌
+   • subtitleFileId - Size: 255, Required: ❌
+   ```
+   
+   **Integer Attributes:**
+   ```
+   • duration - Default: 0, Required: ✅
+   • views - Default: 0, Required: ✅
+   ```
+   
+   **Boolean Attributes:**
+   ```
+   • isPublic - Default: false, Required: ✅
+   ```
+
+##### 👥 Reactions Collection
+
+1. **Create Collection**
+   - Collection ID: `reactions`  
+   - Collection Name: `Video Reactions`
+
+2. **Add Attributes**:
+   
+   **String Attributes (All Required):**
+   ```
+   • videoId - Size: 255
+   • userId - Size: 255  
+   • userName - Size: 255
+   • emoji - Size: 10
+   ```
+
+#### 4. Configure Permissions 🔐
+
+**Critical Step** - For both collections:
+
+1. **Videos Collection**:
+   - Click `videos` → `Settings` → `Permissions`
+   - **Read**: `users`, `any` (for public videos)
+   - **Create**: `users`
+   - **Update**: `users`
+   - **Delete**: `users`
+
+2. **Reactions Collection**:
+   - Click `reactions` → `Settings` → `Permissions`
+   - **Read**: `any`
+   - **Create**: `users`
+   - **Update**: `users`
+   - **Delete**: `users`
+
+#### 5. Create Storage Bucket
+
+1. **Navigate to Storage**
+2. **Create Bucket**:
+   - Bucket ID: `videos`
+   - Bucket Name: `Video Storage`
+   - File Size Limit: 100MB (or your preference)
+   - Allowed Extensions: `webm,mp4,mov,avi`
+
+3. **Configure Bucket Permissions**:
+   - **Read**: `any` (for public access)
+   - **Create**: `users`
+   - **Update**: `users`
+   - **Delete**: `users`
+
+#### 6. Get API Keys
+
+1. **Navigate to Overview**
+2. **Copy Project Details**:
+   - Endpoint URL
+   - Project ID
+   - API Key (for server-side operations)
+
+### 📦 Step 2: Application Installation
 
 1. **Clone the repository**
    ```bash
@@ -59,27 +185,61 @@
    npm install
    ```
 
-2. **Environment Setup**
-   Create your `.env` file using the setup script:
-   ```bash
-   npm install
-   ```
-
-3. **Appwrite Configuration**
-   Set up your Appwrite project and update the environment variables:
+2. **Environment Configuration**
+   
+   Create a `.env.local` file in the root directory:
    ```env
-   NEXT_PUBLIC_APPWRITE_ENDPOINT=your_appwrite_endpoint
-   NEXT_PUBLIC_APPWRITE_PROJECT_ID=your_project_id
-   NEXT_PUBLIC_APPWRITE_DATABASE_ID=your_database_id
-   NEXT_PUBLIC_APPWRITE_BUCKET_ID=your_bucket_id
+   # Appwrite Configuration
+   NEXT_PUBLIC_APPWRITE_ENDPOINT="https://cloud.appwrite.io/v1"
+   NEXT_PUBLIC_APPWRITE_PROJECT_ID="soon"
+   NEXT_PUBLIC_APPWRITE_DATABASE_ID="soon"
+   NEXT_PUBLIC_APPWRITE_BUCKET_ID="videos"
+   
+   # Collection IDs
+   NEXT_PUBLIC_APPWRITE_COLLECTION_VIDEO_ID="videos"
+   NEXT_PUBLIC_APPWRITE_COLLECTION_VIDEO_REACTIONS_ID="reactions"
+   
+   # Server-side API Key (DO NOT expose to client-side)
+   APPWRITE_API_KEY="your_server_api_key"
+   
+   # Optional: Analytics & Monitoring
+   NEXT_PUBLIC_ANALYTICS_ID="your_analytics_id"
    ```
 
-4. **Start Development Server**
+3. **Start Development Server**
    ```bash
    npm run dev
    ```
    
    Open [http://localhost:3000](http://localhost:3000) to see the application.
+
+### 🔧 Troubleshooting
+
+#### Common Issues
+
+1. **Appwrite 401 Unauthorized**
+   - Verify Appwrite endpoint URL
+   - Check project ID and API key
+   - Ensure permissions are set correctly
+
+2. **Video Upload Fails**
+   - Check bucket permissions
+   - Verify file size limits
+   - Ensure allowed file extensions
+
+3. **Recording Not Working**
+   - Check browser permissions for camera/microphone
+   - Test in Chrome/Edge for best compatibility
+   - Ensure HTTPS for production deployment
+
+#### Environment Variables Checklist
+
+Ensure these variables are properly set:
+- ✅ `NEXT_PUBLIC_APPWRITE_ENDPOINT` - Appwrite endpoint
+- ✅ `NEXT_PUBLIC_APPWRITE_PROJECT_ID` - Your project ID
+- ✅ `NEXT_PUBLIC_APPWRITE_DATABASE_ID` - Database ID
+- ✅ `NEXT_PUBLIC_APPWRITE_BUCKET_ID` - Storage bucket ID
+- ✅ `APPWRITE_API_KEY` - Server-side API key
 
 ## 📝 Usage
 
@@ -148,53 +308,27 @@ The application includes a comprehensive theming system supporting light and dar
 
 - **Chrome/Edge**: Full support with optimal performance
 - **Firefox**: Full support with slightly reduced performance
-- **Safari**: Basic support (some recording limitations)
-- **Mobile Browsers**: Limited screen recording support
-
-## 📱 Responsive Design
-
-The application is fully responsive and optimized for:
-- **Desktop**: Full-featured experience with large video previews
-- **Tablet**: Adapted interface with touch-friendly controls  
-- **Mobile**: Streamlined UI focusing on video playback and management
-
-## 🔒 Security Features
-
-- Appwrite-based authentication with secure session management
-- Protected routes with authentication middleware
-- Activity logging for security monitoring
-- File upload validation and size limits
-- XSS protection with proper content sanitization
-- OAuth support (GitHub) for enhanced security
-
-## 🚀 Deployment
-
-The application is configured for deployment on various platforms:
-
-- **Vercel**: Optimal with zero configuration
-- **Netlify**: Supports with build adaptations
-- **Railway/Render**: Full-stack deployment with database
-- **Docker**: Containerization support available
+- **Safari**: Partial support (some recording features limited)
 
 ## 📄 License
 
-This project is licensed under the MIT License. See LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 🆘 Support
+## 📧 Support
 
-If you encounter any issues or have questions:
-1. Check the existing issues on GitHub
-2. Create a new issue with detailed information
-3. Include browser version, OS, and steps to reproduce
+For support and questions:
+- Create an issue on GitHub
+- Join our community discussions
+- Check the troubleshooting section above
 
 ---
 
-**Built with ❤️ using Next.js and modern web technologies**
+Built with ❤️ using Next.js and Appwrite
