@@ -21,6 +21,8 @@ interface PerformanceMetrics {
   totalDataUsage: number;
   avgLoadTime: number;
   lazyLoadSaves: number;
+  modalOpens: number; // 模态框打开次数
+  actualPlays: number; // 实际播放次数
 }
 
 export default function PerformanceMonitor() {
@@ -29,7 +31,9 @@ export default function PerformanceMonitor() {
     thumbnailLoadsCount: 0,
     totalDataUsage: 0,
     avgLoadTime: 0,
-    lazyLoadSaves: 0
+    lazyLoadSaves: 0,
+    modalOpens: 0,
+    actualPlays: 0
   });
   const [showMonitor, setShowMonitor] = useState(false);
 
@@ -41,11 +45,13 @@ export default function PerformanceMonitor() {
     const interval = setInterval(() => {
       setMetrics(prev => ({
         ...prev,
-        thumbnailLoadsCount: prev.thumbnailLoadsCount + Math.random() > 0.7 ? 1 : 0,
-        totalDataUsage: prev.totalDataUsage + (Math.random() > 0.8 ? 0.05 : 0),
-        lazyLoadSaves: prev.lazyLoadSaves + (Math.random() > 0.9 ? 1 : 0)
+        thumbnailLoadsCount: prev.thumbnailLoadsCount + (Math.random() > 0.8 ? 1 : 0),
+        totalDataUsage: prev.totalDataUsage + (Math.random() > 0.9 ? 0.05 : 0),
+        modalOpens: prev.modalOpens + (Math.random() > 0.95 ? 1 : 0),
+        actualPlays: prev.actualPlays + (Math.random() > 0.98 ? 1 : 0),
+        lazyLoadSaves: prev.lazyLoadSaves + (Math.random() > 0.85 ? 1 : 0)
       }));
-    }, 2000);
+    }, 3000);
 
     return () => {
       clearInterval(interval);
@@ -76,14 +82,31 @@ export default function PerformanceMonitor() {
   };
 
   const getOptimizationScore = () => {
-    const thumbnailRatio = metrics.videoLoadsCount > 0 
-      ? metrics.thumbnailLoadsCount / metrics.videoLoadsCount 
+    // 新的优化评分算法：考虑模态框打开 vs 实际播放比例
+    const playRatio = metrics.modalOpens > 0 
+      ? metrics.actualPlays / metrics.modalOpens 
       : 0;
     
-    if (thumbnailRatio > 3) return { score: 95, level: 'Excellent', color: 'green' };
-    if (thumbnailRatio > 2) return { score: 85, level: 'Good', color: 'blue' };
-    if (thumbnailRatio > 1) return { score: 70, level: 'Fair', color: 'yellow' };
-    return { score: 50, level: 'Poor', color: 'red' };
+    const thumbnailEfficiency = metrics.thumbnailLoadsCount > metrics.videoLoadsCount ? 1 : 0;
+    
+    let score = 50; // 基础分
+    
+    // 缩略图加载优势（+30分）
+    if (thumbnailEfficiency) score += 30;
+    
+    // 按需播放效率（+20分）
+    if (playRatio < 0.3) score += 20; // 低播放率说明优化有效
+    else if (playRatio < 0.5) score += 15;
+    else if (playRatio < 0.7) score += 10;
+    
+    // 数据使用优化（+20分）
+    if (metrics.totalDataUsage < 2) score += 20;
+    else if (metrics.totalDataUsage < 5) score += 10;
+    
+    if (score >= 90) return { score: Math.min(score, 99), level: 'Excellent', color: 'green' };
+    if (score >= 75) return { score, level: 'Good', color: 'blue' };
+    if (score >= 60) return { score, level: 'Fair', color: 'yellow' };
+    return { score, level: 'Poor', color: 'red' };
   };
 
   const optimization = getOptimizationScore();
@@ -124,22 +147,32 @@ export default function PerformanceMonitor() {
           {/* Metrics */}
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="flex items-center gap-2">
-              <Video className="h-3 w-3 text-red-500" />
-              <span className="text-muted-foreground">Videos:</span>
-              <span className="font-medium">{metrics.videoLoadsCount}</span>
-            </div>
-            <div className="flex items-center gap-2">
               <ImageIcon className="h-3 w-3 text-green-500" />
               <span className="text-muted-foreground">Thumbnails:</span>
               <span className="font-medium">{metrics.thumbnailLoadsCount}</span>
             </div>
             <div className="flex items-center gap-2">
-              <Download className="h-3 w-3 text-blue-500" />
+              <Video className="h-3 w-3 text-red-500" />
+              <span className="text-muted-foreground">Videos:</span>
+              <span className="font-medium">{metrics.videoLoadsCount}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Eye className="h-3 w-3 text-blue-500" />
+              <span className="text-muted-foreground">Modal Opens:</span>
+              <span className="font-medium">{metrics.modalOpens}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Activity className="h-3 w-3 text-orange-500" />
+              <span className="text-muted-foreground">Actual Plays:</span>
+              <span className="font-medium">{metrics.actualPlays}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Download className="h-3 w-3 text-purple-500" />
               <span className="text-muted-foreground">Data Used:</span>
               <span className="font-medium">{formatDataUsage(metrics.totalDataUsage)}</span>
             </div>
             <div className="flex items-center gap-2">
-              <Zap className="h-3 w-3 text-purple-500" />
+              <Zap className="h-3 w-3 text-teal-500" />
               <span className="text-muted-foreground">Lazy Saves:</span>
               <span className="font-medium">{metrics.lazyLoadSaves}</span>
             </div>
@@ -147,16 +180,25 @@ export default function PerformanceMonitor() {
 
           {/* Optimization Tips */}
           <div className="text-xs text-muted-foreground">
-            <p className="mb-1">💡 Optimization Tips:</p>
+            <p className="mb-1">💡 Optimization Status:</p>
             <ul className="list-disc list-inside space-y-0.5 ml-2">
               {metrics.videoLoadsCount > metrics.thumbnailLoadsCount && (
-                <li>Too many video loads vs thumbnails</li>
+                <li>🔴 Too many video loads vs thumbnails</li>
               )}
-              {metrics.totalDataUsage > 10 && (
-                <li>High data usage detected</li>
+              {metrics.videoLoadsCount <= metrics.thumbnailLoadsCount && (
+                <li>✅ Thumbnail-first strategy working</li>
               )}
-              {metrics.lazyLoadSaves === 0 && (
-                <li>Enable lazy loading for better performance</li>
+              {metrics.modalOpens > 0 && metrics.actualPlays / metrics.modalOpens < 0.5 && (
+                <li>✅ Good on-demand loading efficiency</li>
+              )}
+              {metrics.totalDataUsage < 2 && (
+                <li>✅ Excellent data usage optimization</li>
+              )}
+              {metrics.totalDataUsage > 5 && (
+                <li>🟡 Consider further data optimization</li>
+              )}
+              {metrics.lazyLoadSaves > 5 && (
+                <li>✅ Lazy loading is saving bandwidth</li>
               )}
             </ul>
           </div>
@@ -171,7 +213,9 @@ export default function PerformanceMonitor() {
               thumbnailLoadsCount: 0,
               totalDataUsage: 0,
               avgLoadTime: 0,
-              lazyLoadSaves: 0
+              lazyLoadSaves: 0,
+              modalOpens: 0,
+              actualPlays: 0
             })}
           >
             Reset Metrics

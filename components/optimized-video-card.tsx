@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,7 +17,6 @@ import {
   Play
 } from 'lucide-react';
 import { type Video } from '@/lib/database';
-import { useVideoLazyLoading, useVideoThumbnail } from '@/hooks/use-lazy-loading';
 import { generatePlaceholderThumbnail } from '@/lib/video-utils';
 
 interface OptimizedVideoCardProps {
@@ -56,100 +54,46 @@ export default function OptimizedVideoCard({
   updatingPrivacyId,
   t
 }: OptimizedVideoCardProps) {
-  const [showVideo, setShowVideo] = useState(false);
-  const { videoRef, shouldLoadThumbnail, shouldLoadVideo, isVisible } = useVideoLazyLoading();
-  const { thumbnailUrl, isLoading, loadThumbnail } = useVideoThumbnail(
-    getVideoUrl(video.fileId),
-    video.title
-  );
-
-  // Load thumbnail when card becomes visible
-  useEffect(() => {
-    if (shouldLoadThumbnail) {
-      loadThumbnail();
-    }
-  }, [shouldLoadThumbnail, loadThumbnail]);
-
-  // Get thumbnail source with multiple fallbacks
+  // 完全不使用动态缩略图生成，避免加载视频
   const getThumbnailSrc = () => {
-    // 1. Try database thumbnail URL first
+    // 1. Try database thumbnail URL first (如果存在)
     if (video.thumbnailUrl) {
       return video.thumbnailUrl;
     }
     
-    // 2. Use generated thumbnail if available
-    if (thumbnailUrl) {
-      return thumbnailUrl;
-    }
-    
-    // 3. Fallback to placeholder
+    // 2. 直接使用占位图，不生成动态缩略图
     return generatePlaceholderThumbnail(320, 180, video.title);
-  };
-
-  // Handle video preview toggle
-  const handlePreviewToggle = () => {
-    if (!showVideo && shouldLoadVideo) {
-      setShowVideo(true);
-    }
   };
 
   return (
     <Card 
-      ref={videoRef as any}
       className="group cursor-pointer transition-all duration-300 hover:scale-105 border-0 shadow-none rounded-none overflow-hidden"
       onClick={() => onVideoClick(video)}
     >
       <CardContent className="p-0 relative">
-        {/* Video Thumbnail/Preview */}
+        {/* Video Thumbnail Only */}
         <div className="aspect-video bg-muted relative overflow-hidden">
-          {!showVideo ? (
-            // Thumbnail mode (default)
-            <div className="relative w-full h-full">
-              {/* Thumbnail Image */}
-              <img
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                src={getThumbnailSrc()}
-                alt={video.title}
-                loading="lazy"
-                onError={(e) => {
-                  // Fallback to placeholder on error
-                  const target = e.target as HTMLImageElement;
-                  target.src = generatePlaceholderThumbnail(320, 180, video.title);
-                }}
-              />
-              
-              {/* Loading overlay */}
-              {isLoading && (
-                <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent" />
-                </div>
-              )}
-              
-              {/* Play button overlay */}
-              <div 
-                className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handlePreviewToggle();
-                }}
-              >
-                <div className="bg-white/90 rounded-full p-3 shadow-lg hover:bg-white transition-colors">
-                  <Play className="h-6 w-6 text-gray-800 ml-1" fill="currentColor" />
-                </div>
+          <div className="relative w-full h-full">
+            {/* Thumbnail Image */}
+            <img
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+              src={getThumbnailSrc()}
+              alt={video.title}
+              loading="lazy"
+              onError={(e) => {
+                // Fallback to placeholder on error
+                const target = e.target as HTMLImageElement;
+                target.src = generatePlaceholderThumbnail(320, 180, video.title);
+              }}
+            />
+            
+            {/* Play button overlay - only for visual indication */}
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="bg-white/90 rounded-full p-3 shadow-lg hover:bg-white transition-colors">
+                <Play className="h-6 w-6 text-gray-800 ml-1" fill="currentColor" />
               </div>
             </div>
-          ) : (
-            // Video preview mode (only when explicitly activated)
-            <video
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-              src={getVideoUrl(video.fileId)}
-              preload="none" // Only load when actually needed
-              muted
-              loop
-              autoPlay
-              onClick={(e) => e.stopPropagation()}
-            />
-          )}
+          </div>
           
           {/* Gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />

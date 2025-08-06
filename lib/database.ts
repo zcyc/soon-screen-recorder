@@ -446,16 +446,22 @@ export class DatabaseService {
       
       // Upload thumbnail to storage
       const { storage } = await import('./appwrite');
-      const thumbnailFile = await storage.createFile(
+      
+      // Convert Blob to File
+      const thumbnailFile = new File([thumbnailBlob], `thumbnail-${ID.unique()}.jpg`, {
+        type: 'image/jpeg'
+      });
+      
+      const uploadedFile = await storage.createFile(
         process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID!,
         ID.unique(),
-        thumbnailBlob
+        thumbnailFile
       );
       
       // Get thumbnail URL
       const thumbnailUrl = storage.getFileView(
         process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID!,
-        thumbnailFile.$id
+        uploadedFile.$id
       );
       
       // Update video record with thumbnail URL

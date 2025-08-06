@@ -22,12 +22,14 @@ import {
   Lock,
   Unlock,
   Globe,
-  Shield
+  Shield,
+  Play
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { DatabaseService, type Video } from '@/lib/database';
 import { storage } from '@/lib/appwrite';
 import { useI18n } from '@/lib/i18n';
+import { generatePlaceholderThumbnail } from '@/lib/video-utils';
 
 interface VideoGalleryProps {
   showPublic?: boolean;
@@ -41,6 +43,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
@@ -105,11 +108,23 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
 
   const handleVideoClick = async (video: Video) => {
     setSelectedVideo(video);
+    setIsVideoPlaying(false); // Reset playing state
     
     // Increment view count
     if (showPublic || (user && user.$id !== video.userId)) {
       await DatabaseService.incrementViews(video.$id);
     }
+  };
+
+  // Handle starting video playback
+  const handleStartPlaying = () => {
+    setIsVideoPlaying(true);
+  };
+
+  // Handle closing video modal
+  const handleCloseModal = () => {
+    setSelectedVideo(null);
+    setIsVideoPlaying(false);
   };
 
   const handleShare = async (video: Video) => {
@@ -295,7 +310,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
           <OptimizedVideoCard
             key={video.$id}
             video={video}
-            isOwner={!showPublic && user && user.$id === video.userId}
+            isOwner={Boolean(!showPublic && user && user.$id === video.userId)}
             showPublic={showPublic}
             onVideoClick={handleVideoClick}
             onShare={handleShare}
@@ -323,7 +338,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setSelectedVideo(null)}
+                  onClick={handleCloseModal}
                 >
                   ×
                 </Button>
@@ -331,12 +346,36 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
             </div>
             
             <div className="p-4">
-              <video
-                className="w-full rounded-md"
-                controls
-                autoPlay
-                src={getVideoUrl(selectedVideo.fileId)}
-              />
+              <div className="relative aspect-video bg-black rounded-md overflow-hidden">
+                {!isVideoPlaying ? (
+                  // 显示缩略图和播放按钮
+                  <>
+                    <img
+                      className="w-full h-full object-cover"
+                      src={selectedVideo.thumbnailUrl || generatePlaceholderThumbnail(800, 450, selectedVideo.title)}
+                      alt={selectedVideo.title}
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                      <Button
+                        size="lg"
+                        onClick={handleStartPlaying}
+                        className="bg-white/90 hover:bg-white text-black rounded-full h-20 w-20 p-0"
+                      >
+                        <Play className="h-8 w-8 ml-1" fill="currentColor" />
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  // 只有在点击播放后才加载视频
+                  <video
+                    className="w-full h-full"
+                    controls
+                    autoPlay
+                    src={getVideoUrl(selectedVideo.fileId)}
+                    onLoadStart={() => console.log('Video loading started')}
+                  />
+                )}
+              </div>
               
               <div className="mt-4 flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">

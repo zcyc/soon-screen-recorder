@@ -1726,6 +1726,24 @@ export default function ScreenRecorder() {
       console.log('Created video record:', createdVideo);
 
       console.log('Upload and database save successful!');
+      
+      // Generate thumbnail for the newly uploaded video
+      try {
+        console.log('Generating thumbnail for new video...');
+        const { ThumbnailService } = await import('@/lib/thumbnail-service');
+        const videoUrl = storage.getFileView(config.bucketId, fileResponse.$id);
+        
+        await ThumbnailService.generateThumbnailOnUpload(
+          createdVideo.$id,
+          videoUrl.toString(),
+          user.$id
+        );
+        console.log('✅ Thumbnail generated successfully for new video');
+      } catch (thumbnailError) {
+        console.warn('⚠️ Thumbnail generation failed (video upload still successful):', thumbnailError);
+        // Don't fail the upload if thumbnail generation fails
+      }
+      
       showToast(t.recording.saveSuccess || '视频保存成功！');
       
       // Save uploaded video data for display
