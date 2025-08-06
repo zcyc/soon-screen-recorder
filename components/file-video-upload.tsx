@@ -12,6 +12,7 @@ import { uploadVideoFileAction } from '@/app/actions/video-actions';
 import { generateThumbnailOnUploadAction } from '@/app/actions/thumbnail-actions';
 import { getFileUrlAction } from '@/app/actions/video-actions';
 import ClientThumbnailGenerator from './client-thumbnail-generator';
+import ManualThumbnailUpload from './manual-thumbnail-upload';
 
 export default function FileVideoUpload() {
   const { user } = useAuth();
@@ -218,22 +219,25 @@ export default function FileVideoUpload() {
               </div>
               <p className="text-sm text-green-700">
                 ✅ 视频已保存到您的媒体库<br/>
-                🔄 正在生成缩略图...<br/>
-                ✅ 可以在视频列表中查看
+                ✅ 可以在视频列表中查看<br/>
+                🎬 正在自动生成缩略图...
               </p>
               
-              {/* 客户端缩略图生成器 */}
-              {(uploadedVideo as any)?.fileId && (
-                <ClientThumbnailGenerator
-                  videoId={uploadedVideo.$id}
-                  videoUrl={`https://appwrite.p6s.fun/v1/storage/buckets/videos/files/${(uploadedVideo as any).fileId}/view?project=soon`}
-                  onThumbnailGenerated={(url) => {
-                    console.log('✅ Thumbnail generated successfully:', url);
-                  }}
-                  onError={(error) => {
-                    console.warn('⚠️ Thumbnail generation failed:', error);
-                  }}
-                />
+              {/* 自动缩略图生成器 */}
+              {selectedVideoFile && (
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <ClientThumbnailGenerator
+                    videoId={uploadedVideo.$id}
+                    videoFile={selectedVideoFile} // 使用原始文件
+                    videoUrl={`https://appwrite.p6s.fun/v1/storage/buckets/videos/files/${(uploadedVideo as any).fileId}/view?project=soon`} // 作为备选
+                    onThumbnailGenerated={(url) => {
+                      console.log('✅ Thumbnail generated successfully:', url);
+                    }}
+                    onError={(error) => {
+                      console.warn('⚠️ Thumbnail generation failed:', error);
+                    }}
+                  />
+                </div>
               )}
             </div>
 
@@ -241,6 +245,7 @@ export default function FileVideoUpload() {
               onClick={() => {
                 setUploadedVideo(null);
                 setVideoTitle('');
+                setSelectedVideoFile(null); // 清理文件状态
               }}
               variant="outline"
               className="w-full"

@@ -232,6 +232,7 @@ export default function SharePage() {
                 fileId={video.fileId}
                 subtitleUrl={subtitleUrl}
                 title={video.title}
+                thumbnailUrl={video.thumbnailUrl} // 传递缩略图 URL
                 className="w-full rounded-t-lg"
               />
             </CardContent>

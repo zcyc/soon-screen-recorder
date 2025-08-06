@@ -80,6 +80,8 @@ import { recordingConfig } from '@/lib/config';
 import { uploadVideoFileAction } from '@/app/actions/video-actions';
 import { generateThumbnailOnUploadAction } from '@/app/actions/thumbnail-actions';
 import { getFileUrlAction } from '@/app/actions/video-actions';
+import ClientThumbnailGenerator from './client-thumbnail-generator';
+
 
 type RecordingQuality = '720p' | '1080p';
 type RecordingSource = 'screen' | 'camera' | 'both' | 'camera-only';
@@ -1676,29 +1678,8 @@ export default function ScreenRecorder() {
         console.log('Note: Subtitle file upload not yet implemented in server actions');
       }
       
-      // Generate thumbnail for the newly uploaded video
-      if (result.data?.videoId && result.data?.fileId) {
-        try {
-          console.log('Getting file URL and generating thumbnail...');
-          
-          // Get file URL
-          const urlResult = await getFileUrlAction(result.data.fileId);
-          if (urlResult.success && urlResult.data?.url) {
-            const thumbnailResult = await generateThumbnailOnUploadAction(
-              result.data.videoId,
-              urlResult.data.url
-            );
-            
-            if (thumbnailResult.success) {
-              console.log('✅ Thumbnail generated successfully for new video');
-            } else {
-              console.warn('⚠️ Thumbnail generation failed:', thumbnailResult.error);
-            }
-          }
-        } catch (thumbnailError) {
-          console.warn('⚠️ Thumbnail generation failed (video upload still successful):', thumbnailError);
-        }
-      }
+      // 缩略图将在视频上传成功后由用户手动上传
+      console.log('ℹ️ Video uploaded successfully. Thumbnail can be added manually later.');
       
       showToast(t.recording.saveSuccess || '视频保存成功！');
       
@@ -2569,6 +2550,22 @@ export default function ScreenRecorder() {
                   />
                 </div>
               </div>
+              
+              {/* 自动缩略图生成器 */}
+              {recordingState.recordedBlob && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <ClientThumbnailGenerator
+                    videoId={uploadedVideo.$id}
+                    videoFile={new File([recordingState.recordedBlob], 'recording.webm', { type: recordingState.recordedBlob.type })} // 使用录制的 Blob
+                    onThumbnailGenerated={(url) => {
+                      console.log('✅ Thumbnail generated successfully for recording:', url);
+                    }}
+                    onError={(error) => {
+                      console.warn('⚠️ Thumbnail generation failed for recording:', error);
+                    }}
+                  />
+                </div>
+              )}
               
               {/* Share URL Display */}
               <div>
