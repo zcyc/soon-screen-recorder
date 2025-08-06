@@ -377,8 +377,9 @@ export async function deleteFile(fileId: string, bucketId?: string) {
 export async function getFileUrl(fileId: string, bucketId?: string) {
   const { storage } = await createAdminClient();
   
-  return storage.getFileView(
-    bucketId || config.bucketId,
-    fileId
-  );
+  // 在 Node SDK 中，我们需要构建文件的 URL
+  // 使用 getFileDownload 来获取文件的下载 URL
+  const fileUrl = `${config.endpoint}/storage/buckets/${bucketId || config.bucketId}/files/${fileId}/view?project=${config.projectId}`;
+  
+  return fileUrl;
 }

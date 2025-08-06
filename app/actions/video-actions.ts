@@ -206,6 +206,25 @@ export async function updateVideoThumbnailAction(videoId: string, thumbnailUrl: 
   }
 }
 
+// Upload file only (without creating video record)
+export async function uploadFileAction(file: File): Promise<ActionResult> {
+  try {
+    const uploadedFile = await uploadFile(file);
+    const url = await getFileUrl(uploadedFile.$id);
+    
+    return { 
+      success: true, 
+      data: { 
+        fileId: uploadedFile.$id, 
+        url: url.toString() 
+      } 
+    };
+  } catch (error: any) {
+    console.error('Upload file error:', error);
+    return { error: error.message || 'Failed to upload file' };
+  }
+}
+
 // Get file URL
 export async function getFileUrlAction(fileId: string): Promise<ActionResult> {
   try {

@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { uploadVideoFileAction } from '@/app/actions/video-actions';
 import { generateThumbnailOnUploadAction } from '@/app/actions/thumbnail-actions';
 import { getFileUrlAction } from '@/app/actions/video-actions';
+import ClientThumbnailGenerator from './client-thumbnail-generator';
 
 export default function FileVideoUpload() {
   const { user } = useAuth();
@@ -84,32 +85,14 @@ export default function FileVideoUpload() {
         console.log('Video uploaded successfully:', result.data);
         setUploadProgress(70);
 
-        // Generate thumbnail automatically
-        if (result.data?.videoId && result.data?.fileId) {
-          try {
-            console.log('Getting file URL and generating thumbnail...');
-            
-            // Get file URL
-            const urlResult = await getFileUrlAction(result.data.fileId);
-            if (urlResult.success && urlResult.data?.url) {
-              const thumbnailResult = await generateThumbnailOnUploadAction(
-                result.data.videoId,
-                urlResult.data.url
-              );
-              
-              if (thumbnailResult.success) {
-                console.log('✅ Thumbnail generated successfully');
-              } else {
-                console.warn('⚠️ Thumbnail generation failed:', thumbnailResult.error);
-              }
-            }
-          } catch (thumbnailError) {
-            console.warn('⚠️ Thumbnail generation failed:', thumbnailError);
-          }
-        }
+        // 缩略图将由客户端组件处理
 
         setUploadProgress(100);
-        setUploadedVideo({ $id: result.data?.videoId, title: videoTitle.trim() || file.name });
+        setUploadedVideo({ 
+          $id: result.data?.videoId, 
+          title: videoTitle.trim() || file.name,
+          fileId: result.data?.fileId 
+        });
 
       } catch (error: any) {
         console.error('Upload failed:', error);
@@ -235,9 +218,23 @@ export default function FileVideoUpload() {
               </div>
               <p className="text-sm text-green-700">
                 ✅ 视频已保存到您的媒体库<br/>
-                ✅ 缩略图已自动生成<br/>
+                🔄 正在生成缩略图...<br/>
                 ✅ 可以在视频列表中查看
               </p>
+              
+              {/* 客户端缩略图生成器 */}
+              {(uploadedVideo as any)?.fileId && (
+                <ClientThumbnailGenerator
+                  videoId={uploadedVideo.$id}
+                  videoUrl={`https://appwrite.p6s.fun/v1/storage/buckets/videos/files/${(uploadedVideo as any).fileId}/view?project=soon`}
+                  onThumbnailGenerated={(url) => {
+                    console.log('✅ Thumbnail generated successfully:', url);
+                  }}
+                  onError={(error) => {
+                    console.warn('⚠️ Thumbnail generation failed:', error);
+                  }}
+                />
+              )}
             </div>
 
             <Button

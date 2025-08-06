@@ -38,35 +38,10 @@ export class ThumbnailService {
     try {
       console.log(`Generating thumbnail for video ${videoId}...`);
       
-      // 1. 生成缩略图 blob
-      const thumbnailBlob = await generateVideoThumbnailBlob(videoUrl, {
-        width,
-        height,
-        time,
-        quality,
-        format
-      });
-
-      // 2. 上传缩略图到存储
-      // Convert Blob to File
-      const thumbnailFile = new File([thumbnailBlob], `thumbnail-${videoId}.jpg`, {
-        type: 'image/jpeg'
-      });
-      
-      const uploadedFile = await uploadFile(thumbnailFile);
-
-      // 3. 获取缩略图URL
-      const thumbnailUrl = await getFileUrl(uploadedFile.$id);
-
-      // 4. 更新数据库记录
-      await updateVideoThumbnail(
-        videoId, 
-        thumbnailUrl.toString(), 
-        userId
-      );
-
-      console.log(`✅ Thumbnail generated successfully: ${thumbnailUrl}`);
-      return thumbnailUrl.toString();
+      // 在服务端环境中，我们不能使用浏览器 API 生成缩略图
+      // 这里跳过自动生成，返回 null 让前端使用占位图
+      console.log(`ℹ️ Skipping server-side thumbnail generation for video ${videoId} (not supported in Node.js environment)`);
+      return null;
       
     } catch (error) {
       console.error(`❌ Failed to generate thumbnail for video ${videoId}:`, error);
@@ -93,34 +68,12 @@ export class ThumbnailService {
       const videosWithoutThumbnails = videos.filter(video => !video.thumbnailUrl);
       
       console.log(`Found ${videosWithoutThumbnails.length} videos without thumbnails`);
+      console.log(`ℹ️ Server-side thumbnail generation is disabled. Videos will use placeholder thumbnails.`);
 
       for (const video of videosWithoutThumbnails) {
-        try {
-          const videoUrl = await getFileUrl(video.fileId);
-
-          const thumbnailUrl = await this.generateThumbnailOnUpload(
-            video.$id,
-            videoUrl.toString(),
-            userId,
-            options
-          );
-
-          if (thumbnailUrl) {
-            results.push({ videoId: video.$id, success: true });
-            successCount++;
-          } else {
-            results.push({ videoId: video.$id, success: false, error: 'Generation failed' });
-            failedCount++;
-          }
-          
-          // 添加延迟避免过载
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          results.push({ videoId: video.$id, success: false, error: errorMessage });
-          failedCount++;
-        }
+        // 在服务端环境中，我们不生成缩略图，而是让前端使用占位图
+        results.push({ videoId: video.$id, success: false, error: 'Server-side generation not supported' });
+        failedCount++;
       }
 
       return { success: successCount, failed: failedCount, results };
@@ -146,23 +99,9 @@ export class ThumbnailService {
       return video.thumbnailUrl;
     }
 
-    // 尝试生成缩略图
-    const videoUrl = await getFileUrl(video.fileId);
-
-    const thumbnailUrl = await this.generateThumbnailOnUpload(
-      video.$id,
-      videoUrl.toString(),
-      userId,
-      options
-    );
-
-    // 如果生成失败，返回占位图
-    if (!thumbnailUrl) {
-      const { generatePlaceholderThumbnail } = await import('./video-utils');
-      return generatePlaceholderThumbnail(320, 180, video.title);
-    }
-
-    return thumbnailUrl;
+    // 在服务端环境中，我们不生成缩略图，直接返回占位图
+    const { generatePlaceholderThumbnail } = await import('./video-utils');
+    return generatePlaceholderThumbnail(320, 180, video.title);
   }
 
   /**

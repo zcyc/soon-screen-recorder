@@ -4,7 +4,10 @@ const nextConfig: NextConfig = {
   experimental: {
     ppr: true,
     clientSegmentCache: true,
-    nodeMiddleware: true
+    nodeMiddleware: true,
+    serverActions: {
+      bodySizeLimit: '100mb', // 增加 Server Actions 的请求体大小限制到 100MB
+    },
   },
   allowedDevOrigins: [
     '*.clackypaas.com',
