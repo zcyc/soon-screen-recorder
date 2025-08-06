@@ -1,3 +1,7 @@
+// This file has been migrated to use Node SDK in appwrite-server.ts
+// All functionality now uses Server Actions instead of client-side operations
+
+/*
 import { Client, Account, Databases, Storage, Functions, Query } from 'appwrite';
 
 // Debug: Log environment variables
@@ -50,6 +54,20 @@ export const config = {
   collectionsId: {
     videos: 'videos',
     reactions: 'reactions',
+    activity_logs: 'activity_logs'
+  }
+};
+*/
+
+// For backward compatibility, re-export from server config
+export const config = {
+  endpoint: process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!,
+  projectId: process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID!,
+  databaseId: process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
+  bucketId: process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID!,
+  collectionsId: {
+    videos: 'videos',
+    reactions: 'reactions', 
     activity_logs: 'activity_logs'
   }
 };

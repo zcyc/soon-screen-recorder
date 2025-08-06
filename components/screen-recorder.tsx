@@ -74,12 +74,12 @@ import {
   Circle,
   StopCircle
 } from 'lucide-react';
-import { storage, config } from '@/lib/appwrite';
-import { DatabaseService } from '@/lib/database';
 import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/lib/i18n';
 import { recordingConfig } from '@/lib/config';
-import { ID, Permission, Role } from 'appwrite';
+import { uploadVideoFileAction } from '@/app/actions/video-actions';
+import { generateThumbnailOnUploadAction } from '@/app/actions/thumbnail-actions';
+import { getFileUrlAction } from '@/app/actions/video-actions';
 
 type RecordingQuality = '720p' | '1080p';
 type RecordingSource = 'screen' | 'camera' | 'both' | 'camera-only';
@@ -1650,116 +1650,67 @@ export default function ScreenRecorder() {
         { type: 'video/webm' }
       );
 
-      // Upload file to storage
-      console.log('Uploading file to bucket:', config.bucketId);
-      console.log('File details:', {
-        name: file.name,
-        size: file.size,
-        type: file.type
-      });
-      const fileResponse = await storage.createFile(
-        config.bucketId,
-        ID.unique(),
-        file,
-        [
-          Permission.read(Role.user(user.$id)),
-          Permission.delete(Role.user(user.$id)),
-          ...(isVideoPublic ? [Permission.read(Role.any())] : [])
-        ]
-      );
-      console.log('File uploaded successfully:', fileResponse);
+      // Prepare form data
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('title', videoTitle.trim() || getDefaultTitle());
+      formData.append('quality', quality);
+      formData.append('duration', recordingState.duration.toString());
+      formData.append('isPublic', isVideoPublic.toString());
+      formData.append('thumbnailUrl', '');
+
+      console.log('Uploading file using server action...');
       
-      // Upload subtitle file if subtitles were generated
-      let subtitleFileId: string | null = null;
-      if (subtitleState.segments.length > 0) {
-        try {
-          console.log('Uploading subtitle file...');
-          const vttContent = generateVTTContent();
-          const subtitleBlob = new Blob([vttContent], { type: 'text/vtt;charset=utf-8' });
-          const subtitleFile = new File([subtitleBlob], `${timestamp}-subtitles.vtt`, { type: 'text/vtt' });
-          
-          const subtitleResponse = await storage.createFile(
-            config.bucketId,
-            ID.unique(),
-            subtitleFile,
-            [
-              Permission.read(Role.user(user.$id)),
-              Permission.delete(Role.user(user.$id)),
-              ...(isVideoPublic ? [Permission.read(Role.any())] : [])
-            ]
-          );
-          
-          subtitleFileId = subtitleResponse.$id;
-          console.log('Subtitle file uploaded successfully:', subtitleResponse);
-        } catch (subtitleError) {
-          console.error('Failed to upload subtitle file:', subtitleError);
-          // Don't fail the entire upload if subtitle upload fails
-        }
+      // Upload video using server action
+      const result = await uploadVideoFileAction(formData);
+      
+      if (result.error) {
+        throw new Error(result.error);
       }
 
-      // Create database record - try minimal structure first
-      const finalTitle = videoTitle.trim() || getDefaultTitle();
-      
-      console.log('Before creating record. Title:', finalTitle);
-      console.log('User info:', { id: user.$id, name: user.name, email: user.email });
-      console.log('Subtitle file ID:', subtitleFileId);
-      
-      // Create complete video record with all required fields
-      const videoRecord = {
-        title: String(finalTitle),
-        fileId: fileResponse.$id, // Correct field name is fileId
-        quality: String(quality), 
-        userId: String(user.$id),
-        userName: String(user.name || user.email || 'Anonymous User'),
-        duration: Number(recordingState.duration),
-        views: Number(0), // Default to 0 views
-        isPublic: Boolean(isVideoPublic), // Use user's choice
-        thumbnailUrl: String(''), // Optional field, empty string
-        subtitleFileId: subtitleFileId ? String(subtitleFileId) : null // Subtitle file ID
-      };
-      
-      console.log('Minimal video record to test:', videoRecord);
-      
-      console.log('Video record to create:', videoRecord);
+      console.log('File uploaded successfully:', result.data);
 
-      const createdVideo = await DatabaseService.createVideoRecord(videoRecord);
-      console.log('Created video record:', createdVideo);
-
-      console.log('Upload and database save successful!');
+      // Handle subtitle file if subtitles were generated  
+      // TODO: Add subtitle file upload to server action if needed
+      if (subtitleState.segments.length > 0) {
+        console.log('Note: Subtitle file upload not yet implemented in server actions');
+      }
       
       // Generate thumbnail for the newly uploaded video
-      try {
-        console.log('Generating thumbnail for new video...');
-        const { ThumbnailService } = await import('@/lib/thumbnail-service');
-        const videoUrl = storage.getFileView(config.bucketId, fileResponse.$id);
-        
-        await ThumbnailService.generateThumbnailOnUpload(
-          createdVideo.$id,
-          videoUrl.toString(),
-          user.$id
-        );
-        console.log('✅ Thumbnail generated successfully for new video');
-      } catch (thumbnailError) {
-        console.warn('⚠️ Thumbnail generation failed (video upload still successful):', thumbnailError);
-        // Don't fail the upload if thumbnail generation fails
+      if (result.data?.videoId && result.data?.fileId) {
+        try {
+          console.log('Getting file URL and generating thumbnail...');
+          
+          // Get file URL
+          const urlResult = await getFileUrlAction(result.data.fileId);
+          if (urlResult.success && urlResult.data?.url) {
+            const thumbnailResult = await generateThumbnailOnUploadAction(
+              result.data.videoId,
+              urlResult.data.url
+            );
+            
+            if (thumbnailResult.success) {
+              console.log('✅ Thumbnail generated successfully for new video');
+            } else {
+              console.warn('⚠️ Thumbnail generation failed:', thumbnailResult.error);
+            }
+          }
+        } catch (thumbnailError) {
+          console.warn('⚠️ Thumbnail generation failed (video upload still successful):', thumbnailError);
+        }
       }
       
       showToast(t.recording.saveSuccess || '视频保存成功！');
       
       // Save uploaded video data for display
-      setUploadedVideo(createdVideo);
+      setUploadedVideo({ $id: result.data?.videoId, title: videoTitle.trim() || getDefaultTitle() });
       
       // Keep recording blob for preview, don't clear it yet
       // The blob will be cleared when starting new recording
 
     } catch (error: any) {
-      console.error('Upload failed. Error details:', {
-        error: error,
-        message: error.message,
-        code: error.code,
-        type: error.type
-      });
-      showToast(`保存失败: ${error.message || '未知错误'}。请检查控制台获取详细信息。`);
+      console.error('Upload failed. Error details:', error);
+      showToast(`保存失败: ${error.message || '未知错误'}。`);
     } finally {
       setIsUploading(false);
     }

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { DatabaseService } from '@/lib/database';
-import { AuthService } from '@/lib/auth/appwrite-auth';
+import { toggleVideoPrivacy } from '@/lib/server-database';
+import { getCurrentUser } from '@/lib/auth/server-auth';
 
 export async function PATCH(request: NextRequest) {
   try {
     // First authenticate the user
-    const currentUser = await AuthService.getCurrentUser();
+    const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -24,7 +24,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Use the existing toggleVideoPrivacy method
-    const updatedVideo = await DatabaseService.toggleVideoPrivacy(videoId, currentUser.$id);
+    const updatedVideo = await toggleVideoPrivacy(videoId, currentUser.$id);
 
     return NextResponse.json({
       success: true,

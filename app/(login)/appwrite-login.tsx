@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useTransition } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,10 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Video, Loader2, Github } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/lib/i18n';
+import { loginAction, registerAction, createOAuth2SessionAction } from '@/app/actions/user-actions';
 // import { OAuthFallbackGuide } from '@/components/oauth-fallback-guide';
 
 function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
-  const { login, register, loginWithGitHub, user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -23,7 +24,7 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [githubLoading, setGithubLoading] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   // Handle OAuth errors and redirect if already authenticated
   useEffect(() => {
@@ -42,25 +43,33 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
 
-    try {
-      if (mode === 'signin') {
-        await login(email, password);
-      } else {
-        if (!name.trim()) {
-          throw new Error(t.auth.nameRequired);
+    startTransition(async () => {
+      try {
+        let result;
+        
+        if (mode === 'signin') {
+          result = await loginAction(email, password);
+        } else {
+          if (!name.trim()) {
+            throw new Error(t.auth.nameRequired);
+          }
+          result = await registerAction(email, password, name);
         }
-        await register(email, password, name);
+        
+        if (result.error) {
+          setError(result.error);
+        } else {
+          // 刷新用户信息并重定向
+          await refreshUser();
+          router.push(redirect);
+        }
+      } catch (error: any) {
+        console.error('Auth error:', error);
+        setError(error.message || t.auth.errorOccurred);
       }
-      router.push(redirect);
-    } catch (error: any) {
-      console.error('Auth error:', error);
-      setError(error.message || t.auth.errorOccurred);
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   const handleGitHubLogin = async () => {
@@ -68,7 +77,17 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
     setError('');
     
     try {
-      await loginWithGitHub();
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+      const redirectUrl = `${baseUrl}/dashboard`;
+      const failureUrl = `${baseUrl}/sign-in?error=oauth_failed`;
+      
+      const result = await createOAuth2SessionAction('github', redirectUrl, failureUrl);
+      
+      if (result.error) {
+        setError(result.error);
+        setGithubLoading(false);
+      }
+      // OAuth 重定向将处理其余部分
     } catch (error: any) {
       console.error('GitHub OAuth error:', error);
       setError(error.message || t.auth.githubLoginFailed);
@@ -178,9 +197,9 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
             <Button
               type="submit"
               className="w-full rounded-full"
-              disabled={loading}
+              disabled={isPending}
             >
-              {loading ? (
+              {isPending ? (
                 <>
                   <Loader2 className="animate-spin mr-2 h-4 w-4" />
                   {t.auth.loading}
@@ -215,7 +234,7 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
               variant="outline"
               className="w-full rounded-full"
               onClick={handleGitHubLogin}
-              disabled={githubLoading || loading}
+              disabled={githubLoading || isPending}
             >
               {githubLoading ? (
                 <>

@@ -3,10 +3,9 @@
  * 提供上传时生成、批量生成等功能
  */
 
-import { DatabaseService } from './database';
-import { storage } from './appwrite';
+import { uploadFile, getFileUrl, updateVideoThumbnail, getUserVideos, deleteFile } from './server-database';
+import { createAdminClient, config, ID } from './appwrite-server';
 import { generateVideoThumbnailBlob } from './video-utils';
-import { ID } from 'appwrite';
 
 export interface ThumbnailGenerationOptions {
   width?: number;
@@ -54,20 +53,13 @@ export class ThumbnailService {
         type: 'image/jpeg'
       });
       
-      const uploadedFile = await storage.createFile(
-        process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID!,
-        ID.unique(),
-        thumbnailFile
-      );
+      const uploadedFile = await uploadFile(thumbnailFile);
 
       // 3. 获取缩略图URL
-      const thumbnailUrl = storage.getFileView(
-        process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID!,
-        uploadedFile.$id
-      );
+      const thumbnailUrl = await getFileUrl(uploadedFile.$id);
 
       // 4. 更新数据库记录
-      await DatabaseService.updateVideoThumbnail(
+      await updateVideoThumbnail(
         videoId, 
         thumbnailUrl.toString(), 
         userId
@@ -97,17 +89,14 @@ export class ThumbnailService {
 
     try {
       // 获取用户所有没有缩略图的视频
-      const videos = await DatabaseService.getUserVideos(userId);
+      const videos = await getUserVideos(userId);
       const videosWithoutThumbnails = videos.filter(video => !video.thumbnailUrl);
       
       console.log(`Found ${videosWithoutThumbnails.length} videos without thumbnails`);
 
       for (const video of videosWithoutThumbnails) {
         try {
-          const videoUrl = storage.getFileView(
-            process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID!,
-            video.fileId
-          );
+          const videoUrl = await getFileUrl(video.fileId);
 
           const thumbnailUrl = await this.generateThumbnailOnUpload(
             video.$id,
@@ -158,10 +147,7 @@ export class ThumbnailService {
     }
 
     // 尝试生成缩略图
-    const videoUrl = storage.getFileView(
-      process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID!,
-      video.fileId
-    );
+    const videoUrl = await getFileUrl(video.fileId);
 
     const thumbnailUrl = await this.generateThumbnailOnUpload(
       video.$id,
@@ -189,10 +175,7 @@ export class ThumbnailService {
       const fileId = urlParts[urlParts.length - 1];
       
       if (fileId) {
-        await storage.deleteFile(
-          process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID!,
-          fileId
-        );
+        await deleteFile(fileId);
         console.log(`✅ Thumbnail deleted: ${fileId}`);
         return true;
       }
@@ -214,7 +197,7 @@ export class ThumbnailService {
     percentage: number;
   }> {
     try {
-      const videos = await DatabaseService.getUserVideos(userId);
+      const videos = await getUserVideos(userId);
       const total = videos.length;
       const withThumbnail = videos.filter(v => v.thumbnailUrl).length;
       const withoutThumbnail = total - withThumbnail;

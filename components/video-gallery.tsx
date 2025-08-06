@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { DeleteModal, useDeleteModal } from '@/components/ui/delete-modal';
-import OptimizedVideoCard from '@/components/optimized-video-card';
+import VideoCardWithUrl from '@/components/video-card-with-url';
+import VideoPlayerModal from '@/components/video-player-modal';
 import { 
   Search, 
   Eye, 
@@ -27,10 +28,17 @@ import {
   Play
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { DatabaseService, type Video } from '@/lib/database';
-import { storage } from '@/lib/appwrite';
+import { type Video } from '@/lib/database';
 import { useI18n } from '@/lib/i18n';
 import { generatePlaceholderThumbnail } from '@/lib/video-utils';
+import { 
+  getUserVideosAction, 
+  getPublicVideosAction, 
+  deleteVideoAction, 
+  toggleVideoPrivacyAction,
+  incrementVideoViewsAction,
+  getFileUrlAction
+} from '@/app/actions/video-actions';
 
 interface VideoGalleryProps {
   showPublic?: boolean;
@@ -90,15 +98,21 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
   const loadVideos = async () => {
     try {
       setLoading(true);
-      let videoList: Video[] = [];
+      let result;
       
       if (showPublic) {
-        videoList = await DatabaseService.getPublicVideos();
+        result = await getPublicVideosAction();
       } else if (user) {
-        videoList = await DatabaseService.getUserVideos(user.$id);
+        result = await getUserVideosAction();
       }
       
-      setVideos(videoList);
+      if (result?.success && result.data) {
+        setVideos(result.data);
+      } else if (result?.error) {
+        throw new Error(result.error);
+      } else {
+        setVideos([]);
+      }
     } catch (error: any) {
       console.error('Error loading videos:', error);
       if (onError) {
@@ -129,8 +143,14 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const getVideoUrl = (fileId: string) => {
-    return storage.getFileView(process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID!, fileId);
+  const getVideoUrl = async (fileId: string) => {
+    try {
+      const result = await getFileUrlAction(fileId);
+      return result.success && result.data?.url ? result.data.url : '#';
+    } catch (error) {
+      console.error('Error getting video URL:', error);
+      return '#';
+    }
   };
 
   const handleVideoClick = async (video: Video) => {
@@ -139,7 +159,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
     
     // Increment view count
     if (showPublic || (user && user.$id !== video.userId)) {
-      await DatabaseService.incrementViews(video.$id);
+      await incrementVideoViewsAction(video.$id);
     }
   };
 
@@ -195,18 +215,24 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
     }
   };
 
-  const handleDownload = (video: Video) => {
-    const downloadUrl = storage.getFileDownload(
-      process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID!,
-      video.fileId
-    );
-    
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = `${video.title}.webm`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownload = async (video: Video) => {
+    try {
+      const result = await getFileUrlAction(video.fileId);
+      if (!result.success || !result.data?.url) {
+        showToast('无法获取下载链接');
+        return;
+      }
+      
+      const link = document.createElement('a');
+      link.href = result.data.url;
+      link.download = `${video.title}.webm`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error downloading video:', error);
+      showToast('下载失败，请重试');
+    }
   };
 
   const handleDeleteClick = (video: Video) => {
@@ -216,17 +242,18 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
       onConfirm: async () => {
         try {
           setDeletingVideoId(video.$id);
-          const result = await DatabaseService.deleteVideo(video.$id, video.fileId);
+          const result = await deleteVideoAction(video.$id, video.fileId);
+          
+          if (result.error) {
+            throw new Error(result.error);
+          }
           
           // Update video list immediately
           setVideos(videos.filter(v => v.$id !== video.$id));
           
           // Show appropriate success message
-          if (result && typeof result === 'object' && 'storageDeleteSuccess' in result) {
-            showToast(result.message || '视频删除成功！');
-            if (!result.storageDeleteSuccess) {
-              console.warn('Storage file deletion failed but video removed from list');
-            }
+          if (result.data && result.data.message) {
+            showToast(result.data.message);
           } else {
             showToast('视频已成功删除！');
           }
@@ -250,13 +277,17 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
     try {
       setUpdatingPrivacyId(video.$id);
       
-      // Call the database service directly from the client
-      const updatedVideo = await DatabaseService.toggleVideoPrivacy(video.$id, user.$id);
+      // Call the server action
+      const result = await toggleVideoPrivacyAction(video.$id);
+      
+      if (result.error) {
+        throw new Error(result.error);
+      }
       
       // Update the video in the local state
       setVideos(videos.map(v => 
         v.$id === video.$id 
-          ? { ...v, isPublic: updatedVideo.isPublic }
+          ? { ...v, isPublic: result.data.isPublic }
           : v
       ));
       
@@ -334,7 +365,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
           : "space-y-1"
       }>
         {filteredVideos.map((video) => (
-          <OptimizedVideoCard
+          <VideoCardWithUrl
             key={video.$id}
             video={video}
             isOwner={Boolean(!showPublic && user && user.$id === video.userId)}
@@ -345,7 +376,6 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
             onDownload={handleDownload}
             onDelete={handleDeleteClick}
             onPrivacyToggle={handlePrivacyToggle}
-            getVideoUrl={getVideoUrl}
             formatDate={formatDate}
             formatDuration={formatDuration}
             deletingVideoId={deletingVideoId}
@@ -417,12 +447,11 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
                   </>
                 ) : (
                   // 只有在点击播放后才加载视频
-                  <video
-                    className="w-full h-full"
-                    controls
-                    autoPlay
-                    src={getVideoUrl(selectedVideo.fileId)}
+                  <VideoPlayerModal
+                    fileId={selectedVideo.fileId}
+                    isPlaying={isVideoPlaying}
                     onLoadStart={() => console.log('Video loading started')}
+                    className="w-full h-full"
                   />
                 )}
               </div>
