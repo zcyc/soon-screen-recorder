@@ -296,7 +296,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
             className="group cursor-pointer transition-all duration-300 hover:scale-105 border-0 shadow-none rounded-none overflow-hidden"
             onClick={() => handleVideoClick(video)}
           >
-            <CardContent className="p-0">
+            <CardContent className="p-0 relative">
               {/* Video Thumbnail/Preview */}
               <div className="aspect-video bg-muted relative overflow-hidden">
                 <video
@@ -322,106 +322,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
                     </svg>
                   </div>
                 </div>
-                
-                {/* Action Buttons - Float on video */}
-                {/* 用户自己的视频 */}
-                {(!showPublic && user && user.$id === video.userId) && (
-                  <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-in-out">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className={`h-8 w-8 p-0 transition-all duration-300 hover:scale-110 bg-black/70 hover:bg-opacity-100 text-white backdrop-blur-sm ${
-                        video.isPublic 
-                          ? "hover:bg-orange-600 hover:text-white hover:shadow-lg" 
-                          : "hover:bg-green-600 hover:text-white hover:shadow-lg"
-                      }`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handlePrivacyToggle(video);
-                      }}
-                      title={video.isPublic ? t.videos.makePrivate : t.videos.makePublic}
-                      disabled={updatingPrivacyId === video.$id}
-                    >
-                      {updatingPrivacyId === video.$id ? (
-                        <div className="animate-spin rounded-full h-3 w-3 border border-current border-t-transparent" />
-                      ) : video.isPublic ? (
-                        <Lock className="h-3 w-3" />
-                      ) : (
-                        <Globe className="h-3 w-3" />
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 w-8 p-0 bg-black/70 hover:bg-blue-600 text-white transition-all duration-300 hover:scale-110 hover:shadow-lg backdrop-blur-sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCopyShareLink(video);
-                      }}
-                      title={t.recording.copyShareLink || '复制分享链接'}
-                    >
-                      <Link className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 w-8 p-0 bg-black/70 hover:bg-primary text-white transition-all duration-300 hover:scale-110 hover:shadow-lg backdrop-blur-sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleShare(video);
-                      }}
-                    >
-                      <Share className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 w-8 p-0 bg-black/70 hover:bg-green-600 text-white transition-all duration-300 hover:scale-110 hover:shadow-lg backdrop-blur-sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDownload(video);
-                      }}
-                    >
-                      <Download className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 w-8 p-0 bg-black/70 hover:bg-red-600 text-white transition-all duration-300 hover:scale-110 hover:shadow-lg backdrop-blur-sm"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        e.nativeEvent.stopImmediatePropagation();
-                        handleDeleteClick(video);
-                      }}
-                      disabled={deletingVideoId === video.$id}
-                    >
-                      {deletingVideoId === video.$id ? (
-                        <div className="animate-spin rounded-full h-3 w-3 border border-current border-t-transparent" />
-                      ) : (
-                        <Trash2 className="h-3 w-3" />
-                      )}
-                    </Button>
-                  </div>
-                )}
-                
-                {/* 公开视频或别人的视频 - 只显示复制链接按钮 */}
-                {(showPublic || (user && user.$id !== video.userId)) && (
-                  <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-in-out">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 w-8 p-0 bg-black/70 hover:bg-blue-600 text-white transition-all duration-300 hover:scale-110 hover:shadow-lg backdrop-blur-sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCopyShareLink(video);
-                      }}
-                      title={t.recording.copyShareLink || '复制分享链接'}
-                    >
-                      <Link className="h-3 w-3" />
-                    </Button>
-                  </div>
-                )}
+
               </div>
               
               <div className="space-y-1 p-2">
@@ -467,6 +368,106 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
                 </div>
 
               </div>
+              
+              {/* Action Buttons - Float on card bottom */}
+              {/* 用户自己的视频 */}
+              {(!showPublic && user && user.$id === video.userId) && (
+                <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-in-out">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className={`h-8 w-8 p-0 transition-all duration-300 hover:scale-110 bg-white/90 hover:bg-opacity-100 text-gray-800 backdrop-blur-sm shadow-md ${
+                      video.isPublic 
+                        ? "hover:bg-orange-600 hover:text-white hover:shadow-lg" 
+                        : "hover:bg-green-600 hover:text-white hover:shadow-lg"
+                    }`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePrivacyToggle(video);
+                    }}
+                    title={video.isPublic ? t.videos.makePrivate : t.videos.makePublic}
+                    disabled={updatingPrivacyId === video.$id}
+                  >
+                    {updatingPrivacyId === video.$id ? (
+                      <div className="animate-spin rounded-full h-3 w-3 border border-current border-t-transparent" />
+                    ) : video.isPublic ? (
+                      <Lock className="h-3 w-3" />
+                    ) : (
+                      <Globe className="h-3 w-3" />
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0 bg-white/90 hover:bg-blue-600 text-gray-800 hover:text-white transition-all duration-300 hover:scale-110 hover:shadow-lg backdrop-blur-sm shadow-md"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCopyShareLink(video);
+                    }}
+                    title={t.recording.copyShareLink || '复制分享链接'}
+                  >
+                    <Link className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0 bg-white/90 hover:bg-primary text-gray-800 hover:text-white transition-all duration-300 hover:scale-110 hover:shadow-lg backdrop-blur-sm shadow-md"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleShare(video);
+                    }}
+                  >
+                    <Share className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0 bg-white/90 hover:bg-green-600 text-gray-800 hover:text-white transition-all duration-300 hover:scale-110 hover:shadow-lg backdrop-blur-sm shadow-md"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownload(video);
+                    }}
+                  >
+                    <Download className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0 bg-white/90 hover:bg-red-600 text-gray-800 hover:text-white transition-all duration-300 hover:scale-110 hover:shadow-lg backdrop-blur-sm shadow-md"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.nativeEvent.stopImmediatePropagation();
+                      handleDeleteClick(video);
+                    }}
+                    disabled={deletingVideoId === video.$id}
+                  >
+                    {deletingVideoId === video.$id ? (
+                      <div className="animate-spin rounded-full h-3 w-3 border border-current border-t-transparent" />
+                    ) : (
+                      <Trash2 className="h-3 w-3" />
+                    )}
+                  </Button>
+                </div>
+              )}
+              
+              {/* 公开视频或别人的视频 - 只显示复制链接按钮 */}
+              {(showPublic || (user && user.$id !== video.userId)) && (
+                <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-in-out">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0 bg-white/90 hover:bg-blue-600 text-gray-800 hover:text-white transition-all duration-300 hover:scale-110 hover:shadow-lg backdrop-blur-sm shadow-md"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCopyShareLink(video);
+                    }}
+                    title={t.recording.copyShareLink || '复制分享链接'}
+                  >
+                    <Link className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}
