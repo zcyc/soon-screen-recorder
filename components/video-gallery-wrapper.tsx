@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
 import VideoGallery from './video-gallery';
+import PerformanceMonitor from './performance-monitor';
 
 interface VideoGalleryWrapperProps {
   showPublic?: boolean;
@@ -75,5 +76,10 @@ export default function VideoGalleryWrapper({ showPublic = false }: VideoGallery
     );
   }
 
-  return <VideoGallery showPublic={showPublic} onError={handleSetupError} />;
+  return (
+    <>
+      <VideoGallery showPublic={showPublic} onError={handleSetupError} />
+      {process.env.NODE_ENV === 'development' && <PerformanceMonitor />}
+    </>
+  );
 }

@@ -406,4 +406,71 @@ export class DatabaseService {
       throw error;
     }
   }
+
+  // Thumbnail management
+  static async updateVideoThumbnail(videoId: string, thumbnailUrl: string, userId: string) {
+    try {
+      // Verify the user owns this video
+      const video = await this.getVideoById(videoId);
+      if (video.userId !== userId) {
+        throw new Error('Unauthorized: You can only update your own videos');
+      }
+
+      const response = await databases.updateDocument(
+        config.databaseId,
+        config.collectionsId.videos,
+        videoId,
+        { thumbnailUrl }
+      );
+      return response;
+    } catch (error) {
+      console.error('Failed to update video thumbnail:', error);
+      throw error;
+    }
+  }
+
+  // Generate and store thumbnail for a video
+  static async generateAndStoreThumbnail(videoId: string, videoUrl: string, userId: string) {
+    try {
+      // Import thumbnail generation utilities
+      const { generateVideoThumbnailBlob } = await import('./video-utils');
+      
+      // Generate thumbnail blob
+      const thumbnailBlob = await generateVideoThumbnailBlob(videoUrl, {
+        width: 320,
+        height: 180,
+        time: 1,
+        quality: 0.8,
+        format: 'jpeg'
+      });
+      
+      // Upload thumbnail to storage
+      const { storage } = await import('./appwrite');
+      
+      // Convert Blob to File
+      const thumbnailFile = new File([thumbnailBlob], `thumbnail-${ID.unique()}.jpg`, {
+        type: 'image/jpeg'
+      });
+      
+      const uploadedFile = await storage.createFile(
+        process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID!,
+        ID.unique(),
+        thumbnailFile
+      );
+      
+      // Get thumbnail URL
+      const thumbnailUrl = storage.getFileView(
+        process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID!,
+        uploadedFile.$id
+      );
+      
+      // Update video record with thumbnail URL
+      await this.updateVideoThumbnail(videoId, thumbnailUrl.toString(), userId);
+      
+      return thumbnailUrl.toString();
+    } catch (error) {
+      console.error('Failed to generate and store thumbnail:', error);
+      throw error;
+    }
+  }
 }

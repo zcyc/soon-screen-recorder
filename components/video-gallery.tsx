@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { DeleteModal, useDeleteModal } from '@/components/ui/delete-modal';
+import OptimizedVideoCard from '@/components/optimized-video-card';
 import { 
   Search, 
   Eye, 
@@ -21,12 +23,14 @@ import {
   Lock,
   Unlock,
   Globe,
-  Shield
+  Shield,
+  Play
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { DatabaseService, type Video } from '@/lib/database';
 import { storage } from '@/lib/appwrite';
 import { useI18n } from '@/lib/i18n';
+import { generatePlaceholderThumbnail } from '@/lib/video-utils';
 
 interface VideoGalleryProps {
   showPublic?: boolean;
@@ -40,6 +44,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
@@ -49,6 +54,32 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
   useEffect(() => {
     loadVideos();
   }, [showPublic, user]);
+
+  // Handle escape key to close modal and prevent body scroll
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && selectedVideo) {
+        handleCloseModal();
+      }
+    };
+
+    if (selectedVideo) {
+      document.addEventListener('keydown', handleEscape);
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = 'hidden';
+      
+      // Force scroll to top when modal opens to ensure it's visible
+      const modalContainer = document.querySelector('.video-modal-container');
+      if (modalContainer) {
+        (modalContainer as HTMLElement).scrollTop = 0;
+      }
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [selectedVideo]);
 
   // Show toast message
   const showToast = (message: string) => {
@@ -104,11 +135,23 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
 
   const handleVideoClick = async (video: Video) => {
     setSelectedVideo(video);
+    setIsVideoPlaying(false); // Reset playing state
     
     // Increment view count
     if (showPublic || (user && user.$id !== video.userId)) {
       await DatabaseService.incrementViews(video.$id);
     }
+  };
+
+  // Handle starting video playback
+  const handleStartPlaying = () => {
+    setIsVideoPlaying(true);
+  };
+
+  // Handle closing video modal
+  const handleCloseModal = () => {
+    setSelectedVideo(null);
+    setIsVideoPlaying(false);
   };
 
   const handleShare = async (video: Video) => {
@@ -291,212 +334,98 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
           : "space-y-1"
       }>
         {filteredVideos.map((video) => (
-          <Card 
-            key={video.$id} 
-            className="group cursor-pointer transition-all duration-300 hover:scale-105 border-0 shadow-none rounded-none overflow-hidden"
-            onClick={() => handleVideoClick(video)}
-          >
-            <CardContent className="p-0 relative">
-              {/* Video Thumbnail/Preview */}
-              <div className="aspect-video bg-muted relative overflow-hidden">
-                <video
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                  src={getVideoUrl(video.fileId)}
-                  preload="metadata"
-                  muted
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <div className="absolute top-2 left-2 bg-black/80 text-white text-xs px-2 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <span className="flex items-center gap-1">
-                    <Eye className="h-3 w-3" />
-                    {video.views}
-                  </span>
-                </div>
-                <div className="absolute bottom-2 right-2 bg-black/90 text-white text-xs px-2 py-1 rounded-full font-medium">
-                  {formatDuration(video.duration)}
-                </div>
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <div className="bg-white/90 rounded-full p-3 shadow-lg">
-                    <svg className="h-6 w-6 text-gray-800" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                </div>
-
-              </div>
-              
-              <div className="space-y-1 p-2">
-                {/* Title */}
-                <h4 className="font-semibold text-sm leading-tight line-clamp-2 group-hover:text-primary transition-colors">
-                  {video.title}
-                </h4>
-                
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span className="truncate">{formatDate(video.$createdAt)}</span>
-                  <Badge variant="secondary" className="text-xs px-2 py-0.5">
-                    {video.quality}
-                  </Badge>
-                </div>
-                
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <div className="flex items-center space-x-2">
-                    <span className="flex items-center">
-                      <Eye className="h-3 w-3 mr-1" />
-                      {video.views}
-                    </span>
-                  </div>
-                  <Badge 
-                    variant={video.isPublic ? "outline" : "secondary"} 
-                    className={`text-xs px-2 py-0.5 ${
-                      video.isPublic 
-                        ? "border-green-300 text-green-700 bg-green-50" 
-                        : "border-gray-300 text-gray-700 bg-gray-100"
-                    }`}
-                  >
-                    {video.isPublic ? (
-                      <>
-                        <Globe className="h-3 w-3 mr-1" />
-                        {t.videos.public}
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="h-3 w-3 mr-1" />
-                        {t.videos.private}
-                      </>
-                    )}
-                  </Badge>
-                </div>
-
-              </div>
-              
-              {/* Action Buttons - Float on card bottom */}
-              {/* 用户自己的视频 */}
-              {(!showPublic && user && user.$id === video.userId) && (
-                <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-in-out">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className={`h-8 w-8 p-0 transition-all duration-300 hover:scale-110 bg-white/90 hover:bg-opacity-100 text-gray-800 backdrop-blur-sm shadow-md ${
-                      video.isPublic 
-                        ? "hover:bg-orange-600 hover:text-white hover:shadow-lg" 
-                        : "hover:bg-green-600 hover:text-white hover:shadow-lg"
-                    }`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handlePrivacyToggle(video);
-                    }}
-                    title={video.isPublic ? t.videos.makePrivate : t.videos.makePublic}
-                    disabled={updatingPrivacyId === video.$id}
-                  >
-                    {updatingPrivacyId === video.$id ? (
-                      <div className="animate-spin rounded-full h-3 w-3 border border-current border-t-transparent" />
-                    ) : video.isPublic ? (
-                      <Lock className="h-3 w-3" />
-                    ) : (
-                      <Globe className="h-3 w-3" />
-                    )}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 w-8 p-0 bg-white/90 hover:bg-blue-600 text-gray-800 hover:text-white transition-all duration-300 hover:scale-110 hover:shadow-lg backdrop-blur-sm shadow-md"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCopyShareLink(video);
-                    }}
-                    title={t.recording.copyShareLink || '复制分享链接'}
-                  >
-                    <Link className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 w-8 p-0 bg-white/90 hover:bg-primary text-gray-800 hover:text-white transition-all duration-300 hover:scale-110 hover:shadow-lg backdrop-blur-sm shadow-md"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleShare(video);
-                    }}
-                  >
-                    <Share className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 w-8 p-0 bg-white/90 hover:bg-green-600 text-gray-800 hover:text-white transition-all duration-300 hover:scale-110 hover:shadow-lg backdrop-blur-sm shadow-md"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDownload(video);
-                    }}
-                  >
-                    <Download className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 w-8 p-0 bg-white/90 hover:bg-red-600 text-gray-800 hover:text-white transition-all duration-300 hover:scale-110 hover:shadow-lg backdrop-blur-sm shadow-md"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      e.nativeEvent.stopImmediatePropagation();
-                      handleDeleteClick(video);
-                    }}
-                    disabled={deletingVideoId === video.$id}
-                  >
-                    {deletingVideoId === video.$id ? (
-                      <div className="animate-spin rounded-full h-3 w-3 border border-current border-t-transparent" />
-                    ) : (
-                      <Trash2 className="h-3 w-3" />
-                    )}
-                  </Button>
-                </div>
-              )}
-              
-              {/* 公开视频或别人的视频 - 只显示复制链接按钮 */}
-              {(showPublic || (user && user.$id !== video.userId)) && (
-                <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-in-out">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 w-8 p-0 bg-white/90 hover:bg-blue-600 text-gray-800 hover:text-white transition-all duration-300 hover:scale-110 hover:shadow-lg backdrop-blur-sm shadow-md"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCopyShareLink(video);
-                    }}
-                    title={t.recording.copyShareLink || '复制分享链接'}
-                  >
-                    <Link className="h-3 w-3" />
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <OptimizedVideoCard
+            key={video.$id}
+            video={video}
+            isOwner={Boolean(!showPublic && user && user.$id === video.userId)}
+            showPublic={showPublic}
+            onVideoClick={handleVideoClick}
+            onShare={handleShare}
+            onCopyLink={handleCopyShareLink}
+            onDownload={handleDownload}
+            onDelete={handleDeleteClick}
+            onPrivacyToggle={handlePrivacyToggle}
+            getVideoUrl={getVideoUrl}
+            formatDate={formatDate}
+            formatDuration={formatDuration}
+            deletingVideoId={deletingVideoId}
+            updatingPrivacyId={updatingPrivacyId}
+            t={t}
+          />
         ))}
       </div>
       
       {/* Video Modal */}
-      {selectedVideo && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-          <div className="bg-background rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+      {selectedVideo && typeof document !== 'undefined' && createPortal(
+        <div 
+          className="video-modal-container fixed bg-black/80 p-4"
+          onClick={handleCloseModal}
+          style={{ 
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9998,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <div 
+            className="bg-background rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl relative"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              margin: 'auto'
+            }}
+          >
             <div className="p-4 border-b">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold">{selectedVideo.title}</h2>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setSelectedVideo(null)}
+                  onClick={handleCloseModal}
+                  className="h-8 w-8 p-0 hover:bg-muted rounded-full"
                 >
-                  ×
+                  <span className="text-2xl leading-none">×</span>
                 </Button>
               </div>
             </div>
             
             <div className="p-4">
-              <video
-                className="w-full rounded-md"
-                controls
-                autoPlay
-                src={getVideoUrl(selectedVideo.fileId)}
-              />
+              <div className="relative aspect-video bg-black rounded-md overflow-hidden">
+                {!isVideoPlaying ? (
+                  // 显示缩略图和播放按钮
+                  <>
+                    <img
+                      className="w-full h-full object-cover"
+                      src={selectedVideo.thumbnailUrl || generatePlaceholderThumbnail(800, 450, selectedVideo.title)}
+                      alt={selectedVideo.title}
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                      <Button
+                        size="lg"
+                        onClick={handleStartPlaying}
+                        className="bg-white/90 hover:bg-white text-black rounded-full h-20 w-20 p-0"
+                      >
+                        <Play className="h-8 w-8 ml-1" fill="currentColor" />
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  // 只有在点击播放后才加载视频
+                  <video
+                    className="w-full h-full"
+                    controls
+                    autoPlay
+                    src={getVideoUrl(selectedVideo.fileId)}
+                    onLoadStart={() => console.log('Video loading started')}
+                  />
+                )}
+              </div>
               
               <div className="mt-4 flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
@@ -563,7 +492,8 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       
       {/* Toast 消息 */}

@@ -1,6 +1,7 @@
 'use client';
 
 import RecordingStatus from '@/components/recording-status';
+import FileVideoUpload from '@/components/file-video-upload';
 import { useI18n } from '@/lib/i18n';
 
 export default function DevicesPage() {
@@ -16,7 +17,19 @@ export default function DevicesPage() {
           </p>
         </div>
         
-        <RecordingStatus />
+        <div className="space-y-8">
+          <RecordingStatus />
+          
+          <div className="border-t pt-8">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold">文件上传</h2>
+              <p className="text-muted-foreground mt-2">
+                上传本地视频文件，自动生成缩略图
+              </p>
+            </div>
+            <FileVideoUpload />
+          </div>
+        </div>
       </div>
     </div>
   );
