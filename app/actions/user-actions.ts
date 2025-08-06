@@ -1,8 +1,10 @@
 'use server';
 
-import { getCurrentUser, verifySession, updatePreferences, createOAuth2Session, login, logout, createAccount } from '@/lib/auth/server-auth';
+import { getCurrentUser, verifySession, updatePreferences, createOAuth2Session, login, logout, createAccount, handleOAuthCallback, extractOAuthCallbackData } from '@/lib/auth/server-auth';
+import { activityService, ActivityType } from '@/lib/services/activity-service';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 
 export type ActionResult = {
   success?: boolean;
@@ -112,5 +114,58 @@ export async function createOAuth2SessionAction(provider: string, success?: stri
   } catch (error: any) {
     console.error('Create OAuth2 session error:', error);
     return { error: error.message || 'Failed to create OAuth2 session' };
+  }
+}
+
+// Handle OAuth callback and establish session
+export async function handleOAuthCallbackAction(userId?: string, secret?: string): Promise<ActionResult> {
+  try {
+    const result = await handleOAuthCallback(userId, secret);
+    
+    if (result.success) {
+      revalidatePath('/dashboard');
+      revalidatePath('/');
+      return { success: true, data: { user: result.user } };
+    } else {
+      return { error: result.error || 'OAuth callback failed' };
+    }
+  } catch (error: any) {
+    console.error('Handle OAuth callback error:', error);
+    return { error: error.message || 'Failed to handle OAuth callback' };
+  }
+}
+
+// Extract OAuth callback data from URL search params
+export async function extractOAuthCallbackDataAction(searchParams: URLSearchParams): Promise<ActionResult> {
+  try {
+    const data = await extractOAuthCallbackData(searchParams);
+    return { success: true, data };
+  } catch (error: any) {
+    console.error('Extract OAuth callback data error:', error);
+    return { error: error.message || 'Failed to extract OAuth callback data' };
+  }
+}
+
+// Log OAuth activity
+export async function logOAuthActivityAction(userId: string, metadata?: string): Promise<ActionResult> {
+  try {
+    // Get client IP address
+    const headersList = await headers();
+    const ipAddress = headersList.get('x-forwarded-for')?.split(',')[0] || 
+                     headersList.get('x-real-ip') || 
+                     '0.0.0.0';
+    
+    await activityService.logActivity({
+      userId,
+      action: ActivityType.SIGN_IN,
+      ipAddress,
+      metadata: metadata || 'GitHub OAuth login'
+    });
+    
+    return { success: true };
+  } catch (error: any) {
+    console.error('Log OAuth activity error:', error);
+    // Don't fail the OAuth flow if logging fails
+    return { success: true, data: { warning: 'Failed to log activity' } };
   }
 }
