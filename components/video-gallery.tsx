@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -66,6 +67,12 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
       document.addEventListener('keydown', handleEscape);
       // Prevent body scroll when modal is open
       document.body.style.overflow = 'hidden';
+      
+      // Force scroll to top when modal opens to ensure it's visible
+      const modalContainer = document.querySelector('.video-modal-container');
+      if (modalContainer) {
+        (modalContainer as HTMLElement).scrollTop = 0;
+      }
     }
 
     return () => {
@@ -349,14 +356,30 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
       </div>
       
       {/* Video Modal */}
-      {selectedVideo && (
+      {selectedVideo && typeof document !== 'undefined' && createPortal(
         <div 
-          className="fixed inset-0 bg-black/80 z-[9998] flex items-center justify-center p-4 overflow-y-auto"
+          className="video-modal-container fixed bg-black/80 p-4"
           onClick={handleCloseModal}
+          style={{ 
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9998,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
         >
           <div 
-            className="bg-background rounded-lg max-w-4xl w-full max-h-[90vh] my-auto overflow-hidden shadow-2xl"
+            className="bg-background rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl relative"
             onClick={(e) => e.stopPropagation()}
+            style={{
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              margin: 'auto'
+            }}
           >
             <div className="p-4 border-b">
               <div className="flex items-center justify-between">
@@ -469,7 +492,8 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       
       {/* Toast 消息 */}
