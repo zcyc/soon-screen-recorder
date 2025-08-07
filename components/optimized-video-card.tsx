@@ -209,7 +209,7 @@ export default function OptimizedVideoCard({
                 e.stopPropagation();
                 onPublishToggle(video);
               }}
-              title={video.isPublish ? '从发现页面移除' : '发布到发现页面'}
+              title={video.isPublish ? t.publish.removeFromDiscovery : t.publish.publishToDiscovery}
               disabled={updatingPublishId === video.$id}
             >
               {updatingPublishId === video.$id ? (

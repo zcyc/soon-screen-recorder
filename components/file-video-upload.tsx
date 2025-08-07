@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Upload, Video, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
+import { useI18n } from '@/lib/i18n';
 import { uploadVideoFileAction } from '@/app/actions/video-actions';
 
 import { getFileUrlAction } from '@/app/actions/video-actions';
@@ -16,6 +17,7 @@ import ClientThumbnailGenerator from './client-thumbnail-generator';
 
 export default function FileVideoUpload() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPending, startTransition] = useTransition();
   const [videoTitle, setVideoTitle] = useState('');
@@ -36,14 +38,14 @@ export default function FileVideoUpload() {
 
     // Validate file type
     if (!file.type.startsWith('video/')) {
-      alert('请选择视频文件');
+      alert('Please select a video file');
       return;
     }
 
     // Validate file size (100MB limit)
     const maxSize = 100 * 1024 * 1024; // 100MB
     if (file.size > maxSize) {
-      alert('文件大小不能超过100MB');
+      alert('File size cannot exceed 100MB');
       return;
     }
 
@@ -162,7 +164,7 @@ export default function FileVideoUpload() {
                   onCheckedChange={setIsPublish}
                   disabled={isPending}
                 />
-                <Label htmlFor="publish-video">发布到发现页面</Label>
+                <Label htmlFor="publish-video">{t.publish.publishToDiscovery}</Label>
               </div>
             </div>
 
