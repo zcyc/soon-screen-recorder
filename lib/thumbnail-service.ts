@@ -55,7 +55,7 @@ export class ThumbnailService {
       console.log('🗑️ Attempting to delete thumbnail:', thumbnailUrl);
       
       // 从URL中提取文件ID
-      // URL格式: https://appwrite.p6s.fun/v1/storage/buckets/videos/files/{fileId}/view?project=soon
+      // URL格式: ${process.env.NEXT_PUBLIC_APPWRITE_STORAGE_ENDPOINT}/storage/buckets/videos/files/{fileId}/view?project=soon
       const match = thumbnailUrl.match(/\/files\/([^\/\?]+)/);
       
       if (!match || !match[1]) {

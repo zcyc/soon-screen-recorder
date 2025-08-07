@@ -159,7 +159,7 @@ Before starting, ensure you have:
 2. **Create Bucket**:
    - Bucket ID: `videos`
    - Bucket Name: `Video Storage`
-   - File Size Limit: 100MB (or your preference)
+   - File Size Limit: 1000MB (or your preference)
    - Allowed Extensions: `webm,mp4,mov,avi`
 
 3. **Configure Bucket Permissions**:
@@ -236,6 +236,7 @@ Before starting, ensure you have:
 
 Ensure these variables are properly set:
 - ✅ `NEXT_PUBLIC_APPWRITE_ENDPOINT` - Appwrite endpoint
+- ✅ `NEXT_PUBLIC_APPWRITE_STORAGE_ENDPOINT` - Appwrite storage endpoint (for file URLs)
 - ✅ `NEXT_PUBLIC_APPWRITE_PROJECT_ID` - Your project ID
 - ✅ `NEXT_PUBLIC_APPWRITE_DATABASE_ID` - Database ID
 - ✅ `NEXT_PUBLIC_APPWRITE_BUCKET_ID` - Storage bucket ID
