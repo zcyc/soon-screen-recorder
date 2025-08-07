@@ -23,8 +23,9 @@ export async function GET(request: Request) {
     // 检查必需参数
     if (!userId || !secret) {
       console.error('OAuth callback missing parameters:', { userId: !!userId, secret: !!secret });
-      const redirectOrigin = url.origin.includes('localhost') 
-        ? 'https://3000-a131201b2b93-web.clackypaas.com' 
+      const headersList = await headers();
+      const redirectOrigin = headersList.get('host') 
+        ? `https://${headersList.get('host')}` 
         : url.origin;
       return NextResponse.redirect(`${redirectOrigin}/sign-in?error=oauth_incomplete`);
     }
@@ -68,9 +69,10 @@ export async function GET(request: Request) {
       // 不让活动记录失败影响登录流程
     }
 
-    // 重定向到仪表板 - 使用正确的开发服务器地址
-    const redirectOrigin = url.origin.includes('localhost') 
-      ? 'https://3000-a131201b2b93-web.clackypaas.com' 
+    // 重定向到仪表板 - 使用当前请求的host动态获取地址
+    const headersList = await headers();
+    const redirectOrigin = headersList.get('host') 
+      ? `https://${headersList.get('host')}` 
       : url.origin;
     
     console.log('OAuth: Redirecting to dashboard at:', `${redirectOrigin}/dashboard`);
@@ -88,8 +90,9 @@ export async function GET(request: Request) {
     }
 
     const url = new URL(request.url);
-    const redirectOrigin = url.origin.includes('localhost') 
-      ? 'https://3000-a131201b2b93-web.clackypaas.com' 
+    const headersList = await headers();
+    const redirectOrigin = headersList.get('host') 
+      ? `https://${headersList.get('host')}` 
       : url.origin;
     return NextResponse.redirect(`${redirectOrigin}/sign-in?error=oauth_session_failed`);
   }
