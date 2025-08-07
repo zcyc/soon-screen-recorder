@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { generateVideoThumbnailBlob } from '@/lib/video-utils';
 import { uploadFileAction } from '@/app/actions/video-actions';
 import { updateVideoThumbnailAction } from '@/app/actions/video-actions';
@@ -23,6 +23,10 @@ export default function ClientThumbnailGenerator({
   const [isGenerating, setIsGenerating] = useState(false);
   const [generated, setGenerated] = useState(false);
   const [processedVideoId, setProcessedVideoId] = useState<string | null>(null);
+  
+  // 使用 ref 来跟踪当前正在处理的视频ID，防止竞态条件
+  const currentlyProcessingRef = useRef<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     console.log('🔄 ClientThumbnailGenerator useEffect triggered:', { 
@@ -36,28 +40,36 @@ export default function ClientThumbnailGenerator({
     
     // 检查是否已经处理过这个videoId
     const alreadyProcessed = processedVideoId === videoId;
+    const currentlyProcessing = currentlyProcessingRef.current === videoId;
     
-    if (!videoId || (!videoFile && !videoUrl) || alreadyProcessed || isGenerating) {
+    if (!videoId || (!videoFile && !videoUrl) || alreadyProcessed || currentlyProcessing) {
       console.log('⏭️ ClientThumbnailGenerator skipping generation:', { 
         videoId: !!videoId, 
         hasVideoFile: !!videoFile, 
         videoUrl: !!videoUrl, 
         alreadyProcessed, 
+        currentlyProcessing,
         isGenerating,
         processedVideoId,
+        currentlyProcessingRef: currentlyProcessingRef.current,
         reason: !videoId ? 'no-video-id' : 
                 (!videoFile && !videoUrl) ? 'no-video-source' :
                 alreadyProcessed ? 'already-processed' : 
-                isGenerating ? 'currently-generating' : 'unknown'
+                currentlyProcessing ? 'currently-processing' : 'unknown'
       });
       return;
     }
 
     const generateThumbnail = async () => {
+      // 标记开始处理这个videoId
+      currentlyProcessingRef.current = videoId;
       setIsGenerating(true);
+      
+      // 创建新的 AbortController
+      abortControllerRef.current = new AbortController();
 
       try {
-        console.log(`Generating thumbnail for video ${videoId}...`);
+        console.log(`🚀 Starting thumbnail generation for video ${videoId}...`);
 
         let videoSource: string | File;
         
@@ -117,11 +129,22 @@ export default function ClientThumbnailGenerator({
         console.error(`❌ Failed to generate thumbnail for video ${videoId}:`, error);
         onError?.(error.message || 'Failed to generate thumbnail');
       } finally {
+        // 清理状态
+        currentlyProcessingRef.current = null;
+        abortControllerRef.current = null;
         setIsGenerating(false);
       }
     };
 
     generateThumbnail();
+    
+    // 清理函数：组件卸载时取消正在进行的操作
+    return () => {
+      if (abortControllerRef.current) {
+        console.log(`💯 Aborting thumbnail generation for video ${videoId}`);
+        abortControllerRef.current.abort();
+      }
+    };
   }, [videoId, videoFile, videoUrl, processedVideoId, isGenerating]);
 
   // 此组件不渲染任何 UI，只是在后台生成缩略图
