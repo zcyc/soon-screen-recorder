@@ -183,7 +183,7 @@ export default function ScreenRecorder() {
   const generateThumbnailInBackground = async (videoId: string, recordedBlob: Blob) => {
     try {
       setIsThumbnailGenerating(true);
-      setThumbnailStatus('正在生成缩略图...');
+      setThumbnailStatus(t.thumbnail.generating);
       
       const browser = detectBrowser();
       console.log(`🎨 Starting thumbnail generation for recording ${videoId} in ${browser.name}`);
@@ -202,7 +202,7 @@ export default function ScreenRecorder() {
       });
       
       console.log('📷 Recording thumbnail blob generated, size:', thumbnailBlob.size);
-      setThumbnailStatus('正在上传缩略图...');
+      setThumbnailStatus(t.thumbnail.uploading);
       
       // 将 Blob 转换为 File 并上传
       const thumbnailFile = new File([thumbnailBlob], `thumbnail-${videoId}.jpg`, {
@@ -216,7 +216,7 @@ export default function ScreenRecorder() {
       }
       
       console.log('🔄 Thumbnail uploaded, updating video record...');
-      setThumbnailStatus('正在更新视频记录...');
+      setThumbnailStatus(t.thumbnail.updatingRecord);
       
       // 更新视频记录的缩略图 URL
       const updateResult = await updateVideoThumbnailAction(videoId, uploadResult.data.url);
@@ -226,7 +226,7 @@ export default function ScreenRecorder() {
       }
       
       console.log(`✅ Recording thumbnail generated successfully: ${uploadResult.data.url}`);
-      setThumbnailStatus('缩略图生成成功！');
+      setThumbnailStatus(t.thumbnail.generateSuccess);
       
       // 3秒后清除状态信息
       setTimeout(() => {
@@ -235,7 +235,7 @@ export default function ScreenRecorder() {
       
     } catch (error: any) {
       console.error(`❌ Recording thumbnail generation failed for video ${videoId}:`, error);
-      setThumbnailStatus('缩略图生成失败');
+      setThumbnailStatus(t.thumbnail.generateFailed);
       
       // 5秒后清除错误信息
       setTimeout(() => {
