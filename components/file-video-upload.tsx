@@ -167,6 +167,7 @@ export default function FileVideoUpload() {
                 disabled={isPending}
                 className="w-full h-12"
                 size="lg"
+                variant="outline"
               >
                 {isPending ? (
                   <div className="flex items-center gap-2">
