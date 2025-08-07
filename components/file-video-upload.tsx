@@ -1,18 +1,22 @@
 'use client';
 
-import { useState, useRef, useTransition } from 'react';
+import { useState, useRef, useTransition, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { Upload, Video, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Upload, Video, CheckCircle, AlertTriangle, Info } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/lib/i18n';
 import { uploadVideoFileAction } from '@/app/actions/video-actions';
 
-import { getFileUrlAction } from '@/app/actions/video-actions';
-import ClientThumbnailGenerator from './client-thumbnail-generator';
+import { getFileUrlAction, uploadFileAction, updateVideoThumbnailAction } from '@/app/actions/video-actions';
+
+import { detectBrowser, getVideoFormatRecommendations } from '@/lib/safari-video-utils';
+import { generateVideoThumbnailBlob } from '@/lib/video-utils';
+import { isVideoFormatSupported } from '@/lib/browser-compatibility';
+import { handleVideoError, isSafariCompatibilityIssue } from '@/lib/video-error-handler';
 
 
 export default function FileVideoUpload() {
@@ -27,9 +31,77 @@ export default function FileVideoUpload() {
   const [uploadedVideo, setUploadedVideo] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
+  const [browserInfo, setBrowserInfo] = useState<any>(null);
+  const [formatWarning, setFormatWarning] = useState<string | null>(null);
+  const [isThumbnailGenerating, setIsThumbnailGenerating] = useState(false);
+  const [thumbnailStatus, setThumbnailStatus] = useState<string>('');
 
   const handleFileSelect = () => {
     fileInputRef.current?.click();
+  };
+
+  // 后台缩略图生成函数
+  const generateThumbnailInBackground = async (videoId: string, videoFile: File) => {
+    try {
+      setIsThumbnailGenerating(true);
+      setThumbnailStatus('正在生成缩略图...');
+      
+      const browser = detectBrowser();
+      console.log(`🎨 Starting thumbnail generation for video ${videoId} in ${browser.name}`);
+      
+      // 生成缩略图 blob
+      const thumbnailBlob = await generateVideoThumbnailBlob(videoFile, {
+        width: 320,
+        height: 180,
+        time: 1,
+        quality: 0.8,
+        format: 'jpeg',
+        timeout: browser.isSafari ? 20000 : 15000
+      });
+      
+      console.log('📷 Thumbnail blob generated, size:', thumbnailBlob.size);
+      setThumbnailStatus('正在上传缩略图...');
+      
+      // 将 Blob 转换为 File 并上传
+      const thumbnailFile = new File([thumbnailBlob], `thumbnail-${videoId}.jpg`, {
+        type: 'image/jpeg'
+      });
+      
+      const uploadResult = await uploadFileAction(thumbnailFile);
+      
+      if (!uploadResult.success || !uploadResult.data) {
+        throw new Error(uploadResult.error || 'Failed to upload thumbnail');
+      }
+      
+      console.log('🔄 Thumbnail uploaded, updating video record...');
+      setThumbnailStatus('正在更新视频记录...');
+      
+      // 更新视频记录的缩略图 URL
+      const updateResult = await updateVideoThumbnailAction(videoId, uploadResult.data.url);
+      
+      if (!updateResult.success) {
+        throw new Error(updateResult.error || 'Failed to update video thumbnail');
+      }
+      
+      console.log(`✅ Thumbnail generated successfully: ${uploadResult.data.url}`);
+      setThumbnailStatus('缩略图生成成功！');
+      
+      // 3秒后清除状态信息
+      setTimeout(() => {
+        setThumbnailStatus('');
+      }, 3000);
+      
+    } catch (error: any) {
+      console.error(`❌ Thumbnail generation failed for video ${videoId}:`, error);
+      setThumbnailStatus('缩略图生成失败');
+      
+      // 5秒后清除错误信息
+      setTimeout(() => {
+        setThumbnailStatus('');
+      }, 5000);
+    } finally {
+      setIsThumbnailGenerating(false);
+    }
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,6 +121,25 @@ export default function FileVideoUpload() {
       return;
     }
 
+    // Check browser compatibility for the video format
+    const browser = detectBrowser();
+    const formatSupported = isVideoFormatSupported(file.type);
+    const recommendations = getVideoFormatRecommendations();
+    
+    setFormatWarning(null);
+    
+    if (!formatSupported) {
+      const warningMsg = `当前浏览器 (${browser.name}) 可能不完全支持 ${file.type} 格式。建议使用: ${recommendations.preferred.join(', ')}`;
+      setFormatWarning(warningMsg);
+      console.warn('🚫 Video format compatibility issue:', warningMsg);
+    } else if (recommendations.avoid.includes(file.type)) {
+      const warningMsg = `当前格式 ${file.type} 在 ${browser.name} 中可能存在兼容性问题。建议转换为: ${recommendations.preferred.join(', ')}`;
+      setFormatWarning(warningMsg);
+      console.warn('⚠️ Video format warning:', warningMsg);
+    } else {
+      console.log('✅ Video format is compatible with current browser');
+    }
+
     setSelectedVideoFile(file);
     await uploadVideo(file);
   };
@@ -62,10 +153,13 @@ export default function FileVideoUpload() {
 
     startTransition(async () => {
       try {
+        const browser = detectBrowser();
         console.log('Starting file upload:', {
           fileName: file.name,
           fileSize: file.size,
-          fileType: file.type
+          fileType: file.type,
+          browser: browser.name,
+          supportsFormat: isVideoFormatSupported(file.type)
         });
 
         setUploadProgress(20);
@@ -92,18 +186,33 @@ export default function FileVideoUpload() {
         console.log('Video uploaded successfully:', result.data);
         setUploadProgress(70);
 
-        // 缩略图将由客户端组件处理
-
         setUploadProgress(100);
-        setUploadedVideo({ 
+        const uploadedVideoData = { 
           $id: result.data?.videoId, 
           title: videoTitle.trim() || file.name,
           fileId: result.data?.fileId 
-        });
+        };
+        setUploadedVideo(uploadedVideoData);
+        
+        // 在后台自动生成缩略图
+        if (selectedVideoFile && uploadedVideoData.$id) {
+          generateThumbnailInBackground(uploadedVideoData.$id, selectedVideoFile);
+        }
 
       } catch (error: any) {
-        console.error('Upload failed:', error);
-        setError(error.message || t.fileUpload.uploadFailed);
+        // Use comprehensive error handling
+        const videoError = handleVideoError(error, 'file-upload');
+        console.error('Video upload failed:', videoError);
+        
+        // Provide user-friendly error message with suggestions
+        let errorMessage = videoError.message;
+        if (isSafariCompatibilityIssue(videoError)) {
+          errorMessage += ` (Safari兼容性问题：${videoError.suggestions[0]})`;
+        } else if (videoError.suggestions.length > 0) {
+          errorMessage += ` 建议: ${videoError.suggestions[0]}`;
+        }
+        
+        setError(errorMessage);
       } finally {
         setUploadProgress(0);
         if (fileInputRef.current) {
@@ -112,6 +221,13 @@ export default function FileVideoUpload() {
       }
     });
   };
+
+  // Initialize browser info on mount
+  useEffect(() => {
+    const browser = detectBrowser();
+    setBrowserInfo(browser);
+    console.log('🔍 Browser detected:', browser);
+  }, []);
 
   if (!user) {
     return (
@@ -132,6 +248,40 @@ export default function FileVideoUpload() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Browser compatibility info */}
+        {browserInfo && (
+          <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                浏览器兼容性信息
+              </span>
+            </div>
+            <div className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+              <p>当前浏览器: {browserInfo.name} {browserInfo.version}</p>
+              <p>推荐格式: {getVideoFormatRecommendations().preferred.join(', ')}</p>
+              {browserInfo.isSafari && (
+                <p className="text-amber-700 dark:text-amber-300">
+                  🍎 Safari用户：WebM格式可能存在兼容性问题，建议使用MP4格式
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {/* Format warning */}
+        {formatWarning && (
+          <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <span className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                格式兼容性警告
+              </span>
+            </div>
+            <p className="text-sm text-amber-800 dark:text-amber-200">{formatWarning}</p>
+          </div>
+        )}
+        
         {/* Upload form */}
         {!uploadedVideo && (
           <div className="space-y-4">
@@ -239,25 +389,16 @@ export default function FileVideoUpload() {
               <p className="text-sm text-green-700">
                 ✅ 视频已保存到您的媒体库<br/>
                 ✅ 可以在视频列表中查看<br/>
-                🎬 正在自动生成缩略图...
+                {thumbnailStatus ? (
+                  <span className={isThumbnailGenerating ? 'text-amber-600 dark:text-amber-400' : thumbnailStatus.includes('失败') ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}>
+                    {isThumbnailGenerating && '🔄 '}{thumbnailStatus}
+                  </span>
+                ) : (
+                  '🎬 缩略图已准备就绪'
+                )}
               </p>
               
-              {/* 自动缩略图生成器 */}
-              {selectedVideoFile && (
-                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <ClientThumbnailGenerator
-                    videoId={uploadedVideo.$id}
-                    videoFile={selectedVideoFile} // 使用原始文件
-                    videoUrl={`${process.env.NEXT_PUBLIC_APPWRITE_STORAGE_ENDPOINT}/storage/buckets/videos/files/${(uploadedVideo as any).fileId}/view?project=soon`} // 作为备选
-                    onThumbnailGenerated={(url) => {
-                      console.log('✅ Thumbnail generated successfully:', url);
-                    }}
-                    onError={(error) => {
-                      console.warn('⚠️ Thumbnail generation failed:', error);
-                    }}
-                  />
-                </div>
-              )}
+
             </div>
 
             <Button
