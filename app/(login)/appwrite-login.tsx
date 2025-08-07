@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Video, Github } from 'lucide-react';
+import { Video, Github, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/lib/i18n';
 import { loginAction, registerAction } from '@/app/actions/user-actions';

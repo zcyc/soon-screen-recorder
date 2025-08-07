@@ -257,9 +257,9 @@ export async function handleOAuthCallback(userId?: string, secret?: string): Pro
       await deleteSessionCookie();
       console.error('OAuth callback: Session validation failed:', sessionError);
       console.error('Session error details:', {
-        message: sessionError.message,
-        name: sessionError.name,
-        stack: sessionError.stack
+        message: sessionError instanceof Error ? sessionError.message : 'Unknown error',
+        name: sessionError instanceof Error ? sessionError.name : 'UnknownError',
+        stack: sessionError instanceof Error ? sessionError.stack : undefined
       });
       return { success: false, error: 'Failed to establish session' };
     }
