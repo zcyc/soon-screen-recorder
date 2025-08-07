@@ -124,6 +124,9 @@ export interface Translations {
     microphonePermissionDenied: string;
     cameraPermissionGranted: string;
     cameraPermissionDenied: string;
+    // Safari/Firefox specific options
+    systemSettings: string;
+    systemSettingsDesc: string;
   };
   
   // Subtitles
@@ -383,6 +386,9 @@ export const translations: Record<Locale, Translations> = {
       microphonePermissionDenied: 'Microphone permission denied',
       cameraPermissionGranted: 'Camera permission granted',
       cameraPermissionDenied: 'Camera permission denied',
+      // Safari/Firefox specific options
+      systemSettings: 'Use System Settings',
+      systemSettingsDesc: 'Use system default screen sharing selection, browser will show all available options',
     },
     subtitles: {
       enableSubtitles: 'Enable Speech to Subtitles',
@@ -561,7 +567,7 @@ export const translations: Record<Locale, Translations> = {
       recordingSource: '录制源',
       screenSource: '屏幕录制源',
       screenOnly: '仅屏幕录制',
-      cameraOnly: '仅摄像头录制',
+      cameraOnly: '仅录制摄像头',
       screenAndCamera: '屏幕 + 摄像头',
       entireScreen: '整个屏幕',
       applicationWindow: '应用窗口',
@@ -627,6 +633,9 @@ export const translations: Record<Locale, Translations> = {
       microphonePermissionDenied: '麦克风权限被拒绝',
       cameraPermissionGranted: '摄像头权限已获取',
       cameraPermissionDenied: '摄像头权限被拒绝',
+      // Safari/Firefox specific options
+      systemSettings: '使用系统设置',
+      systemSettingsDesc: '使用系统默认录屏选择，浏览器将显示所有可用选项',
     },
     subtitles: {
       enableSubtitles: '开启语音转字幕',

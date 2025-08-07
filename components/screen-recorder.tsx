@@ -72,7 +72,8 @@ import {
   ExternalLink,
   Link,
   Circle,
-  StopCircle
+  StopCircle,
+  Globe
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/lib/i18n';
@@ -1762,28 +1763,90 @@ export default function ScreenRecorder() {
                   <SelectValue placeholder={t.recording.selectRecordingSource} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="monitor">
-                    <div>
-                      <div className="flex items-center">
-                        <Monitor className="h-4 w-4 mr-2" />
-                        <span className="font-medium">使用系统设置</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground ml-6">
-                        使用系统默认录屏选择，浏览器将显示所有可用选项
-                      </div>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="camera-only">
-                    <div>
-                      <div className="flex items-center">
-                        <Camera className="h-4 w-4 mr-2" />
-                        <span className="font-medium">{t.recording.cameraOnly}</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground ml-6">
-                        {t.recording.cameraOnlyDesc}
-                      </div>
-                    </div>
-                  </SelectItem>
+                  {(() => {
+                    const browser = detectBrowser();
+                    
+                    // Chrome/Edge: 显示完整选项（屏幕、窗口、标签页、摄像头）
+                    if (browser.supportsDisplaySurface) {
+                      return (
+                        <>
+                          <SelectItem value="monitor">
+                            <div className="w-full">
+                              <div className="flex items-center">
+                                <Monitor className="h-4 w-4 mr-2 flex-shrink-0" />
+                                <span className="font-medium">{t.recording.entireScreen}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {t.recording.entireScreenDesc}
+                              </div>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="window">
+                            <div className="w-full">
+                              <div className="flex items-center">
+                                <Square className="h-4 w-4 mr-2 flex-shrink-0" />
+                                <span className="font-medium">{t.recording.applicationWindow}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {t.recording.applicationWindowDesc}
+                              </div>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="browser">
+                            <div className="w-full">
+                              <div className="flex items-center">
+                                <Globe className="h-4 w-4 mr-2 flex-shrink-0" />
+                                <span className="font-medium">{t.recording.browserTab}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {t.recording.browserTabDesc}
+                              </div>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="camera-only">
+                            <div className="w-full">
+                              <div className="flex items-center">
+                                <Camera className="h-4 w-4 mr-2 flex-shrink-0" />
+                                <span className="font-medium">{t.recording.cameraOnly}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {t.recording.cameraOnlyDesc}
+                              </div>
+                            </div>
+                          </SelectItem>
+                        </>
+                      );
+                    } else {
+                      // Safari/Firefox: 只显示系统设置和摄像头，使用多语言
+                      return (
+                        <>
+                          <SelectItem value="monitor">
+                            <div className="w-full">
+                              <div className="flex items-center">
+                                <Monitor className="h-4 w-4 mr-2 flex-shrink-0" />
+                                <span className="font-medium">{t.recording.systemSettings}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {t.recording.systemSettingsDesc}
+                              </div>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="camera-only">
+                            <div className="w-full">
+                              <div className="flex items-center">
+                                <Camera className="h-4 w-4 mr-2 flex-shrink-0" />
+                                <span className="font-medium">{t.recording.cameraOnly}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {t.recording.cameraOnlyDesc}
+                              </div>
+                            </div>
+                          </SelectItem>
+                        </>
+                      );
+                    }
+                  })()
+                  }
                 </SelectContent>
               </Select>
             </div>
