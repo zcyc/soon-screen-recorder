@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Upload, Video, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { uploadVideoFileAction } from '@/app/actions/video-actions';
-import { generateThumbnailOnUploadAction } from '@/app/actions/thumbnail-actions';
+
 import { getFileUrlAction } from '@/app/actions/video-actions';
 import ClientThumbnailGenerator from './client-thumbnail-generator';
 

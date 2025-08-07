@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Video, LogOut, User as UserIcon, Settings } from 'lucide-react';
+import { Video, LogOut, User as UserIcon } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import {
   DropdownMenu,
@@ -97,13 +97,7 @@ function UserMenu() {
           </div>
         </div>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild className="cursor-pointer">
-          <Link href="/admin/thumbnails" className="flex w-full">
-            <Settings className="mr-2 h-4 w-4" />
-            <span>缩略图管理</span>
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
+
         <form action={handleSignOut} className="w-full">
           <button type="submit" className="flex w-full">
             <DropdownMenuItem className="w-full flex-1 cursor-pointer">
