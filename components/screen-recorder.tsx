@@ -2710,19 +2710,23 @@ export default function ScreenRecorder() {
               
               {/* 缩略图生成状态显示 */}
               {thumbnailStatus && (
-                <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                <div className={`rounded-lg p-3 ${
+                  isThumbnailGenerating ? 'bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800' :
+                  thumbnailStatus.includes('失败') ? 'bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800' :
+                  'bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800'
+                }`}>
                   <div className="flex items-center gap-2">
                     {isThumbnailGenerating ? (
-                      <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                      <div className="animate-spin h-4 w-4 border-2 border-amber-600 dark:border-amber-400 border-t-transparent rounded-full"></div>
                     ) : thumbnailStatus.includes('失败') ? (
-                      <span className="text-red-600">❌</span>
+                      <span className="text-red-600 dark:text-red-400">❌</span>
                     ) : (
-                      <span className="text-green-600">✅</span>
+                      <span className="text-green-600 dark:text-green-400">✅</span>
                     )}
                     <span className={`text-sm ${
-                      isThumbnailGenerating ? 'text-blue-600' : 
-                      thumbnailStatus.includes('失败') ? 'text-red-600' : 
-                      'text-green-600'
+                      isThumbnailGenerating ? 'text-amber-600 dark:text-amber-400' : 
+                      thumbnailStatus.includes('失败') ? 'text-red-600 dark:text-red-400' : 
+                      'text-green-600 dark:text-green-400'
                     }`}>
                       {thumbnailStatus}
                     </span>

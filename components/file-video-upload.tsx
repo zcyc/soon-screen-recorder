@@ -390,7 +390,7 @@ export default function FileVideoUpload() {
                 ✅ 视频已保存到您的媒体库<br/>
                 ✅ 可以在视频列表中查看<br/>
                 {thumbnailStatus ? (
-                  <span className={isThumbnailGenerating ? 'text-blue-600' : thumbnailStatus.includes('失败') ? 'text-red-600' : 'text-green-600'}>
+                  <span className={isThumbnailGenerating ? 'text-amber-600 dark:text-amber-400' : thumbnailStatus.includes('失败') ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}>
                     {isThumbnailGenerating && '🔄 '}{thumbnailStatus}
                   </span>
                 ) : (
