@@ -215,6 +215,9 @@ export interface Translations {
     makePublic: string;
     privacyUpdated: string;
     privacyUpdateFailed: string;
+    created: string;
+    duration: string;
+    quality: string;
   };
   share: {
     loading: string;
@@ -463,6 +466,9 @@ export const translations: Record<Locale, Translations> = {
       makePublic: 'Make Public',
       privacyUpdated: 'Privacy setting updated successfully!',
       privacyUpdateFailed: 'Failed to update privacy setting',
+      created: 'Created',
+      duration: 'Duration',
+      quality: 'Quality',
     },
     share: {
       loading: 'Loading video...',
@@ -704,6 +710,9 @@ export const translations: Record<Locale, Translations> = {
       makePublic: '设为公开',
       privacyUpdated: '隐私设置更新成功！',
       privacyUpdateFailed: '隐私设置更新失败',
+      created: '创建时间',
+      duration: '时长',
+      quality: '质量',
     },
     share: {
       loading: '加载视频中...',
