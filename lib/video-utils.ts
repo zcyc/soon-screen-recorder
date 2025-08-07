@@ -1,32 +1,50 @@
-/**
- * Video utilities for thumbnail generation and optimization
- */
+import { detectBrowser, type BrowserInfo } from './browser-compatibility';
+import { 
+  generateSafariCompatibleThumbnail,
+  generateSafariCompatibleThumbnailBlob,
+  type SafariThumbnailOptions
+} from './safari-video-utils';
+import { createSafariSafeVideoElement } from './safari-url-manager';
 
+/**
+ * Video thumbnail generation options
+ */
 export interface ThumbnailOptions {
-  time?: number; // Time in seconds to capture thumbnail
+  time?: number;
   width?: number;
   height?: number;
-  quality?: number; // 0-1 for JPEG quality
+  quality?: number;
   format?: 'jpeg' | 'png' | 'webp';
+  timeout?: number;
 }
 
 /**
- * Generate thumbnail from video file
+ * Generate video thumbnail data URL from file or URL
  */
 export const generateVideoThumbnail = (
-  videoFile: File | string,
+  videoSource: File | string,
   options: ThumbnailOptions = {}
 ): Promise<string> => {
+  const browser = detectBrowser();
+  
+  // Use Safari-compatible function for Safari browsers
+  if (browser.isSafari) {
+    console.log('🍎 Using Safari-compatible thumbnail generation');
+    return generateSafariCompatibleThumbnail(videoSource, options as SafariThumbnailOptions);
+  }
+  
+  // Original implementation for other browsers with enhanced error handling
   return new Promise((resolve, reject) => {
     const {
-      time = 1, // Default to 1 second
+      time = 1,
       width = 320,
       height = 180,
       quality = 0.8,
-      format = 'jpeg'
+      format = 'jpeg',
+      timeout = 10000
     } = options;
 
-    const video = document.createElement('video');
+    let videoElement = document.createElement('video');
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
@@ -35,46 +53,94 @@ export const generateVideoThumbnail = (
       return;
     }
 
-    video.crossOrigin = 'anonymous';
-    video.preload = 'metadata';
+    videoElement.crossOrigin = 'anonymous';
+    videoElement.preload = 'metadata';
 
-    video.onloadedmetadata = () => {
-      // Set canvas dimensions
-      canvas.width = width;
-      canvas.height = height;
+    // Enhanced timeout handling
+    const timeoutId = setTimeout(() => {
+      reject(new Error('Video processing timeout'));
+    }, timeout);
 
-      // Seek to specified time
-      video.currentTime = Math.min(time, video.duration - 0.1);
+    // Cleanup function
+    let cleanupFunctions: Array<() => void> = [];
+    
+    const cleanup = () => {
+      clearTimeout(timeoutId);
+      cleanupFunctions.forEach(fn => {
+        try {
+          fn();
+        } catch (cleanupError) {
+          console.warn('Cleanup error:', cleanupError);
+        }
+      });
+      
+      try {
+        if (videoElement?.src && videoElement.src.startsWith('blob:')) {
+          URL.revokeObjectURL(videoElement.src);
+        }
+        videoElement?.remove();
+        canvas.remove();
+      } catch (cleanupError) {
+        console.warn('Final cleanup error:', cleanupError);
+      }
     };
 
-    video.onseeked = () => {
+    const onLoadedMetadata = () => {
+      canvas.width = width;
+      canvas.height = height;
+      if (videoElement) {
+        videoElement.currentTime = Math.min(time, videoElement.duration - 0.1);
+      }
+    };
+
+    const onSeeked = () => {
       try {
-        // Draw video frame to canvas
-        ctx.drawImage(video, 0, 0, width, height);
+        if (videoElement && ctx) {
+          ctx.drawImage(videoElement, 0, 0, width, height);
 
-        // Convert to data URL
-        const mimeType = `image/${format}`;
-        const dataURL = canvas.toDataURL(mimeType, quality);
-
-        // Clean up
-        video.remove();
-        canvas.remove();
-
-        resolve(dataURL);
+          const dataURL = canvas.toDataURL(`image/${format}`, quality);
+          cleanup();
+          resolve(dataURL);
+        }
       } catch (error) {
+        cleanup();
         reject(error);
       }
     };
 
-    video.onerror = () => {
-      reject(new Error('Failed to load video'));
+    const onError = (event: any) => {
+      cleanup();
+      reject(new Error(`Failed to load video: ${event}`));
     };
 
-    // Load video
-    if (typeof videoFile === 'string') {
-      video.src = videoFile;
-    } else {
-      video.src = URL.createObjectURL(videoFile);
+    // Set up event handlers
+    videoElement.onloadedmetadata = onLoadedMetadata;
+    videoElement.onseeked = onSeeked;
+    videoElement.onerror = onError;
+
+    // Handle Safari-specific video loading
+    try {
+      if (browser.isSafari || typeof videoSource === 'object') {
+        const { video: safariVideo, cleanup: safariCleanup } = createSafariSafeVideoElement(videoSource);
+        
+        // Add Safari cleanup to cleanup functions
+        cleanupFunctions.push(safariCleanup);
+        
+        // Copy event handlers to Safari-safe video element
+        safariVideo.onloadedmetadata = onLoadedMetadata;
+        safariVideo.onseeked = onSeeked;
+        safariVideo.onerror = onError;
+        
+        // Remove original video element and use Safari-safe one
+        videoElement.remove();
+        videoElement = safariVideo as HTMLVideoElement;
+      } else {
+        // Standard loading for non-Safari browsers with string URLs
+        videoElement.src = videoSource as string;
+      }
+    } catch (error) {
+      cleanup();
+      reject(new Error(`Failed to create video source: ${error}`));
     }
   });
 };
@@ -86,6 +152,15 @@ export const generateVideoThumbnailBlob = (
   videoFile: File | string,
   options: ThumbnailOptions = {}
 ): Promise<Blob> => {
+  const browser = detectBrowser();
+  
+  // Use Safari-compatible function for Safari browsers
+  if (browser.isSafari) {
+    console.log('🍎 Using Safari-compatible blob generation');
+    return generateSafariCompatibleThumbnailBlob(videoFile, options);
+  }
+  
+  // Original implementation for other browsers with enhanced error handling
   return new Promise((resolve, reject) => {
     const {
       time = 1,
@@ -95,7 +170,7 @@ export const generateVideoThumbnailBlob = (
       format = 'jpeg'
     } = options;
 
-    const video = document.createElement('video');
+    let videoElement = document.createElement('video');
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
@@ -104,45 +179,98 @@ export const generateVideoThumbnailBlob = (
       return;
     }
 
-    video.crossOrigin = 'anonymous';
-    video.preload = 'metadata';
+    videoElement.crossOrigin = 'anonymous';
+    videoElement.preload = 'metadata';
 
-    video.onloadedmetadata = () => {
-      canvas.width = width;
-      canvas.height = height;
-      video.currentTime = Math.min(time, video.duration - 0.1);
+    // Enhanced timeout handling
+    const timeout = setTimeout(() => {
+      reject(new Error('Video processing timeout'));
+    }, 10000);
+
+    // Cleanup function
+    let cleanupFunctions: Array<() => void> = [];
+    
+    const cleanup = () => {
+      clearTimeout(timeout);
+      cleanupFunctions.forEach(fn => {
+        try {
+          fn();
+        } catch (cleanupError) {
+          console.warn('Cleanup error:', cleanupError);
+        }
+      });
+      
+      try {
+        if (videoElement?.src && videoElement.src.startsWith('blob:')) {
+          URL.revokeObjectURL(videoElement.src);
+        }
+        videoElement?.remove();
+        canvas.remove();
+      } catch (cleanupError) {
+        console.warn('Final cleanup error:', cleanupError);
+      }
     };
 
-    video.onseeked = () => {
-      try {
-        ctx.drawImage(video, 0, 0, width, height);
+    const onLoadedMetadata = () => {
+      canvas.width = width;
+      canvas.height = height;
+      if (videoElement) {
+        videoElement.currentTime = Math.min(time, videoElement.duration - 0.1);
+      }
+    };
 
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              video.remove();
-              canvas.remove();
-              resolve(blob);
-            } else {
-              reject(new Error('Failed to generate thumbnail blob'));
-            }
-          },
-          `image/${format}`,
-          quality
-        );
+    const onSeeked = () => {
+      try {
+        if (videoElement && ctx) {
+          ctx.drawImage(videoElement, 0, 0, width, height);
+
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                cleanup();
+                resolve(blob);
+              } else {
+                cleanup();
+                reject(new Error('Failed to generate thumbnail blob'));
+              }
+            },
+            `image/${format}`,
+            quality
+          );
+        }
       } catch (error) {
+        cleanup();
         reject(error);
       }
     };
 
-    video.onerror = () => {
-      reject(new Error('Failed to load video'));
+    const onError = (event: any) => {
+      cleanup();
+      reject(new Error(`Failed to load video: ${event}`));
     };
 
-    if (typeof videoFile === 'string') {
-      video.src = videoFile;
-    } else {
-      video.src = URL.createObjectURL(videoFile);
+    // Set up event handlers
+    videoElement.onloadedmetadata = onLoadedMetadata;
+    videoElement.onseeked = onSeeked;
+    videoElement.onerror = onError;
+
+    try {
+      const { video: safariVideo, cleanup: safariCleanup } = createSafariSafeVideoElement(videoFile);
+      
+      // Add Safari cleanup to cleanup functions
+      cleanupFunctions.push(safariCleanup);
+      
+      // Copy event handlers to Safari-safe video element
+      safariVideo.onloadedmetadata = onLoadedMetadata;
+      safariVideo.onseeked = onSeeked;
+      safariVideo.onerror = onError;
+      
+      // Remove original video element and use Safari-safe one
+      videoElement.remove();
+      videoElement = safariVideo as HTMLVideoElement;
+    } catch (error) {
+      cleanup();
+      reject(new Error(`Failed to create video source: ${error}`));
     }
   });
 };
@@ -154,28 +282,67 @@ export const getVideoMetadata = (
   videoFile: File | string
 ): Promise<{ duration: number; width: number; height: number }> => {
   return new Promise((resolve, reject) => {
-    const video = document.createElement('video');
-    video.preload = 'metadata';
+    let videoElement = document.createElement('video');
+    videoElement.preload = 'metadata';
 
-    video.onloadedmetadata = () => {
-      const metadata = {
-        duration: video.duration,
-        width: video.videoWidth,
-        height: video.videoHeight
-      };
+    let cleanupFunctions: Array<() => void> = [];
+    
+    const cleanup = () => {
+      cleanupFunctions.forEach(fn => {
+        try {
+          fn();
+        } catch (error) {
+          console.warn('Metadata cleanup error:', error);
+        }
+      });
       
-      video.remove();
-      resolve(metadata);
+      try {
+        if (videoElement?.src && videoElement.src.startsWith('blob:')) {
+          URL.revokeObjectURL(videoElement.src);
+        }
+        videoElement?.remove();
+      } catch (error) {
+        console.warn('Final metadata cleanup error:', error);
+      }
     };
 
-    video.onerror = () => {
+    const onLoadedMetadata = () => {
+      if (videoElement) {
+        const metadata = {
+          duration: videoElement.duration,
+          width: videoElement.videoWidth,
+          height: videoElement.videoHeight
+        };
+        
+        cleanup();
+        resolve(metadata);
+      }
+    };
+
+    const onError = () => {
+      cleanup();
       reject(new Error('Failed to load video metadata'));
     };
 
-    if (typeof videoFile === 'string') {
-      video.src = videoFile;
-    } else {
-      video.src = URL.createObjectURL(videoFile);
+    videoElement.onloadedmetadata = onLoadedMetadata;
+    videoElement.onerror = onError;
+
+    try {
+      const { video: safariVideo, cleanup: safariCleanup } = createSafariSafeVideoElement(videoFile);
+      
+      // Add Safari cleanup to cleanup functions
+      cleanupFunctions.push(safariCleanup);
+      
+      // Copy event handlers
+      safariVideo.onloadedmetadata = onLoadedMetadata;
+      safariVideo.onerror = onError;
+      
+      // Remove original video element and use Safari-safe one
+      videoElement.remove();
+      videoElement = safariVideo as HTMLVideoElement;
+    } catch (error) {
+      cleanup();
+      reject(new Error(`Failed to create video source: ${error}`));
     }
   });
 };

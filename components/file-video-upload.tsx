@@ -1,18 +1,21 @@
 'use client';
 
-import { useState, useRef, useTransition } from 'react';
+import { useState, useRef, useTransition, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { Upload, Video, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Upload, Video, CheckCircle, AlertTriangle, Info } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/lib/i18n';
 import { uploadVideoFileAction } from '@/app/actions/video-actions';
 
 import { getFileUrlAction } from '@/app/actions/video-actions';
 import ClientThumbnailGenerator from './client-thumbnail-generator';
+import { detectBrowser, getVideoFormatRecommendations } from '@/lib/safari-video-utils';
+import { isVideoFormatSupported } from '@/lib/browser-compatibility';
+import { handleVideoError, isSafariCompatibilityIssue } from '@/lib/video-error-handler';
 
 
 export default function FileVideoUpload() {
@@ -27,6 +30,8 @@ export default function FileVideoUpload() {
   const [uploadedVideo, setUploadedVideo] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
+  const [browserInfo, setBrowserInfo] = useState<any>(null);
+  const [formatWarning, setFormatWarning] = useState<string | null>(null);
 
   const handleFileSelect = () => {
     fileInputRef.current?.click();
@@ -49,6 +54,25 @@ export default function FileVideoUpload() {
       return;
     }
 
+    // Check browser compatibility for the video format
+    const browser = detectBrowser();
+    const formatSupported = isVideoFormatSupported(file.type);
+    const recommendations = getVideoFormatRecommendations();
+    
+    setFormatWarning(null);
+    
+    if (!formatSupported) {
+      const warningMsg = `当前浏览器 (${browser.name}) 可能不完全支持 ${file.type} 格式。建议使用: ${recommendations.preferred.join(', ')}`;
+      setFormatWarning(warningMsg);
+      console.warn('🚫 Video format compatibility issue:', warningMsg);
+    } else if (recommendations.avoid.includes(file.type)) {
+      const warningMsg = `当前格式 ${file.type} 在 ${browser.name} 中可能存在兼容性问题。建议转换为: ${recommendations.preferred.join(', ')}`;
+      setFormatWarning(warningMsg);
+      console.warn('⚠️ Video format warning:', warningMsg);
+    } else {
+      console.log('✅ Video format is compatible with current browser');
+    }
+
     setSelectedVideoFile(file);
     await uploadVideo(file);
   };
@@ -62,10 +86,13 @@ export default function FileVideoUpload() {
 
     startTransition(async () => {
       try {
+        const browser = detectBrowser();
         console.log('Starting file upload:', {
           fileName: file.name,
           fileSize: file.size,
-          fileType: file.type
+          fileType: file.type,
+          browser: browser.name,
+          supportsFormat: isVideoFormatSupported(file.type)
         });
 
         setUploadProgress(20);
@@ -102,8 +129,19 @@ export default function FileVideoUpload() {
         });
 
       } catch (error: any) {
-        console.error('Upload failed:', error);
-        setError(error.message || t.fileUpload.uploadFailed);
+        // Use comprehensive error handling
+        const videoError = handleVideoError(error, 'file-upload');
+        console.error('Video upload failed:', videoError);
+        
+        // Provide user-friendly error message with suggestions
+        let errorMessage = videoError.message;
+        if (isSafariCompatibilityIssue(videoError)) {
+          errorMessage += ` (Safari兼容性问题：${videoError.suggestions[0]})`;
+        } else if (videoError.suggestions.length > 0) {
+          errorMessage += ` 建议: ${videoError.suggestions[0]}`;
+        }
+        
+        setError(errorMessage);
       } finally {
         setUploadProgress(0);
         if (fileInputRef.current) {
@@ -112,6 +150,13 @@ export default function FileVideoUpload() {
       }
     });
   };
+
+  // Initialize browser info on mount
+  useEffect(() => {
+    const browser = detectBrowser();
+    setBrowserInfo(browser);
+    console.log('🔍 Browser detected:', browser);
+  }, []);
 
   if (!user) {
     return (
@@ -132,6 +177,40 @@ export default function FileVideoUpload() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Browser compatibility info */}
+        {browserInfo && (
+          <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                浏览器兼容性信息
+              </span>
+            </div>
+            <div className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+              <p>当前浏览器: {browserInfo.name} {browserInfo.version}</p>
+              <p>推荐格式: {getVideoFormatRecommendations().preferred.join(', ')}</p>
+              {browserInfo.isSafari && (
+                <p className="text-amber-700 dark:text-amber-300">
+                  🍎 Safari用户：WebM格式可能存在兼容性问题，建议使用MP4格式
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {/* Format warning */}
+        {formatWarning && (
+          <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <span className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                格式兼容性警告
+              </span>
+            </div>
+            <p className="text-sm text-amber-800 dark:text-amber-200">{formatWarning}</p>
+          </div>
+        )}
+        
         {/* Upload form */}
         {!uploadedVideo && (
           <div className="space-y-4">
