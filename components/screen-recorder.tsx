@@ -80,8 +80,9 @@ import { useI18n } from '@/lib/i18n';
 import { recordingConfig } from '@/lib/config';
 import { uploadVideoFileAction } from '@/app/actions/video-actions';
 
-import { getFileUrlAction } from '@/app/actions/video-actions';
-import ClientThumbnailGenerator from './client-thumbnail-generator';
+import { getFileUrlAction, uploadFileAction, updateVideoThumbnailAction } from '@/app/actions/video-actions';
+import { generateVideoThumbnailBlob } from '@/lib/video-utils';
+
 
 
 type RecordingQuality = '720p' | '1080p';
@@ -127,6 +128,8 @@ export default function ScreenRecorder() {
   const [includeAudio, setIncludeAudio] = useState(false);
   const [includeCamera, setIncludeCamera] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isThumbnailGenerating, setIsThumbnailGenerating] = useState(false);
+  const [thumbnailStatus, setThumbnailStatus] = useState<string>('');
   const [videoTitle, setVideoTitle] = useState('');
   const [isVideoPublic, setIsVideoPublic] = useState(true); // Default to public for sharing
   const [isVideoPublished, setIsVideoPublished] = useState(false); // Default to not published to discovery
@@ -177,6 +180,73 @@ export default function ScreenRecorder() {
   const showToast = (message: string) => {
     setToastMessage(message);
     setTimeout(() => setToastMessage(null), 3000); // Hide after 3 seconds
+  };
+
+  // 后台缩略图生成函数
+  const generateThumbnailInBackground = async (videoId: string, recordedBlob: Blob) => {
+    try {
+      setIsThumbnailGenerating(true);
+      setThumbnailStatus('正在生成缩略图...');
+      
+      const browser = detectBrowser();
+      console.log(`🎨 Starting thumbnail generation for recording ${videoId} in ${browser.name}`);
+      
+      // 将 Blob 转换为 File 以供缩略图生成使用
+      const videoFile = new File([recordedBlob], 'recording.webm', { type: recordedBlob.type });
+      
+      // 生成缩略图 blob
+      const thumbnailBlob = await generateVideoThumbnailBlob(videoFile, {
+        width: 320,
+        height: 180,
+        time: 1,
+        quality: 0.8,
+        format: 'jpeg',
+        timeout: browser.isSafari ? 20000 : 15000
+      });
+      
+      console.log('📷 Recording thumbnail blob generated, size:', thumbnailBlob.size);
+      setThumbnailStatus('正在上传缩略图...');
+      
+      // 将 Blob 转换为 File 并上传
+      const thumbnailFile = new File([thumbnailBlob], `thumbnail-${videoId}.jpg`, {
+        type: 'image/jpeg'
+      });
+      
+      const uploadResult = await uploadFileAction(thumbnailFile);
+      
+      if (!uploadResult.success || !uploadResult.data) {
+        throw new Error(uploadResult.error || 'Failed to upload thumbnail');
+      }
+      
+      console.log('🔄 Thumbnail uploaded, updating video record...');
+      setThumbnailStatus('正在更新视频记录...');
+      
+      // 更新视频记录的缩略图 URL
+      const updateResult = await updateVideoThumbnailAction(videoId, uploadResult.data.url);
+      
+      if (!updateResult.success) {
+        throw new Error(updateResult.error || 'Failed to update video thumbnail');
+      }
+      
+      console.log(`✅ Recording thumbnail generated successfully: ${uploadResult.data.url}`);
+      setThumbnailStatus('缩略图生成成功！');
+      
+      // 3秒后清除状态信息
+      setTimeout(() => {
+        setThumbnailStatus('');
+      }, 3000);
+      
+    } catch (error: any) {
+      console.error(`❌ Recording thumbnail generation failed for video ${videoId}:`, error);
+      setThumbnailStatus('缩略图生成失败');
+      
+      // 5秒后清除错误信息
+      setTimeout(() => {
+        setThumbnailStatus('');
+      }, 5000);
+    } finally {
+      setIsThumbnailGenerating(false);
+    }
   };
   
   // 组件卸载时清理定时器
@@ -1703,13 +1773,18 @@ export default function ScreenRecorder() {
         console.log('Note: Subtitle file upload not yet implemented in server actions');
       }
       
-      // 缩略图将在视频上传成功后由用户手动上传
-      console.log('ℹ️ Video uploaded successfully. Thumbnail can be added manually later.');
+      console.log('✅ Recording uploaded successfully.');
       
       showToast(t.recording.saveSuccess || '视频保存成功！');
       
       // Save uploaded video data for display
-      setUploadedVideo({ $id: result.data?.videoId, title: videoTitle.trim() || getDefaultTitle() });
+      const uploadedVideoData = { $id: result.data?.videoId, title: videoTitle.trim() || getDefaultTitle() };
+      setUploadedVideo(uploadedVideoData);
+      
+      // 在后台自动生成缩略图
+      if (recordingState.recordedBlob && uploadedVideoData.$id) {
+        generateThumbnailInBackground(uploadedVideoData.$id, recordingState.recordedBlob);
+      }
       
       // Keep recording blob for preview, don't clear it yet
       // The blob will be cleared when starting new recording
@@ -2633,19 +2708,25 @@ export default function ScreenRecorder() {
                 </div>
               </div>
               
-              {/* 自动缩略图生成器 */}
-              {recordingState.recordedBlob && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <ClientThumbnailGenerator
-                    videoId={uploadedVideo.$id}
-                    videoFile={new File([recordingState.recordedBlob], 'recording.webm', { type: recordingState.recordedBlob.type })} // 使用录制的 Blob
-                    onThumbnailGenerated={(url) => {
-                      console.log('✅ Thumbnail generated successfully for recording:', url);
-                    }}
-                    onError={(error) => {
-                      console.warn('⚠️ Thumbnail generation failed for recording:', error);
-                    }}
-                  />
+              {/* 缩略图生成状态显示 */}
+              {thumbnailStatus && (
+                <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                  <div className="flex items-center gap-2">
+                    {isThumbnailGenerating ? (
+                      <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                    ) : thumbnailStatus.includes('失败') ? (
+                      <span className="text-red-600">❌</span>
+                    ) : (
+                      <span className="text-green-600">✅</span>
+                    )}
+                    <span className={`text-sm ${
+                      isThumbnailGenerating ? 'text-blue-600' : 
+                      thumbnailStatus.includes('失败') ? 'text-red-600' : 
+                      'text-green-600'
+                    }`}>
+                      {thumbnailStatus}
+                    </span>
+                  </div>
                 </div>
               )}
               

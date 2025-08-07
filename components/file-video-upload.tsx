@@ -11,9 +11,10 @@ import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/lib/i18n';
 import { uploadVideoFileAction } from '@/app/actions/video-actions';
 
-import { getFileUrlAction } from '@/app/actions/video-actions';
-import ClientThumbnailGenerator from './client-thumbnail-generator';
+import { getFileUrlAction, uploadFileAction, updateVideoThumbnailAction } from '@/app/actions/video-actions';
+
 import { detectBrowser, getVideoFormatRecommendations } from '@/lib/safari-video-utils';
+import { generateVideoThumbnailBlob } from '@/lib/video-utils';
 import { isVideoFormatSupported } from '@/lib/browser-compatibility';
 import { handleVideoError, isSafariCompatibilityIssue } from '@/lib/video-error-handler';
 
@@ -32,9 +33,75 @@ export default function FileVideoUpload() {
   const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
   const [browserInfo, setBrowserInfo] = useState<any>(null);
   const [formatWarning, setFormatWarning] = useState<string | null>(null);
+  const [isThumbnailGenerating, setIsThumbnailGenerating] = useState(false);
+  const [thumbnailStatus, setThumbnailStatus] = useState<string>('');
 
   const handleFileSelect = () => {
     fileInputRef.current?.click();
+  };
+
+  // 后台缩略图生成函数
+  const generateThumbnailInBackground = async (videoId: string, videoFile: File) => {
+    try {
+      setIsThumbnailGenerating(true);
+      setThumbnailStatus('正在生成缩略图...');
+      
+      const browser = detectBrowser();
+      console.log(`🎨 Starting thumbnail generation for video ${videoId} in ${browser.name}`);
+      
+      // 生成缩略图 blob
+      const thumbnailBlob = await generateVideoThumbnailBlob(videoFile, {
+        width: 320,
+        height: 180,
+        time: 1,
+        quality: 0.8,
+        format: 'jpeg',
+        timeout: browser.isSafari ? 20000 : 15000
+      });
+      
+      console.log('📷 Thumbnail blob generated, size:', thumbnailBlob.size);
+      setThumbnailStatus('正在上传缩略图...');
+      
+      // 将 Blob 转换为 File 并上传
+      const thumbnailFile = new File([thumbnailBlob], `thumbnail-${videoId}.jpg`, {
+        type: 'image/jpeg'
+      });
+      
+      const uploadResult = await uploadFileAction(thumbnailFile);
+      
+      if (!uploadResult.success || !uploadResult.data) {
+        throw new Error(uploadResult.error || 'Failed to upload thumbnail');
+      }
+      
+      console.log('🔄 Thumbnail uploaded, updating video record...');
+      setThumbnailStatus('正在更新视频记录...');
+      
+      // 更新视频记录的缩略图 URL
+      const updateResult = await updateVideoThumbnailAction(videoId, uploadResult.data.url);
+      
+      if (!updateResult.success) {
+        throw new Error(updateResult.error || 'Failed to update video thumbnail');
+      }
+      
+      console.log(`✅ Thumbnail generated successfully: ${uploadResult.data.url}`);
+      setThumbnailStatus('缩略图生成成功！');
+      
+      // 3秒后清除状态信息
+      setTimeout(() => {
+        setThumbnailStatus('');
+      }, 3000);
+      
+    } catch (error: any) {
+      console.error(`❌ Thumbnail generation failed for video ${videoId}:`, error);
+      setThumbnailStatus('缩略图生成失败');
+      
+      // 5秒后清除错误信息
+      setTimeout(() => {
+        setThumbnailStatus('');
+      }, 5000);
+    } finally {
+      setIsThumbnailGenerating(false);
+    }
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -119,14 +186,18 @@ export default function FileVideoUpload() {
         console.log('Video uploaded successfully:', result.data);
         setUploadProgress(70);
 
-        // 缩略图将由客户端组件处理
-
         setUploadProgress(100);
-        setUploadedVideo({ 
+        const uploadedVideoData = { 
           $id: result.data?.videoId, 
           title: videoTitle.trim() || file.name,
           fileId: result.data?.fileId 
-        });
+        };
+        setUploadedVideo(uploadedVideoData);
+        
+        // 在后台自动生成缩略图
+        if (selectedVideoFile && uploadedVideoData.$id) {
+          generateThumbnailInBackground(uploadedVideoData.$id, selectedVideoFile);
+        }
 
       } catch (error: any) {
         // Use comprehensive error handling
@@ -318,25 +389,16 @@ export default function FileVideoUpload() {
               <p className="text-sm text-green-700">
                 ✅ 视频已保存到您的媒体库<br/>
                 ✅ 可以在视频列表中查看<br/>
-                🎬 正在自动生成缩略图...
+                {thumbnailStatus ? (
+                  <span className={isThumbnailGenerating ? 'text-blue-600' : thumbnailStatus.includes('失败') ? 'text-red-600' : 'text-green-600'}>
+                    {isThumbnailGenerating && '🔄 '}{thumbnailStatus}
+                  </span>
+                ) : (
+                  '🎬 缩略图已准备就绪'
+                )}
               </p>
               
-              {/* 自动缩略图生成器 */}
-              {selectedVideoFile && (
-                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <ClientThumbnailGenerator
-                    videoId={uploadedVideo.$id}
-                    videoFile={selectedVideoFile} // 使用原始文件
-                    videoUrl={`${process.env.NEXT_PUBLIC_APPWRITE_STORAGE_ENDPOINT}/storage/buckets/videos/files/${(uploadedVideo as any).fileId}/view?project=soon`} // 作为备选
-                    onThumbnailGenerated={(url) => {
-                      console.log('✅ Thumbnail generated successfully:', url);
-                    }}
-                    onError={(error) => {
-                      console.warn('⚠️ Thumbnail generation failed:', error);
-                    }}
-                  />
-                </div>
-              )}
+
             </div>
 
             <Button

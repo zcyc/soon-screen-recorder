@@ -26,6 +26,8 @@ export default function ClientThumbnailGenerator({
 }: ClientThumbnailGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [processedSources, setProcessedSources] = useState<Set<string>>(new Set());
+  // 添加一个额外的检查，防止对同一个videoId重复生成缩略图
+  const [completedVideoIds, setCompletedVideoIds] = useState<Set<string>>(new Set());
   
   // 使用 ref 来跟踪当前正在处理的视频，防止竞态条件
   const currentlyProcessingRef = useRef<Set<string>>(new Set());
@@ -33,14 +35,15 @@ export default function ClientThumbnailGenerator({
   const mountedRef = useRef(true);
   
   // Create a stable source identifier that changes only when the actual source changes
+  // 移除lastModified以避免死循环，只使用size和name来识别文件
   const sourceIdentifier = useMemo(() => {
     if (videoFile) {
-      return `file-${videoId}-${videoFile.size}-${videoFile.name}-${videoFile.lastModified}`;
+      return `file-${videoId}-${videoFile.size}-${videoFile.name}`;
     } else if (videoUrl) {
       return `url-${videoId}-${videoUrl}`;
     }
     return `none-${videoId}`;
-  }, [videoId, videoFile?.size, videoFile?.name, videoFile?.lastModified, videoUrl]);
+  }, [videoId, videoFile?.size, videoFile?.name, videoUrl]);
 
   // Memoized generation function to prevent infinite loops
   const generateThumbnail = useCallback(async () => {
@@ -122,6 +125,7 @@ export default function ClientThumbnailGenerator({
       
       // Mark as processed
       setProcessedSources(prev => new Set([...prev, sourceIdentifier]));
+      setCompletedVideoIds(prev => new Set([...prev, videoId]));
       onThumbnailGenerated?.(uploadResult.data.url);
 
     } catch (error: any) {
@@ -155,7 +159,7 @@ export default function ClientThumbnailGenerator({
       abortControllerRef.current = null;
       setIsGenerating(false);
     }
-  }, [videoId, sourceIdentifier, videoFile, videoUrl, onThumbnailGenerated, onError]);
+  }, [videoId, sourceIdentifier, onThumbnailGenerated, onError]);
 
   useEffect(() => {
     console.log('🔄 ClientThumbnailGenerator useEffect triggered:', { 
@@ -193,10 +197,8 @@ export default function ClientThumbnailGenerator({
 
     // Start generation
     generateThumbnail();
-  }, [videoId, sourceIdentifier, generateThumbnail, processedSources]); // Stable dependencies
+  }, [videoId, sourceIdentifier, generateThumbnail, processedSources]);
 
-
-    
   // Component mount/unmount effect with Safari URL cleanup
   useEffect(() => {
     mountedRef.current = true;
@@ -214,6 +216,34 @@ export default function ClientThumbnailGenerator({
     };
   }, [videoId, useSafariURLCleanup]);
 
-  // 此组件不渲染任何 UI，只是在后台生成缩略图
-  return null;
+  // 如果该videoId已经完成过缩略图生成，直接显示完成状态
+  if (completedVideoIds.has(videoId)) {
+    return (
+      <div className="text-sm text-green-600 flex items-center space-x-2">
+        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        </svg>
+        <span>缩略图已生成</span>
+      </div>
+    );
+  }
+
+  // 渲染生成状态提示
+  if (isGenerating) {
+    return (
+      <div className="flex items-center space-x-2 text-sm text-blue-600">
+        <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+        <span>正在生成缩略图...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="text-sm text-green-600 flex items-center space-x-2">
+      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+      </svg>
+      <span>缩略图已生成</span>
+    </div>
+  );
 }
