@@ -2465,35 +2465,37 @@ export default function ScreenRecorder() {
                 />
               </div>
               
-              {/* Public/Private Toggle */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-sm font-medium">
-                    {t.recording.publicVideo}
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    {isVideoPublic ? t.recording.publicVideoDesc : t.recording.privateVideoDesc}
-                  </p>
+              {/* Public/Private and Publish to Discovery Toggles */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-medium">
+                      {t.recording.publicVideo}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {isVideoPublic ? t.recording.publicVideoDesc : t.recording.privateVideoDesc}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={isVideoPublic}
+                    onCheckedChange={setIsVideoPublic}
+                  />
                 </div>
-                <Switch
-                  checked={isVideoPublic}
-                  onCheckedChange={setIsVideoPublic}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-sm font-medium">
-                    发布到发现页面
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    {isVideoPublished ? '视频将出现在发现页面供其他用户浏览' : '仅保存至个人媒体库'}
-                  </p>
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-medium">
+                      发布到发现页面
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {isVideoPublished ? '视频将出现在发现页面供其他用户浏览' : '仅保存至个人媒体库'}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={isVideoPublished}
+                    onCheckedChange={setIsVideoPublished}
+                  />
                 </div>
-                <Switch
-                  checked={isVideoPublished}
-                  onCheckedChange={setIsVideoPublished}
-                />
               </div>
               
               <div className="flex flex-wrap gap-2 justify-center">
@@ -2501,7 +2503,7 @@ export default function ScreenRecorder() {
                   <Download className="h-4 w-4 mr-2" />
                   {t.recording.download}
                 </Button>
-                <Button onClick={uploadToAppwrite} disabled={isUploading}>
+                <Button variant="outline" onClick={uploadToAppwrite} disabled={isUploading}>
                   {isUploading ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>

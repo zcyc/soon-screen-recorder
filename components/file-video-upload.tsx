@@ -144,24 +144,26 @@ export default function FileVideoUpload() {
               />
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="public-video"
-                checked={isPublic}
-                onCheckedChange={setIsPublic}
-                disabled={isPending}
-              />
-              <Label htmlFor="public-video">设为公开视频</Label>
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="public-video"
+                  checked={isPublic}
+                  onCheckedChange={setIsPublic}
+                  disabled={isPending}
+                />
+                <Label htmlFor="public-video">设为公开视频</Label>
+              </div>
 
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="publish-video"
-                checked={isPublish}
-                onCheckedChange={setIsPublish}
-                disabled={isPending}
-              />
-              <Label htmlFor="publish-video">发布到发现页面</Label>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="publish-video"
+                  checked={isPublish}
+                  onCheckedChange={setIsPublish}
+                  disabled={isPending}
+                />
+                <Label htmlFor="publish-video">发布到发现页面</Label>
+              </div>
             </div>
 
             <div className="space-y-2">
