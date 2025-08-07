@@ -78,7 +78,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/lib/i18n';
 import { recordingConfig } from '@/lib/config';
 import { uploadVideoFileAction } from '@/app/actions/video-actions';
-import { generateThumbnailOnUploadAction } from '@/app/actions/thumbnail-actions';
+
 import { getFileUrlAction } from '@/app/actions/video-actions';
 import ClientThumbnailGenerator from './client-thumbnail-generator';
 

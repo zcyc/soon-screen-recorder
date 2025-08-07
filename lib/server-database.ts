@@ -162,6 +162,7 @@ export async function toggleVideoPrivacy(videoId: string, userId: string) {
 
 export async function deleteVideo(videoId: string, fileId?: string) {
   let storageDeleteSuccess = true;
+  let thumbnailDeleteSuccess = true;
   
   try {
     const { databases, storage } = await createAdminClient();
@@ -169,6 +170,18 @@ export async function deleteVideo(videoId: string, fileId?: string) {
     // First verify the video exists and get its details
     const video = await getVideoById(videoId);
     console.log('Video to delete:', { videoId, fileId, video });
+    
+    // Delete thumbnail if exists
+    if (video.thumbnailUrl) {
+      try {
+        const { ThumbnailService } = await import('@/lib/thumbnail-service');
+        await ThumbnailService.deleteThumbnailOnVideoDelete(video.thumbnailUrl);
+        console.log('Successfully deleted thumbnail:', video.thumbnailUrl);
+      } catch (thumbnailError: any) {
+        thumbnailDeleteSuccess = false;
+        console.error('Failed to delete thumbnail:', thumbnailError);
+      }
+    }
     
     // Try to delete the file from storage first
     if (fileId) {
@@ -190,10 +203,21 @@ export async function deleteVideo(videoId: string, fileId?: string) {
     
     console.log('Successfully deleted video document:', videoId);
     
+    const allSuccess = storageDeleteSuccess && thumbnailDeleteSuccess;
+    let message = '视频删除成功！';
+    
+    if (!allSuccess) {
+      const issues = [];
+      if (!storageDeleteSuccess) issues.push('文件删除遇到问题');
+      if (!thumbnailDeleteSuccess) issues.push('缩略图删除遇到问题');
+      message = `视频已从列表中删除（${issues.join('，')}）`;
+    }
+    
     return { 
       success: true, 
       storageDeleteSuccess,
-      message: storageDeleteSuccess ? '视频删除成功！' : '视频已从列表中删除（文件删除遇到问题）'
+      thumbnailDeleteSuccess,
+      message
     };
   } catch (error: any) {
     console.error('Failed to delete video:', error);
