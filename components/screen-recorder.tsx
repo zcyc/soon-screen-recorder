@@ -128,6 +128,7 @@ export default function ScreenRecorder() {
   const [isUploading, setIsUploading] = useState(false);
   const [videoTitle, setVideoTitle] = useState('');
   const [isVideoPublic, setIsVideoPublic] = useState(true); // Default to public for sharing
+  const [isVideoPublished, setIsVideoPublished] = useState(false); // Default to not published to discovery
   const [uploadedVideo, setUploadedVideo] = useState<any>(null); // Store uploaded video data
   const [toastMessage, setToastMessage] = useState<string | null>(null); // Toast message state
   const [cameraPreviewStream, setCameraPreviewStream] = useState<MediaStream | null>(null); // Camera preview stream
@@ -202,6 +203,7 @@ export default function ScreenRecorder() {
     });
     setVideoTitle('');
     setIsVideoPublic(true);
+    setIsVideoPublished(false);
     setUploadedVideo(null);
     setToastMessage(null);
     setShowTimeWarning(false);
@@ -1659,6 +1661,7 @@ export default function ScreenRecorder() {
       formData.append('quality', quality);
       formData.append('duration', recordingState.duration.toString());
       formData.append('isPublic', isVideoPublic.toString());
+      formData.append('isPublish', isVideoPublished.toString());
       formData.append('thumbnailUrl', '');
 
       console.log('Uploading file using server action...');
@@ -2475,6 +2478,21 @@ export default function ScreenRecorder() {
                 <Switch
                   checked={isVideoPublic}
                   onCheckedChange={setIsVideoPublic}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm font-medium">
+                    发布到发现页面
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {isVideoPublished ? '视频将出现在发现页面供其他用户浏览' : '仅保存至个人媒体库'}
+                  </p>
+                </div>
+                <Switch
+                  checked={isVideoPublished}
+                  onCheckedChange={setIsVideoPublished}
                 />
               </div>
               

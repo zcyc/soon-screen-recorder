@@ -1,6 +1,6 @@
 'use server';
 
-import { uploadFile, createVideoRecord, getUserVideos, getPublicVideos, getVideoById, toggleVideoPrivacy, deleteVideo, addReaction, getVideoReactions, incrementViews, updateVideoThumbnail, getFileUrl } from '@/lib/server-database';
+import { uploadFile, createVideoRecord, getUserVideos, getPublicVideos, getVideoById, toggleVideoPrivacy, toggleVideoPublishStatus, deleteVideo, addReaction, getVideoReactions, incrementViews, updateVideoThumbnail, getFileUrl } from '@/lib/server-database';
 import { getCurrentUser } from '@/lib/auth/server-auth';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -24,6 +24,7 @@ export async function uploadVideoFileAction(formData: FormData): Promise<ActionR
     const quality = formData.get('quality') as string;
     const duration = parseFloat(formData.get('duration') as string);
     const isPublic = formData.get('isPublic') === 'true';
+    const isPublish = formData.get('isPublish') === 'true';
     const thumbnailUrl = formData.get('thumbnailUrl') as string || '';
 
     if (!file || !title) {
@@ -42,6 +43,7 @@ export async function uploadVideoFileAction(formData: FormData): Promise<ActionR
       userName: user.name,
       duration,
       isPublic,
+      isPublish,
       thumbnailUrl,
       subtitleFileId: null
     });
@@ -120,6 +122,26 @@ export async function toggleVideoPrivacyAction(videoId: string): Promise<ActionR
   } catch (error: any) {
     console.error('Toggle video privacy error:', error);
     return { error: error.message || 'Failed to update video privacy' };
+  }
+}
+
+// Toggle video publish status
+export async function toggleVideoPublishStatusAction(videoId: string): Promise<ActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { error: 'User not authenticated' };
+    }
+
+    const updatedVideo = await toggleVideoPublishStatus(videoId, user.$id);
+    
+    revalidatePath('/dashboard');
+    revalidatePath('/discover');
+    
+    return { success: true, data: updatedVideo };
+  } catch (error: any) {
+    console.error('Toggle video publish status error:', error);
+    return { error: error.message || 'Failed to update video publish status' };
   }
 }
 
