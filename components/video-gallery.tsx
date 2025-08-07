@@ -494,10 +494,10 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
               
               <div className="mt-4 flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
-                  <p>Created: {formatDate(selectedVideo.$createdAt)}</p>
-                  <p>Duration: {formatDuration(selectedVideo.duration)}</p>
-                  <p>Quality: {selectedVideo.quality}</p>
-                  <p>Views: {selectedVideo.views}</p>
+                  <p>{t.videos.created}: {formatDate(selectedVideo.$createdAt)}</p>
+                  <p>{t.videos.duration}: {formatDuration(selectedVideo.duration)}</p>
+                  <p>{t.videos.quality}: {selectedVideo.quality}</p>
+                  <p>{t.videos.views}: {selectedVideo.views}</p>
                 </div>
                 
                 <div className="flex space-x-2">
