@@ -134,7 +134,7 @@ export default function ScreenRecorder() {
   const [isVideoPublic, setIsVideoPublic] = useState(true); // Default to public for sharing
   const [isVideoPublished, setIsVideoPublished] = useState(false); // Default to not published to discovery
   const [uploadedVideo, setUploadedVideo] = useState<any>(null); // Store uploaded video data
-  const [toastMessage, setToastMessage] = useState<string | null>(null); // Toast message state
+
   const [cameraPreviewStream, setCameraPreviewStream] = useState<MediaStream | null>(null); // Camera preview stream
   const [isMounted, setIsMounted] = useState(false); // Track component mount status
   const [showTimeWarning, setShowTimeWarning] = useState(false); // Show time warning
@@ -177,16 +177,13 @@ export default function ScreenRecorder() {
   const [showSubtitleSettings, setShowSubtitleSettings] = useState(false);
   
   // Show toast message
-  const showToast = (message: string) => {
-    setToastMessage(message);
-    setTimeout(() => setToastMessage(null), 3000); // Hide after 3 seconds
-  };
+
 
   // 后台缩略图生成函数
   const generateThumbnailInBackground = async (videoId: string, recordedBlob: Blob) => {
     try {
       setIsThumbnailGenerating(true);
-      setThumbnailStatus('正在生成缩略图...');
+      setThumbnailStatus(t.thumbnail.generating);
       
       const browser = detectBrowser();
       console.log(`🎨 Starting thumbnail generation for recording ${videoId} in ${browser.name}`);
@@ -205,7 +202,7 @@ export default function ScreenRecorder() {
       });
       
       console.log('📷 Recording thumbnail blob generated, size:', thumbnailBlob.size);
-      setThumbnailStatus('正在上传缩略图...');
+      setThumbnailStatus(t.thumbnail.uploading);
       
       // 将 Blob 转换为 File 并上传
       const thumbnailFile = new File([thumbnailBlob], `thumbnail-${videoId}.jpg`, {
@@ -219,7 +216,7 @@ export default function ScreenRecorder() {
       }
       
       console.log('🔄 Thumbnail uploaded, updating video record...');
-      setThumbnailStatus('正在更新视频记录...');
+      setThumbnailStatus(t.thumbnail.updatingRecord);
       
       // 更新视频记录的缩略图 URL
       const updateResult = await updateVideoThumbnailAction(videoId, uploadResult.data.url);
@@ -229,7 +226,7 @@ export default function ScreenRecorder() {
       }
       
       console.log(`✅ Recording thumbnail generated successfully: ${uploadResult.data.url}`);
-      setThumbnailStatus('缩略图生成成功！');
+      setThumbnailStatus(t.thumbnail.generateSuccess);
       
       // 3秒后清除状态信息
       setTimeout(() => {
@@ -238,7 +235,7 @@ export default function ScreenRecorder() {
       
     } catch (error: any) {
       console.error(`❌ Recording thumbnail generation failed for video ${videoId}:`, error);
-      setThumbnailStatus('缩略图生成失败');
+      setThumbnailStatus(t.thumbnail.generateFailed);
       
       // 5秒后清除错误信息
       setTimeout(() => {
@@ -276,7 +273,7 @@ export default function ScreenRecorder() {
     setIsVideoPublic(true);
     setIsVideoPublished(false);
     setUploadedVideo(null);
-    setToastMessage(null);
+
     setShowTimeWarning(false);
     setIsNearTimeLimit(false);
     // Reset subtitle state
@@ -294,7 +291,7 @@ export default function ScreenRecorder() {
   // Speech Recognition Functions
   const initializeSpeechRecognition = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      showToast(t.subtitles.speechNotSupported || '浏览器不支持语音识别功能');
+
       return false;
     }
     
@@ -356,7 +353,7 @@ export default function ScreenRecorder() {
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error('语音识别错误:', event.error);
       if (event.error === 'not-allowed') {
-        showToast(t.subtitles.microphonePermissionNeeded || '需要麦克风权限才能生成字幕');
+
       } else if (event.error === 'no-speech') {
         // 重新启动识别
         setTimeout(() => {
@@ -396,7 +393,7 @@ export default function ScreenRecorder() {
       }
     } catch (error) {
       console.error('启动语音识别失败:', error);
-      showToast(t.subtitles.recognitionStartFailed || '语音识别启动失败');
+
     }
   };
   
@@ -458,7 +455,7 @@ export default function ScreenRecorder() {
   
   const downloadSubtitles = (format: 'srt' | 'vtt') => {
     if (subtitleState.segments.length === 0) {
-      showToast(t.subtitles.noSubtitlesToExport || '没有字幕可以导出');
+
       return;
     }
     
@@ -478,7 +475,7 @@ export default function ScreenRecorder() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    showToast(t.subtitles.subtitlesExported || `字幕已导出为 ${format.toUpperCase()} 格式`);
+
   };
   
   const getShareUrl = (videoId: string) => {
@@ -489,7 +486,7 @@ export default function ScreenRecorder() {
     const shareUrl = getShareUrl(videoId);
     try {
       await navigator.clipboard.writeText(shareUrl);
-      showToast(t.recording.linkCopied);
+
     } catch (error) {
       console.error(t.recording.copyFailed, error);
       // Fallback for older browsers
@@ -499,7 +496,7 @@ export default function ScreenRecorder() {
       textArea.select();
       document.execCommand('copy');
       document.body.removeChild(textArea);
-      showToast(t.recording.linkCopied);
+
     }
   };
   
@@ -522,7 +519,7 @@ export default function ScreenRecorder() {
       }
     } else {
       // 浏览器不支持原生分享，显示提示消息
-      showToast(t.recording.unsupportedBrowserShare);
+
     }
   };
 
@@ -628,13 +625,13 @@ export default function ScreenRecorder() {
           if (newDuration >= recordingConfig.timeWarningThreshold && !showTimeWarning) {
             setShowTimeWarning(true);
             setIsNearTimeLimit(true);
-            showToast(t.recording.timeLimitWarning);
+
           }
           
           // Stop recording when time limit is reached
           if (newDuration >= recordingConfig.maxDurationSeconds) {
             stopRecording();
-            showToast(t.recording.timeLimitReached);
+
             return prev; // Don't update duration as recording is stopping
           }
         }
@@ -792,7 +789,7 @@ export default function ScreenRecorder() {
           if (!pipSupport.supported) {
             // 不支持画中画，显示普通视频预览
             console.log('浏览器不支持画中画，显示普通视频预览');
-            showToast('摄像头预览已启动（普通模式）');
+
           } else if (pipSupport.canAutoStart) {
             // Chrome - 尝试自动启动画中画
             cameraPreviewRef.current.onloadedmetadata = async () => {
@@ -802,11 +799,11 @@ export default function ScreenRecorder() {
                   setIsPiPRequestingWithTimeout(true);
                   await cameraPreviewRef.current!.requestPictureInPicture();
                   console.log('Chrome画中画自动启动成功');
-                  showToast('摄像头画中画预览已启动');
+
                 }
               } catch (error: any) {
                 console.log('Chrome自动启动失败，回退到手动模式:', error.message);
-                showToast('摄像头预览已启动，请点击按钮启用画中画');
+
               } finally {
                 setIsPiPRequestingWithTimeout(false);
               }
@@ -814,7 +811,7 @@ export default function ScreenRecorder() {
           } else {
             // Safari/Firefox - 显示引导信息
             console.log(`${pipSupport.browser}检测到，需要用户手动启动画中画`);
-            showToast(`摄像头预览已启动，请点击下方按钮启用画中画`);
+
           }
           
           // 设置通用事件监听器
@@ -846,7 +843,7 @@ export default function ScreenRecorder() {
           }, 200);
         } else {
           console.error('达到最大重试次数，放弃设置视频元素');
-          showToast('摄像头预览初始化失败，请稍后重试');
+
         }
       };
       
@@ -872,24 +869,24 @@ export default function ScreenRecorder() {
         errorMessage = '浏览器不支持摄像头功能或缺少必要的权限';
       }
       
-      showToast(errorMessage);
+
     }
   };
 
   // 手动启动画中画模式 - 重写支持所有浏览器
   const startPictureInPictureManually = async () => {
     if (!cameraPreviewRef.current || !cameraPreviewStream) {
-      showToast('请先开启摄像头预览');
+
       return;
     }
 
     if (document.pictureInPictureElement) {
-      showToast('画中画已经在运行中');
+
       return;
     }
 
     if (isPiPRequesting) {
-      showToast('画中画请求正在进行中，请稍后...');
+
       return;
     }
     
@@ -897,7 +894,7 @@ export default function ScreenRecorder() {
     const pipSupport = detectPiPSupport();
     
     if (!pipSupport.supported) {
-      showToast('当前浏览器不支持画中画功能');
+
       return;
     }
     
@@ -909,12 +906,12 @@ export default function ScreenRecorder() {
       const firefoxVersion = firefoxVersionMatch ? parseInt(firefoxVersionMatch[1]) : 0;
       
       if (firefoxVersion < 71) {
-        showToast('Firefox 71+才支持画中画功能，请更新浏览器');
+
         return;
       }
       
       if (!document.pictureInPictureEnabled) {
-        showToast('Firefox画中画被禁用，请在about:config中检查media.videocontrols.picture-in-picture.enabled');
+
         return;
       }
     }
@@ -923,9 +920,9 @@ export default function ScreenRecorder() {
     if (typeof cameraPreviewRef.current.requestPictureInPicture !== 'function') {
       console.error('video元素缺少requestPictureInPicture方法');
       if (pipSupport.browser === 'Firefox') {
-        showToast('Firefox画中画API不可用，请检查浏览器设置或更新版本');
+
       } else {
-        showToast(`${pipSupport.browser}浏览器画中画API不可用，请更新浏览器`);
+
       }
       return;
     }
@@ -936,31 +933,31 @@ export default function ScreenRecorder() {
     try {
       await cameraPreviewRef.current.requestPictureInPicture();
       console.log('手动启动画中画成功');
-      showToast('画中画模式已启动');
+
     } catch (error: any) {
       console.error('手动启动画中画失败:', error);
       
       // 浏览器特定错误处理
       if (error.name === 'NotAllowedError') {
         if (pipSupport.browser === 'Safari') {
-          showToast('Safari需要用户直接与视频交互，请点击上方视频画面');
+
         } else if (pipSupport.browser === 'Firefox') {
-          showToast('Firefox请使用视频右下角的原生画中画按钮');
+
         } else {
-          showToast('浏览器阻止了画中画请求，请检查权限设置');
+
         }
       } else if (error.name === 'InvalidStateError') {
         if (pipSupport.browser === 'Firefox') {
-          showToast('Firefox请使用视频控件的画中画按钮');
+
         } else {
-          showToast('视频状态不正确，请稍后重试');
+
         }
       } else if (error.message.includes('processing')) {
-        showToast('画中画请求正在处理中，请稍等片刻');
+
       } else if (error.name === 'NotSupportedError') {
-        showToast(`${pipSupport.browser}不支持该视频类型的画中画`);
+
       } else {
-        showToast(`画中画启动失败: ${error.message}`);
+
       }
     } finally {
       setIsPiPRequestingWithTimeout(false);
@@ -1223,7 +1220,7 @@ export default function ScreenRecorder() {
         } catch (error: any) {
           console.error('Screen recording permission denied:', error);
           if (error.name === 'NotAllowedError') {
-            showToast(t.permissions.screenDenied);
+
             return;
           }
           throw error;
@@ -1255,10 +1252,10 @@ export default function ScreenRecorder() {
         } catch (error: any) {
           console.error('Camera permission denied:', error);
           if (error.name === 'NotAllowedError') {
-            showToast(t.permissions.cameraDenied);
+
             return;
           } else if (error.name === 'NotFoundError') {
-            showToast(t.permissions.cameraNotFound);
+
             return;
           }
           throw error;
@@ -1626,7 +1623,7 @@ export default function ScreenRecorder() {
 
     } catch (error) {
       console.error('Failed to start recording:', error);
-      showToast(t.recording.startFailed || '录制启动失败，请检查权限设置后重试。');
+
     }
   };
 
@@ -1719,12 +1716,12 @@ export default function ScreenRecorder() {
 
   const uploadToAppwrite = async () => {
     if (!recordingState.recordedBlob) {
-      showToast(t.recording.noRecording || '没有可保存的录制！');
+
       return;
     }
     
     if (!user) {
-      showToast(t.recording.loginRequired || '请登录后保存录制。');
+
       return;
     }
 
@@ -1775,7 +1772,7 @@ export default function ScreenRecorder() {
       
       console.log('✅ Recording uploaded successfully.');
       
-      showToast(t.recording.saveSuccess || '视频保存成功！');
+
       
       // Save uploaded video data for display
       const uploadedVideoData = { $id: result.data?.videoId, title: videoTitle.trim() || getDefaultTitle() };
@@ -1791,7 +1788,7 @@ export default function ScreenRecorder() {
 
     } catch (error: any) {
       console.error('Upload failed. Error details:', error);
-      showToast(`保存失败: ${error.message || '未知错误'}。`);
+
     } finally {
       setIsUploading(false);
     }
@@ -1954,10 +1951,10 @@ export default function ScreenRecorder() {
                     try {
                       await navigator.mediaDevices.getUserMedia({ audio: true });
                       setIncludeAudio(true);
-                      showToast(t.recording.microphonePermissionGranted || '麦克风权限已获取');
+
                     } catch (error) {
                       console.error('麦克风权限申请失败:', error);
-                      showToast(t.recording.microphonePermissionDenied || '麦克风权限被拒绝');
+
                       setIncludeAudio(false);
                     }
                   } else {
@@ -2199,7 +2196,7 @@ export default function ScreenRecorder() {
                   checked={subtitleState.isEnabled}
                   onCheckedChange={(checked) => {
                     if (checked && !includeAudio) {
-                      showToast(t.subtitles.microphoneRequiredForSubtitles || '请先开启麦克风才能使用字幕功能');
+
                       return;
                     }
                     setSubtitleState(prev => ({ ...prev, isEnabled: checked }));
@@ -2248,10 +2245,10 @@ export default function ScreenRecorder() {
                         // 立即停止测试流，实际流将在startCameraPreview中获取
                         stream.getTracks().forEach(track => track.stop());
                         setIncludeCamera(true);
-                        showToast(t.recording.cameraPermissionGranted || '摄像头权限已获取');
+
                       } catch (error) {
                         console.error('摄像头权限申请失败:', error);
-                        showToast(t.recording.cameraPermissionDenied || '摄像头权限被拒绝');
+
                         setIncludeCamera(false);
                       }
                     } else {
@@ -2343,21 +2340,21 @@ export default function ScreenRecorder() {
                 setIsPiPRequestingWithTimeout(true);
                 await cameraPreviewRef.current.requestPictureInPicture();
                 console.log(`${pipSupport.browser}点击视频启动画中画成功`);
-                showToast('画中画模式已启动');
+
               } catch (error: any) {
                 console.error(`${pipSupport.browser}点击视频启动失败:`, error);
                 if (pipSupport.browser === 'Safari') {
-                  showToast('Safari请先与视频交互，再点击下方按钮');
+
                 } else if (pipSupport.browser === 'Firefox') {
-                  showToast('Firefox请使用视频控件中的画中画按钮或下方按钮');
+
                 } else {
-                  showToast('请使用下方按钮启动画中画');
+
                 }
               } finally {
                 setIsPiPRequestingWithTimeout(false);
               }
             } else if (!pipSupport.supported) {
-              showToast(`${pipSupport.browser}不支持画中画功能`);
+              // Browser does not support Picture in Picture
             }
           }
         }}
@@ -2808,12 +2805,7 @@ export default function ScreenRecorder() {
         </Card>
       )}
       
-      {/* Toast Message */}
-      {toastMessage && (
-        <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-md shadow-lg z-50 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          {toastMessage}
-        </div>
-      )}
+
     </div>
   );
 }

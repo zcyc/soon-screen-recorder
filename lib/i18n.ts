@@ -289,6 +289,16 @@ export interface Translations {
     maxFileSize: string;
   };
   
+  // Thumbnail
+  thumbnail: {
+    generating: string;
+    uploading: string;
+    updatingRecord: string;
+    generateSuccess: string;
+    generateFailed: string;
+    ready: string;
+    generated: string;
+  };
 
 }
 
@@ -555,6 +565,15 @@ export const translations: Record<Locale, Translations> = {
       uploadSuccess: 'Video uploaded successfully!',
       maxFileSize: 'Maximum file size: 1000MB',
     },
+    thumbnail: {
+      generating: 'Generating thumbnail...',
+      uploading: 'Uploading thumbnail...',
+      updatingRecord: 'Updating video record...',
+      generateSuccess: 'Thumbnail generated successfully!',
+      generateFailed: 'Thumbnail generation failed',
+      ready: '🎬 Thumbnail ready',
+      generated: 'Thumbnail generated',
+    },
 
   },
   zh: {
@@ -818,6 +837,15 @@ export const translations: Record<Locale, Translations> = {
       uploading: '上传中...',
       uploadSuccess: '视频上传成功！',
       maxFileSize: '最大文件大小: 1000MB',
+    },
+    thumbnail: {
+      generating: '正在生成缩略图...',
+      uploading: '正在上传缩略图...',
+      updatingRecord: '正在更新视频记录...',
+      generateSuccess: '缩略图生成成功！',
+      generateFailed: '缩略图生成失败',
+      ready: '🎬 缩略图已准备就绪',
+      generated: '缩略图已生成',
     },
 
   },

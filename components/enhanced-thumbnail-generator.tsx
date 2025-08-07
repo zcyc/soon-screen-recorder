@@ -4,7 +4,8 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { generateVideoThumbnailBlob } from '@/lib/video-utils';
 import { uploadFileAction } from '@/app/actions/video-actions';
 import { updateVideoThumbnailAction } from '@/app/actions/video-actions';
-import { detectBrowser, canProcessVideo } from '@/lib/safari-video-utils';
+import { canProcessVideo } from '@/lib/safari-video-utils';
+import { detectBrowser } from '@/lib/browser-compatibility';
 
 interface EnhancedThumbnailGeneratorProps {
   videoId: string;

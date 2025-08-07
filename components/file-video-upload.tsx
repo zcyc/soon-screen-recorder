@@ -13,9 +13,9 @@ import { uploadVideoFileAction } from '@/app/actions/video-actions';
 
 import { getFileUrlAction, uploadFileAction, updateVideoThumbnailAction } from '@/app/actions/video-actions';
 
-import { detectBrowser, getVideoFormatRecommendations } from '@/lib/safari-video-utils';
+import { getVideoFormatRecommendations } from '@/lib/safari-video-utils';
 import { generateVideoThumbnailBlob } from '@/lib/video-utils';
-import { isVideoFormatSupported } from '@/lib/browser-compatibility';
+import { isVideoFormatSupported, detectBrowser } from '@/lib/browser-compatibility';
 import { handleVideoError, isSafariCompatibilityIssue } from '@/lib/video-error-handler';
 
 
@@ -44,7 +44,7 @@ export default function FileVideoUpload() {
   const generateThumbnailInBackground = async (videoId: string, videoFile: File) => {
     try {
       setIsThumbnailGenerating(true);
-      setThumbnailStatus('正在生成缩略图...');
+      setThumbnailStatus(t.thumbnail.generating);
       
       const browser = detectBrowser();
       console.log(`🎨 Starting thumbnail generation for video ${videoId} in ${browser.name}`);
@@ -60,7 +60,7 @@ export default function FileVideoUpload() {
       });
       
       console.log('📷 Thumbnail blob generated, size:', thumbnailBlob.size);
-      setThumbnailStatus('正在上传缩略图...');
+      setThumbnailStatus(t.thumbnail.uploading);
       
       // 将 Blob 转换为 File 并上传
       const thumbnailFile = new File([thumbnailBlob], `thumbnail-${videoId}.jpg`, {
@@ -74,7 +74,7 @@ export default function FileVideoUpload() {
       }
       
       console.log('🔄 Thumbnail uploaded, updating video record...');
-      setThumbnailStatus('正在更新视频记录...');
+      setThumbnailStatus(t.thumbnail.updatingRecord);
       
       // 更新视频记录的缩略图 URL
       const updateResult = await updateVideoThumbnailAction(videoId, uploadResult.data.url);
@@ -84,7 +84,7 @@ export default function FileVideoUpload() {
       }
       
       console.log(`✅ Thumbnail generated successfully: ${uploadResult.data.url}`);
-      setThumbnailStatus('缩略图生成成功！');
+      setThumbnailStatus(t.thumbnail.generateSuccess);
       
       // 3秒后清除状态信息
       setTimeout(() => {
@@ -93,7 +93,7 @@ export default function FileVideoUpload() {
       
     } catch (error: any) {
       console.error(`❌ Thumbnail generation failed for video ${videoId}:`, error);
-      setThumbnailStatus('缩略图生成失败');
+      setThumbnailStatus(t.thumbnail.generateFailed);
       
       // 5秒后清除错误信息
       setTimeout(() => {
@@ -394,7 +394,7 @@ export default function FileVideoUpload() {
                     {isThumbnailGenerating && '🔄 '}{thumbnailStatus}
                   </span>
                 ) : (
-                  '🎬 缩略图已准备就绪'
+                  t.thumbnail.ready
                 )}
               </p>
               
