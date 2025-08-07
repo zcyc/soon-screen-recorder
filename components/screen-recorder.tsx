@@ -72,7 +72,8 @@ import {
   ExternalLink,
   Link,
   Circle,
-  StopCircle
+  StopCircle,
+  Globe
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/lib/i18n';
@@ -587,20 +588,34 @@ export default function ScreenRecorder() {
   };
 
   // 检测画中画API支持情况
+  // Unified browser detection function
+  const detectBrowser = useCallback(() => {
+    const userAgent = navigator.userAgent;
+    const isFirefox = userAgent.includes('Firefox');
+    const isSafari = userAgent.includes('Safari') && !userAgent.includes('Chrome');
+    const isChrome = userAgent.includes('Chrome') && !userAgent.includes('Edg');
+    const isEdge = userAgent.includes('Edg');
+    
+    return {
+      isFirefox,
+      isSafari,
+      isChrome,
+      isEdge,
+      supportsDisplaySurface: isChrome || isEdge, // Only Chrome/Edge support displaySurface
+      browserName: isFirefox ? 'Firefox' : isSafari ? 'Safari' : isChrome ? 'Chrome' : isEdge ? 'Edge' : 'Other'
+    };
+  }, []);
+
   const detectPiPSupport = useCallback(() => {
-    // 检测浏览器类型
-    const isFirefox = navigator.userAgent.includes('Firefox');
-    const isSafari = navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome');
-    const isChrome = navigator.userAgent.includes('Chrome');
+    const browser = detectBrowser();
     
     // 对Firefox做特殊处理 - Firefox可能不提供document.pictureInPictureEnabled
     let supported = false;
     
-    if (isFirefox) {
+    if (browser.isFirefox) {
       // Firefox: Firefox有原生画中画按钮，不依赖JS API
       // Firefox的画中画是通过视频控件实现，而不是通过requestPictureInPicture API
-      const userAgent = navigator.userAgent;
-      const firefoxVersionMatch = userAgent.match(/Firefox\/(\d+)/);
+      const firefoxVersionMatch = navigator.userAgent.match(/Firefox\/(\d+)/);
       const firefoxVersion = firefoxVersionMatch ? parseInt(firefoxVersionMatch[1]) : 0;
       
       // Firefox 71+有原生画中画支持，但需要通过视频控件
@@ -619,11 +634,11 @@ export default function ScreenRecorder() {
     
     return {
       supported,
-      canAutoStart: isChrome, // 只有Chrome支持自动启动
-      needsUserInteraction: isSafari || isFirefox,
-      browser: isFirefox ? 'Firefox' : isSafari ? 'Safari' : isChrome ? 'Chrome' : 'Other'
+      canAutoStart: browser.isChrome, // 只有Chrome支持自动启动
+      needsUserInteraction: browser.isSafari || browser.isFirefox,
+      browser: browser.browserName
     };
-  }, []);
+  }, [detectBrowser]);
   
   // 启动摄像头预览 - 重写画中画逻辑
   const startCameraPreview = async () => {
@@ -927,6 +942,7 @@ export default function ScreenRecorder() {
 
   const getScreenStream = async (): Promise<MediaStream> => {
     const constraints = getQualityConstraints(quality);
+    const browser = detectBrowser();
     
     // Configure display media constraints based on screen source type
     const displayConstraints: any = {
@@ -938,37 +954,40 @@ export default function ScreenRecorder() {
     };
     
     console.log('屏幕音频状态:', includeAudio ? '开启' : '关闭');
+    console.log('浏览器信息:', {
+      name: browser.browserName,
+      supportsDisplaySurface: browser.supportsDisplaySurface
+    });
 
-    // Add source-specific constraints using proper MediaTrackConstraints
-    if (screenSource === 'window') {
-      console.log('Requesting window capture...');
-      // @ts-ignore - Chrome/Edge experimental API
-      if ('getDisplayMedia' in navigator.mediaDevices) {
+    // Add source-specific constraints only for browsers that support displaySurface
+    if (browser.supportsDisplaySurface && 'getDisplayMedia' in navigator.mediaDevices) {
+      if (screenSource === 'window') {
+        console.log('Requesting window capture with displaySurface constraint...');
         displayConstraints.video = {
           ...displayConstraints.video,
-          // @ts-ignore
+          // @ts-ignore - Chrome/Edge experimental API
           displaySurface: 'window'
         };
-      }
-    } else if (screenSource === 'browser') {
-      console.log('Requesting browser tab capture...');
-      // @ts-ignore - Chrome/Edge experimental API  
-      if ('getDisplayMedia' in navigator.mediaDevices) {
+      } else if (screenSource === 'browser') {
+        console.log('Requesting browser tab capture with displaySurface constraint...');
         displayConstraints.video = {
           ...displayConstraints.video,
-          // @ts-ignore
+          // @ts-ignore - Chrome/Edge experimental API
           displaySurface: 'browser'
+        };
+      } else {
+        console.log('Requesting monitor capture with displaySurface constraint...');
+        displayConstraints.video = {
+          ...displayConstraints.video,
+          // @ts-ignore - Chrome/Edge experimental API
+          displaySurface: 'monitor'
         };
       }
     } else {
-      console.log('Requesting monitor capture...');
-      // @ts-ignore - Chrome/Edge experimental API
-      if ('getDisplayMedia' in navigator.mediaDevices) {
-        displayConstraints.video = {
-          ...displayConstraints.video,
-          // @ts-ignore
-          displaySurface: 'monitor'
-        };
+      // Safari/Firefox: Use standard getDisplayMedia without displaySurface constraints
+      console.log(`${browser.browserName} detected: Using standard getDisplayMedia without displaySurface constraints`);
+      if (browser.isSafari || browser.isFirefox) {
+        console.log(`Safari/Firefox will show native source selection dialog with all available options`);
       }
     }
     
@@ -1123,11 +1142,14 @@ export default function ScreenRecorder() {
         };
         
         console.log(`请求屏幕录制权限 (${sourceNames[screenSource]})...`);
+        const browser = detectBrowser();
+        
         try {
           const screenStream = await getScreenStream();
           screenStreamRef.current = screenStream;
           streams.push(screenStream);
           console.log(`屏幕录制权限获取成功 - 目标: ${sourceNames[screenSource]}`);
+          // Keep browser compatibility logic but remove user feedback
         } catch (error: any) {
           console.error('Screen recording permission denied:', error);
           if (error.name === 'NotAllowedError') {
@@ -1741,50 +1763,90 @@ export default function ScreenRecorder() {
                   <SelectValue placeholder={t.recording.selectRecordingSource} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="monitor">
-                    <div>
-                      <div className="flex items-center">
-                        <Monitor className="h-4 w-4 mr-2" />
-                        <span className="font-medium">{t.recording.entireScreen}</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground ml-6">
-                        {t.recording.entireScreenDesc}
-                      </div>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="window">
-                    <div>
-                      <div className="flex items-center">
-                        <Settings className="h-4 w-4 mr-2" />
-                        <span className="font-medium">{t.recording.applicationWindow}</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground ml-6">
-                        {t.recording.applicationWindowDesc}
-                      </div>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="browser">
-                    <div>
-                      <div className="flex items-center">
-                        <Camera className="h-4 w-4 mr-2" />
-                        <span className="font-medium">{t.recording.browserTab}</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground ml-6">
-                        {t.recording.browserTabDesc}
-                      </div>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="camera-only">
-                    <div>
-                      <div className="flex items-center">
-                        <Camera className="h-4 w-4 mr-2" />
-                        <span className="font-medium">{t.recording.cameraOnly}</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground ml-6">
-                        {t.recording.cameraOnlyDesc}
-                      </div>
-                    </div>
-                  </SelectItem>
+                  {(() => {
+                    const browser = detectBrowser();
+                    
+                    // Chrome/Edge: 显示完整选项（屏幕、窗口、标签页、摄像头）
+                    if (browser.supportsDisplaySurface) {
+                      return (
+                        <>
+                          <SelectItem value="monitor">
+                            <div className="w-full">
+                              <div className="flex items-center">
+                                <Monitor className="h-4 w-4 mr-2 flex-shrink-0" />
+                                <span className="font-medium">{t.recording.entireScreen}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {t.recording.entireScreenDesc}
+                              </div>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="window">
+                            <div className="w-full">
+                              <div className="flex items-center">
+                                <Square className="h-4 w-4 mr-2 flex-shrink-0" />
+                                <span className="font-medium">{t.recording.applicationWindow}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {t.recording.applicationWindowDesc}
+                              </div>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="browser">
+                            <div className="w-full">
+                              <div className="flex items-center">
+                                <Globe className="h-4 w-4 mr-2 flex-shrink-0" />
+                                <span className="font-medium">{t.recording.browserTab}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {t.recording.browserTabDesc}
+                              </div>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="camera-only">
+                            <div className="w-full">
+                              <div className="flex items-center">
+                                <Camera className="h-4 w-4 mr-2 flex-shrink-0" />
+                                <span className="font-medium">{t.recording.cameraOnly}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {t.recording.cameraOnlyDesc}
+                              </div>
+                            </div>
+                          </SelectItem>
+                        </>
+                      );
+                    } else {
+                      // Safari/Firefox: 只显示系统设置和摄像头，使用多语言
+                      return (
+                        <>
+                          <SelectItem value="monitor">
+                            <div className="w-full">
+                              <div className="flex items-center">
+                                <Monitor className="h-4 w-4 mr-2 flex-shrink-0" />
+                                <span className="font-medium">{t.recording.systemSettings}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {t.recording.systemSettingsDesc}
+                              </div>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="camera-only">
+                            <div className="w-full">
+                              <div className="flex items-center">
+                                <Camera className="h-4 w-4 mr-2 flex-shrink-0" />
+                                <span className="font-medium">{t.recording.cameraOnly}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {t.recording.cameraOnlyDesc}
+                              </div>
+                            </div>
+                          </SelectItem>
+                        </>
+                      );
+                    }
+                  })()
+                  }
                 </SelectContent>
               </Select>
             </div>
