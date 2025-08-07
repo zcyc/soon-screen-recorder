@@ -20,6 +20,7 @@ export default function FileVideoUpload() {
   const [isPending, startTransition] = useTransition();
   const [videoTitle, setVideoTitle] = useState('');
   const [isPublic, setIsPublic] = useState(false);
+  const [isPublish, setIsPublish] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadedVideo, setUploadedVideo] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +75,7 @@ export default function FileVideoUpload() {
         formData.append('quality', 'original');
         formData.append('duration', '0');
         formData.append('isPublic', isPublic.toString());
+        formData.append('isPublish', isPublish.toString());
         formData.append('thumbnailUrl', '');
 
         setUploadProgress(50);
@@ -150,6 +152,16 @@ export default function FileVideoUpload() {
                 disabled={isPending}
               />
               <Label htmlFor="public-video">设为公开视频</Label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="publish-video"
+                checked={isPublish}
+                onCheckedChange={setIsPublish}
+                disabled={isPending}
+              />
+              <Label htmlFor="publish-video">发布到发现页面</Label>
             </div>
 
             <div className="space-y-2">
@@ -249,6 +261,8 @@ export default function FileVideoUpload() {
                 setUploadedVideo(null);
                 setVideoTitle('');
                 setSelectedVideoFile(null);
+                setIsPublic(false);
+                setIsPublish(false);
               }}
               variant="outline"
               className="w-full"

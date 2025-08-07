@@ -14,7 +14,8 @@ import {
   Lock,
   Unlock,
   Globe,
-  Play
+  Play,
+  Rss
 } from 'lucide-react';
 import { type Video } from '@/lib/database';
 import { generatePlaceholderThumbnail } from '@/lib/video-utils';
@@ -29,11 +30,13 @@ interface OptimizedVideoCardProps {
   onDownload: (video: Video) => void;
   onDelete: (video: Video) => void;
   onPrivacyToggle: (video: Video) => void;
+  onPublishToggle: (video: Video) => void;
   getVideoUrl: (fileId: string) => string;
   formatDate: (dateString: string) => string;
   formatDuration: (duration: number) => string;
   deletingVideoId: string | null;
   updatingPrivacyId: string | null;
+  updatingPublishId: string | null;
   t: any; // i18n translations
 }
 
@@ -47,11 +50,13 @@ export default function OptimizedVideoCard({
   onDownload,
   onDelete,
   onPrivacyToggle,
+  onPublishToggle,
   getVideoUrl,
   formatDate,
   formatDuration,
   deletingVideoId,
   updatingPrivacyId,
+  updatingPublishId,
   t
 }: OptimizedVideoCardProps) {
   // 完全不使用动态缩略图生成，避免加载视频
@@ -133,26 +138,36 @@ export default function OptimizedVideoCard({
                 {video.views}
               </span>
             </div>
-            <Badge 
-              variant={video.isPublic ? "outline" : "secondary"} 
-              className={`text-xs px-2 py-0.5 ${
-                video.isPublic 
-                  ? "border-green-300 text-green-700 bg-green-50" 
-                  : "border-gray-300 text-gray-700 bg-gray-100"
-              }`}
-            >
-              {video.isPublic ? (
-                <>
-                  <Globe className="h-3 w-3 mr-1" />
-                  {t.videos.public}
-                </>
-              ) : (
-                <>
-                  <Lock className="h-3 w-3 mr-1" />
-                  {t.videos.private}
-                </>
+            <div className="flex space-x-1">
+              <Badge 
+                variant={video.isPublic ? "outline" : "secondary"} 
+                className={`text-xs px-2 py-0.5 ${
+                  video.isPublic 
+                    ? "border-green-300 text-green-700 bg-green-50" 
+                    : "border-gray-300 text-gray-700 bg-gray-100"
+                }`}
+              >
+                {video.isPublic ? (
+                  <>
+                    <Globe className="h-3 w-3 mr-1" />
+                    {t.videos.public}
+                  </>
+                ) : (
+                  <>
+                    <Lock className="h-3 w-3 mr-1" />
+                    {t.videos.private}
+                  </>
+                )}
+              </Badge>
+              {video.isPublish && (
+                <Badge 
+                  variant="outline"
+                  className="text-xs px-2 py-0.5 border-blue-300 text-blue-700 bg-blue-50"
+                >
+                  发现
+                </Badge>
               )}
-            </Badge>
+            </div>
           </div>
         </div>
         
@@ -180,6 +195,27 @@ export default function OptimizedVideoCard({
                 <Lock className="h-3 w-3" />
               ) : (
                 <Globe className="h-3 w-3" />
+              )}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className={`h-8 w-8 p-0 transition-all duration-300 hover:scale-110 bg-white/90 hover:bg-opacity-100 text-gray-800 backdrop-blur-sm shadow-md ${
+                video.isPublish 
+                  ? "hover:bg-purple-600 hover:text-white hover:shadow-lg" 
+                  : "hover:bg-blue-600 hover:text-white hover:shadow-lg"
+              }`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onPublishToggle(video);
+              }}
+              title={video.isPublish ? '从发现页面移除' : '发布到发现页面'}
+              disabled={updatingPublishId === video.$id}
+            >
+              {updatingPublishId === video.$id ? (
+                <div className="animate-spin rounded-full h-3 w-3 border border-current border-t-transparent" />
+              ) : (
+                <Rss className={`h-3 w-3 ${video.isPublish ? 'text-purple-500' : ''}`} />
               )}
             </Button>
             <Button

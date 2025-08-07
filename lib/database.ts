@@ -18,6 +18,7 @@ export interface VideoRecord {
   duration: number;
   views: number;
   isPublic: boolean;
+  isPublish: boolean;
   thumbnailUrl: string;
   subtitleFileId: string | null;
 }
@@ -51,6 +52,7 @@ export interface VideoRecord {
   duration: number;
   views: number;
   isPublic: boolean;
+  isPublish: boolean;
   thumbnailUrl: string;
   subtitleFileId: string | null;
 }

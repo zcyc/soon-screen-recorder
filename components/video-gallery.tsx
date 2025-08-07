@@ -36,6 +36,7 @@ import {
   getPublicVideosAction, 
   deleteVideoAction, 
   toggleVideoPrivacyAction,
+  toggleVideoPublishStatusAction,
   incrementVideoViewsAction,
   getFileUrlAction
 } from '@/app/actions/video-actions';
@@ -57,6 +58,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
   const [updatingPrivacyId, setUpdatingPrivacyId] = useState<string | null>(null);
+  const [updatingPublishId, setUpdatingPublishId] = useState<string | null>(null);
   const { isOpen: isDeleteModalOpen, deleteData, openDeleteModal, closeDeleteModal } = useDeleteModal();
 
   useEffect(() => {
@@ -300,6 +302,38 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
     }
   };
 
+  const handlePublishToggle = async (video: Video) => {
+    if (!user) {
+      showToast(t.recording.loginRequired);
+      return;
+    }
+
+    try {
+      setUpdatingPublishId(video.$id);
+      
+      // Call the server action
+      const result = await toggleVideoPublishStatusAction(video.$id);
+      
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      
+      // Update the video in the local state
+      setVideos(videos.map(v => 
+        v.$id === video.$id 
+          ? { ...v, isPublish: result.data.isPublish }
+          : v
+      ));
+      
+      showToast(video.isPublish ? '已从发现页面移除' : '已发布到发现页面');
+    } catch (error: any) {
+      console.error('Error updating publish status:', error);
+      showToast(error.message || '更新发布状态失败');
+    } finally {
+      setUpdatingPublishId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -376,10 +410,12 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
             onDownload={handleDownload}
             onDelete={handleDeleteClick}
             onPrivacyToggle={handlePrivacyToggle}
+            onPublishToggle={handlePublishToggle}
             formatDate={formatDate}
             formatDuration={formatDuration}
             deletingVideoId={deletingVideoId}
             updatingPrivacyId={updatingPrivacyId}
+            updatingPublishId={updatingPublishId}
             t={t}
           />
         ))}

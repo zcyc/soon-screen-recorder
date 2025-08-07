@@ -15,10 +15,12 @@ interface VideoCardWithUrlProps {
   onDownload: (video: Video) => void;
   onDelete: (video: Video) => void;
   onPrivacyToggle: (video: Video) => void;
+  onPublishToggle: (video: Video) => void;
   formatDate: (dateString: string) => string;
   formatDuration: (duration: number) => string;
   deletingVideoId: string | null;
   updatingPrivacyId: string | null;
+  updatingPublishId: string | null;
   t: any;
 }
 

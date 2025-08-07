@@ -14,6 +14,7 @@ export interface VideoRecord {
   duration: number;
   views: number;
   isPublic: boolean;
+  isPublish: boolean;
   thumbnailUrl: string;
   subtitleFileId: string | null;
 }
@@ -30,13 +31,14 @@ export interface VideoReaction {
 export type Video = VideoRecord;
 
 // Video management functions
-export async function createVideoRecord(video: Omit<VideoRecord, '$id' | '$createdAt' | '$updatedAt' | 'views'>) {
+export async function createVideoRecord(video: Omit<VideoRecord, '$id' | '$createdAt' | '$updatedAt' | 'views' | 'isPublish'> & { isPublish?: boolean }) {
   try {
     const { databases } = await createAdminClient();
     
     const documentData = {
       ...video,
-      views: 0
+      views: 0,
+      isPublish: video.isPublish ?? false
     };
     
     console.log('Attempting to create video document with data:', {
@@ -157,6 +159,36 @@ export async function toggleVideoPrivacy(videoId: string, userId: string) {
     }
     
     throw new Error(error.message || 'Failed to update privacy setting');
+  }
+}
+
+export async function toggleVideoPublishStatus(videoId: string, userId: string) {
+  try {
+    // First verify the user owns this video
+    const video = await getVideoById(videoId);
+    if (video.userId !== userId) {
+      throw new Error('Unauthorized: You can only modify your own videos');
+    }
+
+    const newIsPublish = !video.isPublish;
+    
+    // Update the video publish status
+    await updateVideo(videoId, { isPublish: newIsPublish });
+
+    // Return the updated video record
+    return await getVideoById(videoId);
+  } catch (error: any) {
+    console.error('Failed to toggle video publish status:', error);
+    
+    if (error.code === 401 || error.code === 'document_invalid_permissions') {
+      throw new Error('You do not have permission to modify this video');
+    }
+    
+    if (error.code === 404) {
+      throw new Error('Video not found');
+    }
+    
+    throw new Error(error.message || 'Failed to update publish status');
   }
 }
 
@@ -335,6 +367,7 @@ export async function getPublicVideos(limit = 20) {
       config.collectionsId.videos,
       [
         Query.equal('isPublic', true),
+        Query.equal('isPublish', true),
         Query.limit(limit)
       ]
     );
