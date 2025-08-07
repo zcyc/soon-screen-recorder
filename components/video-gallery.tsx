@@ -55,7 +55,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
   const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
   const [updatingPrivacyId, setUpdatingPrivacyId] = useState<string | null>(null);
   const [updatingPublishId, setUpdatingPublishId] = useState<string | null>(null);
@@ -91,11 +91,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
     };
   }, [selectedVideo]);
 
-  // Show toast message
-  const showToast = (message: string) => {
-    setToastMessage(message);
-    setTimeout(() => setToastMessage(null), 3000); // Hide after 3 seconds
-  };
+
 
   const loadVideos = async () => {
     try {
@@ -195,7 +191,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
       }
     } else {
       // 浏览器不支持原生分享，显示提示消息
-      showToast('您的浏览器不支持分享功能，请使用复制链接按钮');
+
     }
   };
 
@@ -203,7 +199,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
     const shareLink = `${window.location.origin}/share/${video.$id}`;
     try {
       await navigator.clipboard.writeText(shareLink);
-      showToast(t.recording.linkCopied || '分享链接已复制！');
+
     } catch (error) {
       console.error('复制失败:', error);
       // 回退方法
@@ -213,7 +209,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
       textArea.select();
       document.execCommand('copy');
       document.body.removeChild(textArea);
-      showToast(t.recording.linkCopied || '分享链接已复制！');
+
     }
   };
 
@@ -221,7 +217,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
     try {
       const result = await getFileUrlAction(video.fileId);
       if (!result.success || !result.data?.url) {
-        showToast('无法获取下载链接');
+
         return;
       }
       
@@ -233,7 +229,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
       document.body.removeChild(link);
     } catch (error) {
       console.error('Error downloading video:', error);
-      showToast('下载失败，请重试');
+
     }
   };
 
@@ -255,13 +251,13 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
           
           // Show appropriate success message
           if (result.data && result.data.message) {
-            showToast(result.data.message);
+
           } else {
-            showToast('视频已成功删除！');
+
           }
         } catch (error: any) {
           console.error('Error deleting video:', error);
-          showToast(error.message || '删除视频时出错，请重试。');
+
           throw error; // 重新抛出错误，保持模态框打开
         } finally {
           setDeletingVideoId(null);
@@ -272,7 +268,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
 
   const handlePrivacyToggle = async (video: Video) => {
     if (!user) {
-      showToast(t.recording.loginRequired);
+
       return;
     }
 
@@ -293,10 +289,10 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
           : v
       ));
       
-      showToast(t.videos.privacyUpdated);
+
     } catch (error: any) {
       console.error('Error updating privacy:', error);
-      showToast(error.message || t.videos.privacyUpdateFailed);
+
     } finally {
       setUpdatingPrivacyId(null);
     }
@@ -304,7 +300,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
 
   const handlePublishToggle = async (video: Video) => {
     if (!user) {
-      showToast(t.recording.loginRequired);
+
       return;
     }
 
@@ -325,10 +321,10 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
           : v
       ));
       
-      showToast(video.isPublish ? t.publish.removedFromDiscovery : t.publish.publishedToDiscovery);
+
     } catch (error: any) {
       console.error('Error updating publish status:', error);
-      showToast(error.message || '更新发布状态失败');
+
     } finally {
       setUpdatingPublishId(null);
     }
@@ -561,12 +557,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
         document.body
       )}
       
-      {/* Toast 消息 */}
-      {toastMessage && (
-        <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-md shadow-lg z-50 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          {toastMessage}
-        </div>
-      )}
+
       
       {/* Delete Modal */}
       <DeleteModal
