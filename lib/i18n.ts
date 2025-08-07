@@ -278,6 +278,17 @@ export interface Translations {
     microphoneNotFound: string;
   };
   
+  // File Upload
+  fileUpload: {
+    invalidFileType: string;
+    fileSizeExceeded: string;
+    uploadFailed: string;
+    selectVideoFile: string;
+    uploading: string;
+    uploadSuccess: string;
+    maxFileSize: string;
+  };
+  
 
 }
 
@@ -535,6 +546,15 @@ export const translations: Record<Locale, Translations> = {
       microphoneDenied: 'Microphone permission denied. Please allow microphone access in browser settings.',
       microphoneNotFound: 'Microphone device not found. Please check if your microphone is properly connected.',
     },
+    fileUpload: {
+      invalidFileType: 'Please select a video file',
+      fileSizeExceeded: 'File size cannot exceed 1000MB',
+      uploadFailed: 'Upload failed',
+      selectVideoFile: 'Select video file',
+      uploading: 'Uploading...',
+      uploadSuccess: 'Video uploaded successfully!',
+      maxFileSize: 'Maximum file size: 1000MB',
+    },
 
   },
   zh: {
@@ -789,6 +809,15 @@ export const translations: Record<Locale, Translations> = {
       cameraNotFound: '未找到摄像头设备。请检查您的摄像头是否正常连接。',
       microphoneDenied: '麦克风权限被拒绝。请在浏览器设置中允许麦克风访问权限。',
       microphoneNotFound: '未找到麦克风设备。请检查您的麦克风是否正常连接。',
+    },
+    fileUpload: {
+      invalidFileType: '请选择视频文件',
+      fileSizeExceeded: '文件大小不能超过 1000MB',
+      uploadFailed: '上传失败',
+      selectVideoFile: '选择视频文件',
+      uploading: '上传中...',
+      uploadSuccess: '视频上传成功！',
+      maxFileSize: '最大文件大小: 1000MB',
     },
 
   },

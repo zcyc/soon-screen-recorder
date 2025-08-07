@@ -38,14 +38,14 @@ export default function FileVideoUpload() {
 
     // Validate file type
     if (!file.type.startsWith('video/')) {
-      alert('Please select a video file');
+      alert(t.fileUpload.invalidFileType);
       return;
     }
 
-    // Validate file size (100MB limit)
-    const maxSize = 100 * 1024 * 1024; // 100MB
+    // Validate file size (1000MB limit)
+    const maxSize = 1000 * 1024 * 1024; // 1000MB
     if (file.size > maxSize) {
-      alert('File size cannot exceed 100MB');
+      alert(t.fileUpload.fileSizeExceeded);
       return;
     }
 
@@ -103,7 +103,7 @@ export default function FileVideoUpload() {
 
       } catch (error: any) {
         console.error('Upload failed:', error);
-        setError(error.message || '上传失败');
+        setError(error.message || t.fileUpload.uploadFailed);
       } finally {
         setUploadProgress(0);
         if (fileInputRef.current) {
@@ -188,12 +188,12 @@ export default function FileVideoUpload() {
                 {isPending ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    上传中... ({uploadProgress}%)
+                    {t.fileUpload.uploading} ({uploadProgress}%)
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
                     <Upload className="h-4 w-4" />
-                    选择视频文件
+                    {t.fileUpload.selectVideoFile}
                   </div>
                 )}
               </Button>
@@ -217,7 +217,7 @@ export default function FileVideoUpload() {
 
             <div className="text-sm text-muted-foreground space-y-1">
               <p>• 支持的格式: MP4, WebM, AVI, MOV 等</p>
-              <p>• 文件大小限制: 最大 100MB</p>
+              <p>• {t.fileUpload.maxFileSize}</p>
               <p>• 上传后将自动生成缩略图</p>
             </div>
           </div>
@@ -248,7 +248,7 @@ export default function FileVideoUpload() {
                   <ClientThumbnailGenerator
                     videoId={uploadedVideo.$id}
                     videoFile={selectedVideoFile} // 使用原始文件
-                    videoUrl={`https://appwrite.p6s.fun/v1/storage/buckets/videos/files/${(uploadedVideo as any).fileId}/view?project=soon`} // 作为备选
+                    videoUrl={`${process.env.NEXT_PUBLIC_APPWRITE_STORAGE_ENDPOINT}/storage/buckets/videos/files/${(uploadedVideo as any).fileId}/view?project=soon`} // 作为备选
                     onThumbnailGenerated={(url) => {
                       console.log('✅ Thumbnail generated successfully:', url);
                     }}
