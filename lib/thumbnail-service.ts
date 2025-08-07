@@ -52,19 +52,25 @@ export class ThumbnailService {
    */
   static async deleteThumbnailOnVideoDelete(thumbnailUrl: string): Promise<boolean> {
     try {
-      // 从URL中提取文件ID
-      const urlParts = thumbnailUrl.split('/');
-      const fileId = urlParts[urlParts.length - 1];
+      console.log('🗑️ Attempting to delete thumbnail:', thumbnailUrl);
       
-      if (fileId) {
-        await deleteFile(fileId);
-        console.log(`✅ Thumbnail deleted: ${fileId}`);
-        return true;
+      // 从URL中提取文件ID
+      // URL格式: https://appwrite.p6s.fun/v1/storage/buckets/videos/files/{fileId}/view?project=soon
+      const match = thumbnailUrl.match(/\/files\/([^\/\?]+)/);
+      
+      if (!match || !match[1]) {
+        console.error('❌ Could not extract fileId from URL:', thumbnailUrl);
+        return false;
       }
       
-      return false;
+      const fileId = match[1];
+      console.log('📄 Extracted fileId:', fileId);
+      
+      await deleteFile(fileId);
+      console.log(`✅ Thumbnail deleted successfully: ${fileId}`);
+      return true;
     } catch (error) {
-      console.error('Failed to delete thumbnail:', error);
+      console.error('❌ Failed to delete thumbnail:', error);
       return false;
     }
   }

@@ -22,23 +22,33 @@ export default function ClientThumbnailGenerator({
 }: ClientThumbnailGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generated, setGenerated] = useState(false);
+  const [processedVideoId, setProcessedVideoId] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log('ClientThumbnailGenerator useEffect triggered:', { 
+    console.log('🔄 ClientThumbnailGenerator useEffect triggered:', { 
       videoId, 
       hasVideoFile: !!videoFile, 
       videoUrl, 
       generated, 
-      isGenerating 
+      isGenerating,
+      timestamp: new Date().toISOString()
     });
     
-    if (!videoId || (!videoFile && !videoUrl) || generated || isGenerating) {
-      console.log('ClientThumbnailGenerator skipping generation:', { 
+    // 检查是否已经处理过这个videoId
+    const alreadyProcessed = processedVideoId === videoId;
+    
+    if (!videoId || (!videoFile && !videoUrl) || alreadyProcessed || isGenerating) {
+      console.log('⏭️ ClientThumbnailGenerator skipping generation:', { 
         videoId: !!videoId, 
         hasVideoFile: !!videoFile, 
         videoUrl: !!videoUrl, 
-        generated, 
-        isGenerating 
+        alreadyProcessed, 
+        isGenerating,
+        processedVideoId,
+        reason: !videoId ? 'no-video-id' : 
+                (!videoFile && !videoUrl) ? 'no-video-source' :
+                alreadyProcessed ? 'already-processed' : 
+                isGenerating ? 'currently-generating' : 'unknown'
       });
       return;
     }
@@ -100,6 +110,7 @@ export default function ClientThumbnailGenerator({
 
         console.log(`✅ Thumbnail generated successfully: ${uploadResult.data.url}`);
         setGenerated(true);
+        setProcessedVideoId(videoId); // 标记这个videoId已处理
         onThumbnailGenerated?.(uploadResult.data.url);
 
       } catch (error: any) {
@@ -111,7 +122,7 @@ export default function ClientThumbnailGenerator({
     };
 
     generateThumbnail();
-  }, [videoId, videoFile, videoUrl, generated, isGenerating, onThumbnailGenerated, onError]);
+  }, [videoId, videoFile, videoUrl, processedVideoId, isGenerating]);
 
   // 此组件不渲染任何 UI，只是在后台生成缩略图
   return null;
