@@ -2547,10 +2547,10 @@ export default function ScreenRecorder() {
                 <div className="flex items-center justify-between">
                   <div>
                     <Label className="text-sm font-medium">
-                      发布到发现页面
+                      {t.publish.publishToDiscovery}
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      {isVideoPublished ? '视频将出现在发现页面供其他用户浏览' : '仅保存至个人媒体库'}
+                      {isVideoPublished ? t.publish.publishedDescription : t.publish.unpublishedDescription}
                     </p>
                   </div>
                   <Switch

@@ -248,6 +248,16 @@ export interface Translations {
     disappointed: string;
   };
   
+  // Publish/Discovery
+  publish: {
+    publishToDiscovery: string;
+    removeFromDiscovery: string;
+    publishedToDiscovery: string;
+    removedFromDiscovery: string;
+    publishedDescription: string;
+    unpublishedDescription: string;
+  };
+  
   // Common
   common: {
     loading: string;
@@ -501,6 +511,14 @@ export const translations: Record<Locale, Translations> = {
       boring: 'Boring',
       disappointed: 'Disappointed',
     },
+    publish: {
+      publishToDiscovery: 'Publish to Discovery Page',
+      removeFromDiscovery: 'Remove from Discovery Page',
+      publishedToDiscovery: 'Published to Discovery Page',
+      removedFromDiscovery: 'Removed from Discovery Page',
+      publishedDescription: 'Video will appear on the Discovery Page for other users to browse',
+      unpublishedDescription: 'Video will only be saved to your personal media library',
+    },
     common: {
       loading: 'Loading...',
       error: 'Error',
@@ -747,6 +765,14 @@ export const translations: Record<Locale, Translations> = {
       confused: '困惑',
       boring: '无聊',
       disappointed: '失望',
+    },
+    publish: {
+      publishToDiscovery: '发布到发现页面',
+      removeFromDiscovery: '从发现页面移除',
+      publishedToDiscovery: '已发布到发现页面',
+      removedFromDiscovery: '已从发现页面移除',
+      publishedDescription: '视频将出现在发现页面供其他用户浏览',
+      unpublishedDescription: '仅保存至个人媒体库',
     },
     common: {
       loading: '加载中...',

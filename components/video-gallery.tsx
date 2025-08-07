@@ -325,7 +325,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
           : v
       ));
       
-      showToast(video.isPublish ? '已从发现页面移除' : '已发布到发现页面');
+      showToast(video.isPublish ? t.publish.removedFromDiscovery : t.publish.publishedToDiscovery);
     } catch (error: any) {
       console.error('Error updating publish status:', error);
       showToast(error.message || '更新发布状态失败');
