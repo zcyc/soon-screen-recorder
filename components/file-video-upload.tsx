@@ -33,8 +33,7 @@ export default function FileVideoUpload() {
   const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
   const [browserInfo, setBrowserInfo] = useState<any>(null);
   const [formatWarning, setFormatWarning] = useState<string | null>(null);
-  const [isThumbnailGenerating, setIsThumbnailGenerating] = useState(false);
-  const [thumbnailStatus, setThumbnailStatus] = useState<string>('');
+
 
   const handleFileSelect = () => {
     fileInputRef.current?.click();
@@ -43,8 +42,6 @@ export default function FileVideoUpload() {
   // 后台缩略图生成函数
   const generateThumbnailInBackground = async (videoId: string, videoFile: File) => {
     try {
-      setIsThumbnailGenerating(true);
-      setThumbnailStatus(t.thumbnail.generating);
       
       const browser = detectBrowser();
       console.log(`🎨 Starting thumbnail generation for video ${videoId} in ${browser.name}`);
@@ -60,7 +57,6 @@ export default function FileVideoUpload() {
       });
       
       console.log('📷 Thumbnail blob generated, size:', thumbnailBlob.size);
-      setThumbnailStatus(t.thumbnail.uploading);
       
       // 将 Blob 转换为 File 并上传
       const thumbnailFile = new File([thumbnailBlob], `thumbnail-${videoId}.jpg`, {
@@ -74,7 +70,6 @@ export default function FileVideoUpload() {
       }
       
       console.log('🔄 Thumbnail uploaded, updating video record...');
-      setThumbnailStatus(t.thumbnail.updatingRecord);
       
       // 更新视频记录的缩略图 URL
       const updateResult = await updateVideoThumbnailAction(videoId, uploadResult.data.url);
@@ -84,23 +79,9 @@ export default function FileVideoUpload() {
       }
       
       console.log(`✅ Thumbnail generated successfully: ${uploadResult.data.url}`);
-      setThumbnailStatus(t.thumbnail.generateSuccess);
-      
-      // 3秒后清除状态信息
-      setTimeout(() => {
-        setThumbnailStatus('');
-      }, 3000);
       
     } catch (error: any) {
       console.error(`❌ Thumbnail generation failed for video ${videoId}:`, error);
-      setThumbnailStatus(t.thumbnail.generateFailed);
-      
-      // 5秒后清除错误信息
-      setTimeout(() => {
-        setThumbnailStatus('');
-      }, 5000);
-    } finally {
-      setIsThumbnailGenerating(false);
     }
   };
 
@@ -389,13 +370,7 @@ export default function FileVideoUpload() {
               <p className="text-sm text-green-700">
                 ✅ 视频已保存到您的媒体库<br/>
                 ✅ 可以在视频列表中查看<br/>
-                {thumbnailStatus ? (
-                  <span className={isThumbnailGenerating ? 'text-amber-600 dark:text-amber-400' : thumbnailStatus.includes('失败') ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}>
-                    {isThumbnailGenerating && '🔄 '}{thumbnailStatus}
-                  </span>
-                ) : (
-                  t.thumbnail.ready
-                )}
+✅ 缩略图处理中
               </p>
               
 

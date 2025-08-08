@@ -128,8 +128,7 @@ export default function ScreenRecorder() {
   const [includeAudio, setIncludeAudio] = useState(false);
   const [includeCamera, setIncludeCamera] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [isThumbnailGenerating, setIsThumbnailGenerating] = useState(false);
-  const [thumbnailStatus, setThumbnailStatus] = useState<string>('');
+
   const [videoTitle, setVideoTitle] = useState('');
   const [isVideoPublic, setIsVideoPublic] = useState(true); // Default to public for sharing
   const [isVideoPublished, setIsVideoPublished] = useState(false); // Default to not published to discovery
@@ -182,8 +181,6 @@ export default function ScreenRecorder() {
   // 后台缩略图生成函数
   const generateThumbnailInBackground = async (videoId: string, recordedBlob: Blob) => {
     try {
-      setIsThumbnailGenerating(true);
-      setThumbnailStatus(t.thumbnail.generating);
       
       const browser = detectBrowser();
       console.log(`🎨 Starting thumbnail generation for recording ${videoId} in ${browser.name}`);
@@ -202,7 +199,6 @@ export default function ScreenRecorder() {
       });
       
       console.log('📷 Recording thumbnail blob generated, size:', thumbnailBlob.size);
-      setThumbnailStatus(t.thumbnail.uploading);
       
       // 将 Blob 转换为 File 并上传
       const thumbnailFile = new File([thumbnailBlob], `thumbnail-${videoId}.jpg`, {
@@ -216,7 +212,6 @@ export default function ScreenRecorder() {
       }
       
       console.log('🔄 Thumbnail uploaded, updating video record...');
-      setThumbnailStatus(t.thumbnail.updatingRecord);
       
       // 更新视频记录的缩略图 URL
       const updateResult = await updateVideoThumbnailAction(videoId, uploadResult.data.url);
@@ -226,23 +221,9 @@ export default function ScreenRecorder() {
       }
       
       console.log(`✅ Recording thumbnail generated successfully: ${uploadResult.data.url}`);
-      setThumbnailStatus(t.thumbnail.generateSuccess);
-      
-      // 3秒后清除状态信息
-      setTimeout(() => {
-        setThumbnailStatus('');
-      }, 3000);
       
     } catch (error: any) {
       console.error(`❌ Recording thumbnail generation failed for video ${videoId}:`, error);
-      setThumbnailStatus(t.thumbnail.generateFailed);
-      
-      // 5秒后清除错误信息
-      setTimeout(() => {
-        setThumbnailStatus('');
-      }, 5000);
-    } finally {
-      setIsThumbnailGenerating(false);
     }
   };
   
@@ -2705,31 +2686,7 @@ export default function ScreenRecorder() {
                 </div>
               </div>
               
-              {/* 缩略图生成状态显示 */}
-              {thumbnailStatus && (
-                <div className={`rounded-lg p-3 ${
-                  isThumbnailGenerating ? 'bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800' :
-                  thumbnailStatus.includes('失败') ? 'bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800' :
-                  'bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800'
-                }`}>
-                  <div className="flex items-center gap-2">
-                    {isThumbnailGenerating ? (
-                      <div className="animate-spin h-4 w-4 border-2 border-amber-600 dark:border-amber-400 border-t-transparent rounded-full"></div>
-                    ) : thumbnailStatus.includes('失败') ? (
-                      <span className="text-red-600 dark:text-red-400">❌</span>
-                    ) : (
-                      <span className="text-green-600 dark:text-green-400">✅</span>
-                    )}
-                    <span className={`text-sm ${
-                      isThumbnailGenerating ? 'text-amber-600 dark:text-amber-400' : 
-                      thumbnailStatus.includes('失败') ? 'text-red-600 dark:text-red-400' : 
-                      'text-green-600 dark:text-green-400'
-                    }`}>
-                      {thumbnailStatus}
-                    </span>
-                  </div>
-                </div>
-              )}
+
               
               {/* Share URL Display */}
               <div>

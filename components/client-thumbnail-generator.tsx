@@ -8,7 +8,7 @@ import { detectBrowser } from '@/lib/browser-compatibility';
 import { canProcessVideo } from '@/lib/safari-video-utils';
 import { handleVideoError, isSafariCompatibilityIssue } from '@/lib/video-error-handler';
 import { useSafariURLCleanup } from '@/lib/safari-url-manager';
-import { useI18n } from '@/lib/i18n';
+
 
 interface ClientThumbnailGeneratorProps {
   videoId: string;
@@ -25,7 +25,7 @@ export default function ClientThumbnailGenerator({
   onThumbnailGenerated,
   onError,
 }: ClientThumbnailGeneratorProps) {
-  const { t } = useI18n();
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [processedSources, setProcessedSources] = useState<Set<string>>(new Set());
   // 添加一个额外的检查，防止对同一个videoId重复生成缩略图
@@ -218,34 +218,6 @@ export default function ClientThumbnailGenerator({
     };
   }, [videoId, useSafariURLCleanup]);
 
-  // 如果该videoId已经完成过缩略图生成，直接显示完成状态
-  if (completedVideoIds.has(videoId)) {
-    return (
-      <div className="text-sm text-green-600 flex items-center space-x-2">
-        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-        </svg>
-        <span>{t.thumbnail.generated}</span>
-      </div>
-    );
-  }
-
-  // 渲染生成状态提示
-  if (isGenerating) {
-    return (
-      <div className="flex items-center space-x-2 text-sm text-blue-600">
-        <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-        <span>{t.thumbnail.generating}</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="text-sm text-green-600 flex items-center space-x-2">
-      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-      </svg>
-      <span>缩略图已生成</span>
-    </div>
-  );
+  // Component now runs silently in background without UI display
+  return null;
 }
