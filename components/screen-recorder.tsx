@@ -2475,7 +2475,7 @@ export default function ScreenRecorder() {
                 </div>
                 {isNearTimeLimit && (
                   <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 text-center">
-                    {t.recording.recordingWillStopAt}
+                    {t.recording.recordingWillStopAt()}
                   </p>
                 )}
               </div>
