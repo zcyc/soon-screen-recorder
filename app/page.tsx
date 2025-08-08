@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useI18n } from '@/lib/i18n';
+import { recordingConfig } from '@/lib/config';
 
 export default function HomePage() {
   const { user, loading } = useAuth();
@@ -72,9 +73,11 @@ export default function HomePage() {
             <p className="text-xl text-muted-foreground">
               {t.home.featuresSubtitle}
             </p>
-            <p className="text-sm text-primary bg-primary/10 px-3 py-2 rounded-lg inline-block">
-              {t.home.timeLimitNotice}
-            </p>
+            {recordingConfig.enableTimeLimit && (
+              <p className="text-sm text-primary bg-primary/10 px-3 py-2 rounded-lg inline-block mt-4">
+                {t.home.timeLimitNotice()}
+              </p>
+            )}
           </div>
           
           <div className="grid md:grid-cols-3 gap-8">
