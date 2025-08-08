@@ -13,6 +13,13 @@ interface EnhancedThumbnailGeneratorProps {
   videoUrl?: string;
   onThumbnailGenerated?: (thumbnailUrl: string) => void;
   onError?: (error: string) => void;
+  onProgress?: (stage: string) => void;
+}
+
+interface GenerationStatus {
+  isGenerating: boolean;
+  currentStage: 'idle' | 'generating' | 'uploading' | 'updating' | 'error';
+  error: string | null;
 }
 
 export default function EnhancedThumbnailGenerator({
@@ -21,11 +28,17 @@ export default function EnhancedThumbnailGenerator({
   videoUrl,
   onThumbnailGenerated,
   onError,
+  onProgress,
 }: EnhancedThumbnailGeneratorProps) {
-  const [completedItems, setCompletedItems] = useState<Set<string>>(new Set());
+  const [status, setStatus] = useState<GenerationStatus>({
+    isGenerating: false,
+    currentStage: 'idle',
+    error: null
+  });
 
-  // Use refs to prevent infinite loops
+  // Use refs to prevent infinite loops and track completion
   const processingRef = useRef<Set<string>>(new Set());
+  const completedRef = useRef<Set<string>>(new Set());
   const abortControllerRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
 
@@ -54,7 +67,7 @@ export default function EnhancedThumbnailGenerator({
     }
 
     // Check if already completed
-    if (completedItems.has(sourceId)) {
+    if (completedRef.current.has(sourceId)) {
       console.log(`✅ Thumbnail already generated for: ${sourceId}`);
       return;
     }
@@ -132,8 +145,14 @@ export default function EnhancedThumbnailGenerator({
       
 
 
-      // Mark as completed
-      setCompletedItems(prev => new Set([...prev, sourceId]));
+      // Mark as completed and update status
+      completedRef.current.add(sourceId);
+      setStatus(prev => ({ 
+        ...prev, 
+        isGenerating: false, 
+        currentStage: 'idle',
+        error: null 
+      }));
       onThumbnailGenerated?.(uploadResult.data.url);
 
     } catch (error: any) {
@@ -142,13 +161,19 @@ export default function EnhancedThumbnailGenerator({
       console.error(`❌ Thumbnail generation failed for ${targetVideoId}:`, error);
       
       const errorMessage = error.message || 'Failed to generate thumbnail';
+      setStatus(prev => ({ 
+        ...prev, 
+        isGenerating: false, 
+        currentStage: 'error', 
+        error: errorMessage 
+      }));
       onError?.(errorMessage);
     } finally {
       // Cleanup
       processingRef.current.delete(sourceId);
       abortControllerRef.current = null;
     }
-  }, [onThumbnailGenerated, onError, completedItems]);
+  }, [onThumbnailGenerated, onError, onProgress]);
 
   // Effect to trigger thumbnail generation when video source changes
   useEffect(() => {
@@ -200,8 +225,9 @@ export default function EnhancedThumbnailGenerator({
         videoId,
         hasVideoFile: !!videoFile,
         hasVideoUrl: !!videoUrl,
-        completedCount: completedItems.size,
+        completedCount: completedRef.current.size,
         currentVideoSourceId,
+        status: status.currentStage,
         timestamp: new Date().toISOString()
       });
     }
