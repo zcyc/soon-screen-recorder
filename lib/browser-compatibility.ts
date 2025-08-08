@@ -178,12 +178,18 @@ export function isVideoFormatSupported(mimeType: string): boolean {
 /**
  * Get Safari-safe video loading options
  */
-export function getSafariSafeVideoOptions() {
+export function getSafariSafeVideoOptions(): {
+  crossOrigin: 'anonymous' | undefined;
+  preload: 'metadata' | 'auto' | 'none' | '';
+  playsInline: boolean;
+  muted: boolean;
+  controls: boolean;
+} {
   const browser = detectBrowser();
   
   return {
     crossOrigin: browser.isSafari ? 'anonymous' : undefined,
-    preload: browser.isSafari ? 'metadata' : 'metadata',
+    preload: browser.isSafari ? 'metadata' : 'metadata' as const,
     playsInline: browser.isSafari || browser.isMobile,
     muted: browser.isSafari || browser.isMobile, // Safari requires muted for autoplay
     controls: false,
@@ -198,7 +204,7 @@ export function createSafariCompatibleVideo(): HTMLVideoElement {
   const options = getSafariSafeVideoOptions();
   
   if (options.crossOrigin) video.crossOrigin = options.crossOrigin;
-  video.preload = options.preload || 'metadata';
+  video.preload = (options.preload || 'metadata') as 'metadata' | 'auto' | 'none' | '';
   video.playsInline = options.playsInline || false;
   video.muted = options.muted || false;
   video.controls = options.controls || false;

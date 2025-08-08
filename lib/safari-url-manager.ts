@@ -58,7 +58,7 @@ class SafariURLManager {
       return url;
     } catch (error) {
       console.error('❌ Failed to create object URL:', error);
-      throw new Error(`Failed to create object URL: ${error.message}`);
+      throw new Error(`Failed to create object URL: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

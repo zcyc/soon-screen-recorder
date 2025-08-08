@@ -183,7 +183,7 @@ export default function ScreenRecorder() {
     try {
       
       const browser = detectBrowser();
-      console.log(`🎨 Starting thumbnail generation for recording ${videoId} in ${browser.name}`);
+      console.log(`🎨 Starting thumbnail generation for recording ${videoId} in ${browser.browserName}`);
       
       // 将 Blob 转换为 File 以供缩略图生成使用
       const videoFile = new File([recordedBlob], 'recording.webm', { type: recordedBlob.type });
