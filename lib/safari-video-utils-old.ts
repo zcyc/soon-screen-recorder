@@ -193,7 +193,7 @@ export const generateSafariCompatibleThumbnail = (
         console.log('🔄 Using fallback placeholder thumbnail');
         resolve(fallbackThumbnail);
       } catch (fallbackError) {
-        reject(new Error(`Thumbnail generation failed and fallback failed: ${finalError.message}`));
+        reject(new Error(`Thumbnail generation failed and fallback failed: ${finalError instanceof Error ? finalError.message : String(finalError)}`));
       }
     }
   });

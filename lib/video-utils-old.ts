@@ -40,7 +40,7 @@ export const generateVideoThumbnail = (
       format = 'jpeg'
     } = options;
 
-    const video = document.createElement('video');
+    let video = document.createElement('video');
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
@@ -57,7 +57,7 @@ export const generateVideoThumbnail = (
       reject(new Error('Video loading timeout'));
     }, 10000);
 
-    const cleanup = () => {
+    let cleanup = () => {
       clearTimeout(timeout);
       try {
         if (video.src && video.src.startsWith('blob:')) {
@@ -154,7 +154,7 @@ export const generateVideoThumbnailBlob = (
       format = 'jpeg'
     } = options;
 
-    const video = document.createElement('video');
+    let video = document.createElement('video');
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
@@ -171,7 +171,7 @@ export const generateVideoThumbnailBlob = (
       reject(new Error('Video processing timeout'));
     }, 10000);
 
-    const cleanup = () => {
+    let cleanup = () => {
       clearTimeout(timeout);
       try {
         if (video.src && video.src.startsWith('blob:')) {
@@ -252,7 +252,7 @@ export const getVideoMetadata = (
   videoFile: File | string
 ): Promise<{ duration: number; width: number; height: number }> => {
   return new Promise((resolve, reject) => {
-    const video = document.createElement('video');
+    let video = document.createElement('video');
     video.preload = 'metadata';
 
     video.onloadedmetadata = () => {

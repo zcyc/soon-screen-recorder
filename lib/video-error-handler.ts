@@ -138,7 +138,7 @@ export class VideoErrorHandler {
       
       // Handle media error objects
       if ('code' in error && 'message' in error) {
-        return `Media error ${error.code}: ${error.message}`;
+        return `Media error ${(error as any).code}: ${(error as any).message}`;
       }
     }
     
