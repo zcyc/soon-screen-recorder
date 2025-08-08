@@ -304,7 +304,7 @@ export interface Translations {
 
 export const translations: Record<Locale, Translations> = {
   en: {
-    appName: 'soon',
+    appName: 'SOON',
     nav: {
       dashboard: 'Dashboard',
       discover: 'Discover',
@@ -328,7 +328,7 @@ export const translations: Record<Locale, Translations> = {
       audioRecordingTitle: 'Audio Recording',
       audioRecordingDesc: 'Capture system audio and microphone input for complete recording experience.',
       ctaTitle: 'Ready to Start Recording?',
-      ctaDescription: 'Join soon today and start creating amazing screen recordings in minutes.',
+      ctaDescription: 'Join SOON today and start creating amazing screen recordings in minutes.',
       getStarted: 'Get Started for Free',
     },
     dashboard: {
@@ -344,7 +344,7 @@ export const translations: Record<Locale, Translations> = {
     },
     discover: {
       title: 'Discover Recordings',
-      description: 'Browse public recordings shared by the Soon community.',
+      description: 'Browse public recordings shared by the SOON community.',
     },
     recording: {
       recordingQuality: 'Recording Quality',
@@ -441,8 +441,8 @@ export const translations: Record<Locale, Translations> = {
       hideSubtitles: 'Hide Subtitles',
     },
     auth: {
-      signInToSoon: 'Sign in to soon',
-      createSoonAccount: 'Create your soon account',
+      signInToSoon: 'Sign in to SOON',
+      createSoonAccount: 'Create your SOON account',
       welcomeBack: 'Welcome back! Please sign in to continue.',
       signInDescription: 'Welcome back! Please sign in to continue.',
       signUpDescription: 'Start recording and sharing your screen instantly.',
@@ -458,7 +458,7 @@ export const translations: Record<Locale, Translations> = {
       orContinueWith: 'Or continue with',
       continueWithGitHub: 'Continue with GitHub',
       connectingToGitHub: 'Connecting to GitHub...',
-      newToSoon: 'New to soon?',
+      newToSoon: 'New to SOON?',
       alreadyHaveAccount: 'Already have an account?',
       createAccount: 'Create an account',
       signInToExistingAccount: 'Sign in to existing account',
@@ -577,7 +577,7 @@ export const translations: Record<Locale, Translations> = {
 
   },
   zh: {
-    appName: '快录',
+    appName: 'SOON',
     nav: {
       dashboard: '仪表盘',
       discover: '发现',
@@ -601,7 +601,7 @@ export const translations: Record<Locale, Translations> = {
       audioRecordingTitle: '音频录制',
       audioRecordingDesc: '捕获系统音频和麦克风输入，提供完整的录制体验。',
       ctaTitle: '准备开始录制了吗？',
-      ctaDescription: '立即加入快录，在几分钟内开始创建令人惊叹的屏幕录制。',
+      ctaDescription: '立即加入 SOON，在几分钟内开始创建令人惊叹的屏幕录制。',
       getStarted: '免费开始使用',
     },
     dashboard: {
@@ -617,7 +617,7 @@ export const translations: Record<Locale, Translations> = {
     },
     discover: {
       title: '发现视频',
-      description: '浏览快录社区分享的公开录像。',
+      description: '浏览SOON社区分享的公开录像。',
     },
     recording: {
       recordingQuality: '录制质量',
@@ -714,8 +714,8 @@ export const translations: Record<Locale, Translations> = {
       hideSubtitles: '隐藏字幕',
     },
     auth: {
-      signInToSoon: '登录快录',
-      createSoonAccount: '创建您的快录账户',
+      signInToSoon: '登录SOON',
+      createSoonAccount: '创建您的SOON账户',
       welcomeBack: '欢迎回来！请登录以继续。',
       signInDescription: '欢迎回来！请登录以继续。',
       signUpDescription: '立即开始录制和分享您的屏幕。',
@@ -731,7 +731,7 @@ export const translations: Record<Locale, Translations> = {
       orContinueWith: '或继续使用',
       continueWithGitHub: '使用 GitHub 继续',
       connectingToGitHub: '正在连接到 GitHub...',
-      newToSoon: '初次使用快录?',
+      newToSoon: '初次使用SOON?',
       alreadyHaveAccount: '已有账户？',
       createAccount: '创建账户',
       signInToExistingAccount: '登录现有账户',

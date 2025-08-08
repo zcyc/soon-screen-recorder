@@ -1,6 +1,6 @@
-# Soon - Screen Recording Made Simple
+# SOON - Screen Recording Made Simple
 
-**Soon** is a modern, web-based screen recording application built with Next.js that allows users to easily record their screen, camera, and audio with professional-quality output. Record, manage, and share your videos with a beautiful, intuitive interface.
+**SOON** is a modern, web-based screen recording application built with Next.js that allows users to easily record their screen, camera, and audio with professional-quality output. Record, manage, and share your videos with a beautiful, intuitive interface.
 
 ## 🎬 Features
 
@@ -44,7 +44,7 @@
 
 ## 🏗️ Architecture Overview
 
-Soon uses Appwrite as the primary backend service:
+SOON uses Appwrite as the primary backend service:
 - **Appwrite**: Authentication, database operations, video storage, metadata management
 - **Next.js**: Frontend and API routes
 - **Client-side APIs**: Web recording APIs for media capture
@@ -67,7 +67,7 @@ Before starting, ensure you have:
    - Visit: https://cloud.appwrite.io (or your self-hosted instance)
    - Create an account or sign in
    - Click "Create Project"
-   - Project Name: `Soon Screen Recorder`
+   - Project Name: `SOON Screen Recorder`
    - Project ID: `soon`
 
 #### 2. Configure Authentication
@@ -89,7 +89,7 @@ Before starting, ensure you have:
    - Navigate to **Databases**
    - Click "Create Database"
    - Database ID: `soon`
-   - Database Name: `Soon Database`
+   - Database Name: `SOON Database`
 
 2. **Create Videos Collection**
    - Collection ID: `videos`

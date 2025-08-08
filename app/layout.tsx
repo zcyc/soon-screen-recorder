@@ -9,8 +9,8 @@ import { getServerDetectedLocale } from '@/lib/locale-detection';
 import { getServerInitialTheme } from '@/lib/server-theme-detection';
 
 export const metadata: Metadata = {
-  title: 'soon - Screen Recording Made Simple',
-  description: 'Record your screen, camera, and audio with soon - the simple and powerful screen recording tool.'
+  title: 'SOON - Screen Recording Made Simple',
+  description: 'Record your screen, camera, and audio with SOON - the simple and powerful screen recording tool.'
 };
 
 export const viewport: Viewport = {
