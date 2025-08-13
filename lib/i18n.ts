@@ -169,7 +169,9 @@ export interface Translations {
     loading: string;
     orContinueWith: string;
     continueWithGitHub: string;
+    continueWithGoogle: string;
     connectingToGitHub: string;
+    connectingToGoogle: string;
     newToSoon: string;
     alreadyHaveAccount: string;
     createAccount: string;
@@ -468,7 +470,9 @@ export const translations: Record<Locale, Translations> = {
       loading: 'Loading...',
       orContinueWith: 'Or continue with',
       continueWithGitHub: 'Continue with GitHub',
+      continueWithGoogle: 'Continue with Google',
       connectingToGitHub: 'Connecting to GitHub...',
+      connectingToGoogle: 'Connecting to Google...',
       newToSoon: 'New to SOON?',
       alreadyHaveAccount: 'Already have an account?',
       createAccount: 'Create an account',
@@ -751,7 +755,9 @@ export const translations: Record<Locale, Translations> = {
       loading: '加载中...',
       orContinueWith: '或继续使用',
       continueWithGitHub: '使用 GitHub 继续',
+      continueWithGoogle: '使用 Google 继续',
       connectingToGitHub: '正在连接到 GitHub...',
+      connectingToGoogle: '正在连接到 Google...',
       newToSoon: '初次使用SOON?',
       alreadyHaveAccount: '已有账户？',
       createAccount: '创建账户',

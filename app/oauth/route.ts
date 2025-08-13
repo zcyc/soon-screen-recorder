@@ -56,14 +56,23 @@ export async function GET(request: Request) {
                        headersList.get('x-real-ip') || 
                        '0.0.0.0';
       
+      // 检测 OAuth 提供商类型（通过 referer 或者其他方式）
+      const referer = headersList.get('referer') || '';
+      let oauthProvider = 'OAuth';
+      if (referer.includes('github.com')) {
+        oauthProvider = 'GitHub OAuth';
+      } else if (referer.includes('google.com') || referer.includes('accounts.google.com')) {
+        oauthProvider = 'Google OAuth';
+      }
+      
       await activityService.logActivity({
         userId,
         action: ActivityType.SIGN_IN,
         ipAddress,
-        metadata: 'GitHub OAuth login'
+        metadata: `${oauthProvider} login`
       });
 
-      console.log('OAuth: Activity logged successfully');
+      console.log('OAuth: Activity logged successfully for:', oauthProvider);
     } catch (activityError) {
       console.warn('OAuth: Failed to log activity:', activityError);
       // 不让活动记录失败影响登录流程
