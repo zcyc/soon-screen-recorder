@@ -1777,6 +1777,46 @@ export default function ScreenRecorder() {
 
   return (
     <div className="space-y-6">
+      {/* User Status Indicator */}
+      <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg p-3 border">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            {user ? (
+              <>
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                  {t.auth?.loggedInAs || '已登录为'}: {user.name || user.email}
+                </span>
+              </>
+            ) : (
+              <>
+                <Globe className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <span className="text-sm font-medium text-blue-700 dark:text-blue-400">
+                  游客模式
+                </span>
+              </>
+            )}
+          </div>
+          
+          {!user && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => window.location.href = '/sign-in'}
+              className="text-xs"
+            >
+              {t.auth?.signIn || '登录'}
+            </Button>
+          )}
+        </div>
+        
+        {!user && (
+          <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">
+            当前可以录制和下载视频，登录后可上传到云端。
+          </p>
+        )}
+      </div>
+      
       {/* Recording Controls */}
       {!recordingState.isRecording && !recordingState.recordedBlob && (
         <div className="space-y-6">
@@ -2613,24 +2653,66 @@ export default function ScreenRecorder() {
                 </div>
               </div>
               
+              {/* User Status and Feature Availability */}
+              {!user && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
+                  <div className="flex items-start space-x-2">
+                    <Globe className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm">
+                      <p className="font-medium text-blue-800 dark:text-blue-300 mb-1">
+                        游客模式
+                      </p>
+                      <p className="text-blue-700 dark:text-blue-400">
+                        您可以录制和下载视频，但需要登录才能上传到云端。
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               <div className="flex flex-wrap gap-2 justify-center">
                 <Button variant="outline" onClick={downloadRecording}>
                   <Download className="h-4 w-4 mr-2" />
                   {t.recording.download}
                 </Button>
-                <Button variant="outline" onClick={uploadToAppwrite} disabled={isUploading}>
-                  {isUploading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-                      {t.recording.uploading}
-                    </>
-                  ) : (
-                    <>
+                
+                {/* Upload button - only show for logged-in users */}
+                {user ? (
+                  <Button variant="outline" onClick={uploadToAppwrite} disabled={isUploading}>
+                    {isUploading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                        {t.recording.uploading}
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        {t.recording.upload}
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      disabled
+                      className="opacity-50 cursor-not-allowed"
+                      title="请登录后上传"
+                    >
                       <Upload className="h-4 w-4 mr-2" />
                       {t.recording.upload}
-                    </>
-                  )}
-                </Button>
+                    </Button>
+                    <Button 
+                      variant="default" 
+                      size="sm"
+                      onClick={() => window.location.href = '/sign-in'}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-1" />
+                      登录以上传
+                    </Button>
+                  </>
+                )}
                 
                 {/* 字幕下载按钮 */}
                 {subtitleState.segments.length > 0 && (
