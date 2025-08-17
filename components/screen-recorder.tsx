@@ -2864,7 +2864,7 @@ export default function ScreenRecorder() {
                   </Button>
                 ) : (
                   <Button 
-                    variant="default" 
+                    variant="outline" 
                     onClick={() => {
                       console.log('点击登录上传按钮，当前录制状态:', {
                         hasBlob: !!recordingState.recordedBlob,
@@ -2873,7 +2873,6 @@ export default function ScreenRecorder() {
                       });
                       setShowLoginModal(true);
                     }}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     <Upload className="h-4 w-4 mr-2" />
                     {t.guest.loginPrompt}
