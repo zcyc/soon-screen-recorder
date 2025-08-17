@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import LoginModal from '@/components/login-modal';
 
 // Web Speech API types
 declare global {
@@ -82,6 +83,12 @@ import { uploadVideoFileAction } from '@/app/actions/video-actions';
 
 import { getFileUrlAction, uploadFileAction, updateVideoThumbnailAction } from '@/app/actions/video-actions';
 import { generateVideoThumbnailBlob } from '@/lib/video-utils';
+import { 
+  saveRecordingState, 
+  loadRecordingState, 
+  clearRecordingState, 
+  hasPersistedRecordingState 
+} from '@/lib/recording-persistence';
 
 
 
@@ -111,6 +118,308 @@ interface RecordingState {
   duration: number;
   recordedBlob: Blob | null;
 }
+
+// 可恢复的视频组件 - 安全处理 Blob URLs
+const RestoreableVideo: React.FC<{
+  blob: Blob | null;
+  className?: string;
+}> = ({ blob, className }) => {
+  const [videoSrc, setVideoSrc] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!blob) {
+      setVideoSrc(null);
+      setError(null);
+      return;
+    }
+
+    let objectUrl: string | null = null;
+
+    const createVideoUrl = async () => {
+      try {
+        // 基本验证
+        if (!blob || blob.size === 0) {
+          console.warn('Blob为空或大小为0');
+          setError('视频数据无效');
+          return;
+        }
+        
+        // 检查Blob是否是有效的Blob对象
+        if (!(blob instanceof Blob)) {
+          console.warn('传入的不是Blob对象:', typeof blob);
+          setError('无效的视频数据类型');
+          return;
+        }
+
+        // 检查 MIME 类型（容错处理）
+        if (blob.type) {
+          const isVideoType = blob.type.startsWith('video/') || 
+                             blob.type.includes('webm') || 
+                             blob.type.includes('mp4') || 
+                             blob.type.includes('ogg') ||
+                             blob.type === 'application/octet-stream'; // 某些录制可能是这个类型
+          
+          if (!isVideoType) {
+            console.warn('可能的非视频MIME类型:', blob.type, '但将继续尝试');
+            // 不直接返回错误，继续尝试
+          } else {
+            console.log('检测到视频MIME类型:', blob.type);
+          }
+        } else {
+          console.warn('Blob没有MIME类型信息，将继续尝试');
+        }
+
+        // 检查文件大小（更宽松的限制）
+        if (blob.size < 100) { // 小于100字节
+          console.warn('视频文件可能太小:', blob.size, '但将继续尝试');
+          // 不直接返回错误
+        }
+        if (blob.size > 500 * 1024 * 1024) { // 大于500MB
+          setError('视频文件过大（超过500MB）');
+          return;
+        }
+        
+        console.log('Blob基本信息:', {
+          size: blob.size,
+          type: blob.type || '未知类型',
+          sizeKB: Math.round(blob.size / 1024),
+          constructor: blob.constructor.name,
+          isBlob: blob instanceof Blob
+        });
+        
+        // 尝试读取Blob的前几个字节来检查数据完整性
+        try {
+          const slice = blob.slice(0, 100);
+          const arrayBuffer = await slice.arrayBuffer();
+          console.log('Blob数据预览:', {
+            sliceSize: slice.size,
+            arrayBufferLength: arrayBuffer.byteLength,
+            firstBytes: new Uint8Array(arrayBuffer.slice(0, 10))
+          });
+        } catch (sliceError) {
+          console.warn('Blob数据读取失败:', sliceError);
+          setError('视频数据损坏');
+          return;
+        }
+
+        // 尝试创建 URL
+        objectUrl = URL.createObjectURL(blob);
+        
+        // 测试 URL 是否有效（可选验证）
+        try {
+          const testVideo = document.createElement('video');
+          testVideo.preload = 'metadata';
+          testVideo.muted = true; // 静音以避免自动播放策略问题
+          
+          const validationPromise = new Promise<boolean>((resolve) => {
+            let resolved = false;
+            
+            const cleanup = () => {
+              if (!resolved) {
+                resolved = true;
+                testVideo.onloadedmetadata = null;
+                testVideo.onerror = null;
+                testVideo.src = '';
+              }
+            };
+            
+            const timeout = setTimeout(() => {
+              cleanup();
+              console.warn('视频元数据验证超时，将跳过验证');
+              resolve(true); // 超时时假设有效，让用户界面处理
+            }, 3000);
+            
+            testVideo.onloadedmetadata = () => {
+              clearTimeout(timeout);
+              cleanup();
+              const isValid = testVideo.duration > 0;
+              console.log('视频元数据验证成功:', {
+                duration: testVideo.duration,
+                videoWidth: testVideo.videoWidth,
+                videoHeight: testVideo.videoHeight,
+                valid: isValid
+              });
+              resolve(isValid);
+            };
+            
+            testVideo.onerror = (e) => {
+              clearTimeout(timeout);
+              cleanup();
+              console.warn('视频元数据验证失败，但将继续尝试:', e);
+              resolve(true); // 即使验证失败也尝试显示，让video元素处理错误
+            };
+            
+            testVideo.src = objectUrl!; // 已经检查过objectUrl不为null
+          });
+          
+          const isValid = await validationPromise;
+          if (!isValid) {
+            throw new Error('视频验证失败');
+          }
+        } catch (validationError) {
+          console.warn('视频验证过程出错，将直接尝试显示:', validationError);
+          // 继续执行，让实际的video元素处理可能的错误
+        }
+        
+        // 设置视频源（无论验证结果如何都尝试）
+        setVideoSrc(objectUrl);
+        setError(null);
+        
+        console.log('视频URL创建完成:', {
+          size: blob.size,
+          type: blob.type,
+          url: objectUrl.substring(0, 50) + '...'
+        });
+      } catch (err: any) {
+        console.error('创建视频URL失败:', err);
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+          objectUrl = null;
+        }
+        setError(`视频加载失败: ${err.message}`);
+        setVideoSrc(null);
+      }
+    };
+
+    createVideoUrl();
+
+    // 清理函数
+    return () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+        console.log('视频URL已清理');
+      }
+    };
+  }, [blob]);
+
+  const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
+    const video = e.target as HTMLVideoElement;
+    const errorDetails = {
+      error: video.error,
+      errorCode: video.error?.code,
+      errorMessage: video.error?.message,
+      networkState: video.networkState,
+      readyState: video.readyState,
+      src: video.src?.substring(0, 50) + '...',
+      blobSize: blob?.size,
+      blobType: blob?.type,
+      hasBlob: !!blob
+    };
+    console.error('视频播放错误详情:', errorDetails);
+    console.error('原始错误事件:', e);
+    
+    let errorMessage = '视频播放失败';
+    if (video.error) {
+      switch (video.error.code) {
+        case 1: // MEDIA_ERR_ABORTED
+          errorMessage = '视频加载被中断';
+          break;
+        case 2: // MEDIA_ERR_NETWORK
+          errorMessage = '网络错误';
+          break;
+        case 3: // MEDIA_ERR_DECODE
+          errorMessage = '视频解码失败';
+          break;
+        case 4: // MEDIA_ERR_SRC_NOT_SUPPORTED
+          errorMessage = '视频格式不支持';
+          break;
+        default:
+          errorMessage = `视频错误 (${video.error.code})`;
+      }
+    }
+    // 如果是格式不支持错误，尝试清理并重试
+    if (video.error?.code === 4) {
+      console.warn('检测到格式不支持错误，可能是损坏Blob数据');
+      // 尝试清理localStorage中的损坏数据
+      try {
+        // 检查是否有旧的或损坏的数据
+        const recordingState = localStorage.getItem('soon-recording-state');
+        const oldRecordingState = localStorage.getItem('soon_recording_state'); // 旧的键名
+        if (recordingState || oldRecordingState) {
+          console.log('发现localStorage中有录制数据，可能已损坏');
+          // 清理旧的键名
+          if (oldRecordingState) {
+            localStorage.removeItem('soon_recording_state');
+            console.log('清理旧的localStorage键');
+          }
+        }
+      } catch (e) {
+        console.warn('检查localStorage时出错:', e);
+      }
+    }
+    setError(errorMessage);
+  };
+
+  const handleVideoLoad = () => {
+    console.log('视频加载成功');
+    setError(null);
+  };
+
+  if (error) {
+    return (
+      <div className={`flex items-center justify-center bg-destructive/10 border border-destructive/20 rounded-lg ${className}`}>
+        <div className="text-center text-sm p-4">
+          <div className="mb-3">
+            <div className="w-12 h-12 mx-auto mb-2 rounded-full bg-destructive/20 flex items-center justify-center">
+              <span className="text-destructive text-xl">⚠️</span>
+            </div>
+            <p className="font-medium text-destructive">{error}</p>
+          </div>
+          <div className="text-xs text-muted-foreground space-y-1 mb-3">
+            <p>可能的解决方案：</p>
+            <p>• 刷新页面后重新录制</p>
+            <p>• 清理浏览器缓存</p>
+            <p>• 检查浏览器是否支持视频格式</p>
+          </div>
+          <button
+            onClick={() => {
+              // 使用更强大的清理功能
+              try {
+                const { forceCleanCorruptedData } = require('../lib/recording-persistence');
+                forceCleanCorruptedData();
+              } catch (e) {
+                // 备用清理方法
+                localStorage.removeItem('soon-recording-state');
+                localStorage.removeItem('soon_recording_state');
+              }
+              window.location.reload();
+            }}
+            className="px-3 py-1 text-xs bg-destructive text-destructive-foreground rounded hover:bg-destructive/90 transition-colors"
+          >
+            清理损坏数据并刷新
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!videoSrc) {
+    return (
+      <div className={`flex items-center justify-center bg-muted ${className}`}>
+        <div className="text-center text-sm text-muted-foreground">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-current mx-auto mb-2"></div>
+          <p>加载视频中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <video
+      className={className}
+      controls
+      src={videoSrc}
+      onError={handleVideoError}
+      onLoadedData={handleVideoLoad}
+      onLoadedMetadata={handleVideoLoad}
+      preload="metadata"
+      muted
+      playsInline
+      crossOrigin="anonymous"
+    />
+  );
+};
 
 export default function ScreenRecorder() {
   const { user } = useAuth();
@@ -174,6 +483,8 @@ export default function ScreenRecorder() {
     isListening: false
   });
   const [showSubtitleSettings, setShowSubtitleSettings] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [recordingError, setRecordingError] = useState<string | null>(null);
   
   // Show toast message
 
@@ -252,8 +563,18 @@ export default function ScreenRecorder() {
     });
     setVideoTitle('');
     setIsVideoPublic(true);
+    
+    // 清理保存的录制状态（只清理localStorage备份）
+    if (hasPersistedRecordingState()) {
+      console.log('开始新录制，清理localStorage中的旧备份数据');
+      clearRecordingState();
+    }
+    
     setIsVideoPublished(false);
     setUploadedVideo(null);
+    
+    // 清除录制错误状态
+    setRecordingError(null);
 
     setShowTimeWarning(false);
     setIsNearTimeLimit(false);
@@ -554,6 +875,55 @@ export default function ScreenRecorder() {
   // 组件挂载状态管理
   useEffect(() => {
     setIsMounted(true);
+    
+    // 只在页面初始加载时才尝试恢复 localStorage 状态
+    // 这样可以避免登录后状态丢失的问题
+    const loadPersistedState = async () => {
+      try {
+        // 检查是否有持久化的状态
+        const hasPersistedState = hasPersistedRecordingState();
+        
+        if (hasPersistedState) {
+          console.log('检测到持久化的录制状态，尝试恢复...');
+          const persistedState = await loadRecordingState();
+          
+          if (persistedState && persistedState.recordedBlob) {
+            console.log('成功恢复保存的录制状态:', {
+              duration: persistedState.duration,
+              title: persistedState.videoTitle,
+              blobSize: persistedState.recordedBlob.size,
+              quality: persistedState.quality
+            });
+            
+            // 恢复状态
+            setRecordingState(prev => ({
+              ...prev,
+              duration: persistedState.duration,
+              recordedBlob: persistedState.recordedBlob
+            }));
+            setVideoTitle(persistedState.videoTitle);
+            setIsVideoPublic(persistedState.isVideoPublic);
+            setIsVideoPublished(persistedState.isVideoPublished);
+            setQuality(persistedState.quality as RecordingQuality);
+            setSource(persistedState.source as RecordingSource);
+            setScreenSource(persistedState.screenSource as ScreenSourceType);
+            setIncludeAudio(persistedState.includeAudio);
+            setIncludeCamera(persistedState.includeCamera);
+          } else {
+            console.log('持久化状态无效或为空，使用默认状态');
+          }
+        } else {
+          console.log('没有持久化的录制状态，使用默认状态');
+        }
+      } catch (error) {
+        console.error('恢复状态过程中出错:', error);
+        // 出错时清理损坏的数据
+        clearRecordingState();
+      }
+    };
+    
+    loadPersistedState();
+    
     return () => {
       setIsMounted(false);
       stopCameraPreview();
@@ -1175,6 +1545,9 @@ export default function ScreenRecorder() {
 
   const startRecording = async () => {
     try {
+      // 清除之前的录制错误状态
+      setRecordingError(null);
+      
       // 录制时保持画中画开启，屏幕录制会包含画中画内容
       console.log('开始录制，保持摄像头画中画开启...');
       
@@ -1419,12 +1792,16 @@ export default function ScreenRecorder() {
         if (chunksRef.current.length === 0) {
           console.error('❌ 致命错误: 没有收集到任何数据！');
           
+          let errorMessage = '录制失败：没有收集到视频数据';
+          
           if (isFirefoxRecording) {
             console.error('🤊 Firefox 没有数据块，可能原因:');
             console.error('- 媒体流没有正确启动或已被停止');
             console.error('- MediaRecorder 不支持当前媒体格式');
             console.error('- Firefox 特定的权限或安全策略限制');
             console.error('- 网络或性能问题导致数据丢失');
+            
+            errorMessage = 'Firefox录制失败：可能是权限限制或格式不支持，请检查浏览器设置';
             
             // 检查 MediaRecorder 状态
             console.log('MediaRecorder 状态:', {
@@ -1435,13 +1812,9 @@ export default function ScreenRecorder() {
             });
           }
           
-          // 为了避免完全失败，创建一个空 blob
-          console.warn('⚠️ 创建空 blob 作为备用方案');
-          const emptyBlob = new Blob([], { type: options.mimeType || 'video/webm' });
-          setRecordingState(prev => {
-            console.log('设置空 blob 防止完全失败');
-            return { ...prev, recordedBlob: emptyBlob };
-          });
+          // 设置错误状态
+          setRecordingError(errorMessage);
+          setRecordingState(prev => ({ ...prev, recordedBlob: null }));
           return;
         }
         
@@ -1462,10 +1835,69 @@ export default function ScreenRecorder() {
           console.warn('⚠️ 创建的 blob 大小为 0！这可能会导致预览问题。');
         }
         
+        // 验证 blob 的有效性
+        if (!blob || blob.size === 0) {
+          const errorMsg = blob ? '录制失败：生成的视频文件为空' : '录制失败：没有生成视频数据';
+          console.error('录制停止但没有生成有效的Blob数据, size:', blob?.size);
+          setRecordingError(errorMsg);
+          setRecordingState(prev => ({ ...prev, recordedBlob: null }));
+          return;
+        }
+        
+        if (!(blob instanceof Blob)) {
+          console.error('录制数据不是有效的Blob对象:', typeof blob);
+          setRecordingError('录制失败：数据类型错误，请重新录制');
+          setRecordingState(prev => ({ ...prev, recordedBlob: null }));
+          return;
+        }
+        
+        // 检查blob的基本有效性
+        if (blob.size < 1000) { // 小于1KB可能有问题
+          console.warn('警告：录制文件过小，可能存在问题, size:', blob.size);
+          setRecordingError('录制可能有问题：文件过小，建议重新录制');
+          // 不直接返回，让用户看到视频并决定是否重新录制
+        }
+        
+        console.log('录制停止，生成的Blob信息:', {
+          size: blob.size,
+          type: blob.type,
+          sizeKB: Math.round(blob.size / 1024),
+          constructor: blob.constructor.name
+        });
+        
+        // 清除之前的录制错误（如果有的话）
+        if (recordingError) {
+          setRecordingError(null);
+        }
+        
         // 立即设置 blob，不等待清理完成
         setRecordingState(prev => {
           console.log('设置 recordedBlob:', blob);
-          return { ...prev, recordedBlob: blob };
+          const newState = { ...prev, recordedBlob: blob };
+          
+          // 异步保存录制状态到localStorage作为备份（可选）
+          // 只在游客模式下才保存，避免登录用户的不必要存储
+          if (!user) {
+            setTimeout(() => {
+              console.log('游客模式: 保存录制状态到localStorage作为备份...');
+              saveRecordingState(
+                blob,
+                newState.duration,
+                videoTitle,
+                isVideoPublic,
+                isVideoPublished,
+                quality,
+                source,
+                screenSource,
+                includeAudio,
+                includeCamera
+              );
+            }, 100); // 稍微延迟以确保状态更新完成
+          } else {
+            console.log('已登录用户: 不保存到localStorage，直接在内存中管理状态');
+          }
+          
+          return newState;
         });
         
         console.log('录制停止，开始清理媒体流...');
@@ -1758,6 +2190,12 @@ export default function ScreenRecorder() {
       // Save uploaded video data for display
       const uploadedVideoData = { $id: result.data?.videoId, title: videoTitle.trim() || getDefaultTitle() };
       setUploadedVideo(uploadedVideoData);
+      
+      // 上传成功后清理保存的录制状态（只清理localStorage备份）
+      if (hasPersistedRecordingState()) {
+        console.log('上传成功，清理localStorage中的备份数据');
+        clearRecordingState();
+      }
       
       // 在后台自动生成缩略图
       if (recordingState.recordedBlob && uploadedVideoData.$id) {
@@ -2540,8 +2978,44 @@ export default function ScreenRecorder() {
 
 
 
+      {/* Recording Error Display */}
+      {recordingError && (
+        <Card className="border-destructive/50">
+          <CardContent className="p-4">
+            <div className="text-center">
+              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-destructive/20 flex items-center justify-center">
+                <span className="text-destructive text-xl">⚠️</span>
+              </div>
+              <h3 className="font-medium text-destructive mb-2">录制出现错误</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                {recordingError}
+              </p>
+              <div className="space-y-2">
+                <div className="text-xs text-muted-foreground">
+                  <p>建议解决方案：</p>
+                  <ul className="text-left mt-2 space-y-1">
+                    <li>• 检查浏览器权限设置</li>
+                    <li>• 确保选择了正确的录制源</li>
+                    <li>• 重新开始录制</li>
+                  </ul>
+                </div>
+                <Button 
+                  onClick={() => {
+                    setRecordingError(null);
+                    startNewRecording();
+                  }}
+                  className="mt-4"
+                >
+                  重新录制
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Recording Complete - Not Uploaded Yet */}
-      {recordingState.recordedBlob && !uploadedVideo && (
+      {recordingState.recordedBlob && !uploadedVideo && !recordingError && (
         <Card>
           <CardContent className="p-4">
             <div className="space-y-4">
@@ -2556,10 +3030,9 @@ export default function ScreenRecorder() {
               <div className="space-y-3">
                 <div className="mx-auto max-w-md">
                   <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-                    <video
+                    <RestoreableVideo 
+                      blob={recordingState.recordedBlob}
                       className="w-full h-full object-cover"
-                      controls
-                      src={URL.createObjectURL(recordingState.recordedBlob)}
                     />
                   </div>
                 </div>
@@ -2613,22 +3086,7 @@ export default function ScreenRecorder() {
                 </div>
               </div>
               
-              {/* User Status and Feature Availability */}
-              {!user && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
-                  <div className="flex items-start space-x-2">
-                    <Globe className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                    <div className="text-sm">
-                      <p className="font-medium text-blue-800 dark:text-blue-300 mb-1">
-                        {t.guest.status}
-                      </p>
-                      <p className="text-blue-700 dark:text-blue-400">
-                        {t.guest.notification}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+
               
               <div className="flex flex-wrap gap-2 justify-center">
                 <Button variant="outline" onClick={downloadRecording}>
@@ -2636,7 +3094,7 @@ export default function ScreenRecorder() {
                   {t.recording.download}
                 </Button>
                 
-                {/* Upload button - only show for logged-in users */}
+                {/* Upload button - functional for both logged-in users and guests */}
                 {user ? (
                   <Button variant="outline" onClick={uploadToAppwrite} disabled={isUploading}>
                     {isUploading ? (
@@ -2652,26 +3110,21 @@ export default function ScreenRecorder() {
                     )}
                   </Button>
                 ) : (
-                  <>
-                    <Button 
-                      variant="outline" 
-                      disabled
-                      className="opacity-50 cursor-not-allowed"
-                      title={t.guest.loginPrompt}
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      {t.recording.upload}
-                    </Button>
-                    <Button 
-                      variant="default" 
-                      size="sm"
-                      onClick={() => window.location.href = '/sign-in'}
-                      className="bg-blue-600 hover:bg-blue-700 text-white"
-                    >
-                      <ExternalLink className="h-4 w-4 mr-1" />
-                      {t.guest.loginPrompt}
-                    </Button>
-                  </>
+                  <Button 
+                    variant="default" 
+                    onClick={() => {
+                      console.log('点击登录上传按钮，当前录制状态:', {
+                        hasBlob: !!recordingState.recordedBlob,
+                        blobSize: recordingState.recordedBlob?.size,
+                        duration: recordingState.duration
+                      });
+                      setShowLoginModal(true);
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {t.guest.loginPrompt}
+                  </Button>
                 )}
                 
                 {/* 字幕下载按钮 */}
@@ -2804,6 +3257,15 @@ export default function ScreenRecorder() {
         </Card>
       )}
       
+      {/* 登录弹窗 */}
+      <LoginModal 
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onSuccess={() => {
+          // 登录成功后可以在这里做一些操作
+          console.log('登录成功！');
+        }}
+      />
 
     </div>
   );

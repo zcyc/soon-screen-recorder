@@ -110,7 +110,14 @@ export const generateVideoThumbnail = (
 
     const onError = (event: any) => {
       cleanup();
-      reject(new Error(`Failed to load video: ${event}`));
+      const errorDetails = {
+        type: event?.type || 'unknown',
+        target: event?.target?.tagName || 'unknown',
+        networkState: event?.target?.networkState || 'unknown',
+        error: event?.target?.error?.code || 'unknown'
+      };
+      console.error('Video load error details:', errorDetails);
+      reject(new Error(`Failed to load video: ${JSON.stringify(errorDetails)}`));
     };
 
     // Set up event handlers
@@ -246,7 +253,14 @@ export const generateVideoThumbnailBlob = (
 
     const onError = (event: any) => {
       cleanup();
-      reject(new Error(`Failed to load video: ${event}`));
+      const errorDetails = {
+        type: event?.type || 'unknown',
+        target: event?.target?.tagName || 'unknown', 
+        networkState: event?.target?.networkState || 'unknown',
+        error: event?.target?.error?.code || 'unknown'
+      };
+      console.error('Video load error details:', errorDetails);
+      reject(new Error(`Failed to load video: ${JSON.stringify(errorDetails)}`));
     };
 
     // Set up event handlers

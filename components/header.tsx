@@ -17,12 +17,14 @@ import { useAuth } from '@/contexts/auth-context';
 import ThemeControls from '@/components/theme-controls';
 import { logoutAction } from '@/app/actions/user-actions';
 import { useRouter } from 'next/navigation';
+import LoginModal from '@/components/login-modal';
 
 
 
 
 function UserMenu() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const { user, refreshUser } = useAuth();
   const { t } = useI18n();
   const router = useRouter();
@@ -43,13 +45,22 @@ function UserMenu() {
 
   if (!user) {
     return (
-      <div className="flex items-center space-x-4">
-        <Avatar className="cursor-pointer size-9" onClick={() => window.location.href = '/sign-in'}>
-          <AvatarFallback className="bg-muted text-muted-foreground hover:bg-muted/80 transition-colors">
-            {t.guest.status}
-          </AvatarFallback>
-        </Avatar>
-      </div>
+      <>
+        <div className="flex items-center space-x-4">
+          <Avatar className="cursor-pointer size-9" onClick={() => setShowLoginModal(true)}>
+            <AvatarFallback className="bg-muted text-muted-foreground hover:bg-muted/80 transition-colors">
+              {t.guest.status}
+            </AvatarFallback>
+          </Avatar>
+        </div>
+        <LoginModal 
+          isOpen={showLoginModal}
+          onClose={() => setShowLoginModal(false)}
+          onSuccess={() => {
+            console.log('Header: 登录成功!');
+          }}
+        />
+      </>
     );
   }
 

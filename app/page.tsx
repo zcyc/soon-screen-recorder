@@ -5,8 +5,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ArrowRight, Video, Monitor, Camera, Mic, Globe } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useI18n } from '@/lib/i18n';
+import LoginModal from '@/components/login-modal';
 import { recordingConfig } from '@/lib/config';
 import ScreenRecorder from '@/components/screen-recorder';
 import VideoGalleryWrapper from '@/components/video-gallery-wrapper';
@@ -15,6 +16,29 @@ export default function HomePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const { t } = useI18n();
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [previousUser, setPreviousUser] = useState(user);
+  
+  // 监听登录状态变化，确保录制状态不丢失
+  useEffect(() => {
+    if (!loading) {
+      // 检测登录状态变化
+      if (!previousUser && user) {
+        console.log('检测到用户登录成功:', {
+          userId: user.$id,
+          userName: user.name,
+          userEmail: user.email
+        });
+        
+        // 登录成功后不重置页面，保持当前的录制状态
+        console.log('登录成功，继续保持当前录制会话状态');
+      } else if (previousUser && !user) {
+        console.log('检测到用户登出');
+      }
+      
+      setPreviousUser(user);
+    }
+  }, [user, loading, previousUser]);
 
   // 移除自动跳转逻辑，让主页支持所有用户状态
   // useEffect(() => {
@@ -49,33 +73,7 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Guest Status Indicator - Only for non-logged users */}
-        {!user && (
-          <div className="mb-6 bg-primary/10 border border-primary/20 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <Globe className="h-5 w-5 text-primary" />
-                <div>
-                  <span className="text-sm font-medium text-primary">
-                    {t.guest.status} - {t.recording.start}
-                  </span>
-                  <p className="text-xs text-primary/80 mt-1">
-                    {t.guest.notification}
-                  </p>
-                </div>
-              </div>
-              
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => window.location.href = '/sign-in'}
-                className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-              >
-                {t.auth.signIn}
-              </Button>
-            </div>
-          </div>
-        )}
+
 
         {/* Recording Section */}
         <div className="mb-8">
@@ -148,7 +146,14 @@ export default function HomePage() {
           </>
         )}
       </div>
+      <LoginModal 
+        isOpen={showLoginModal} 
+        onClose={() => setShowLoginModal(false)}
+        onSuccess={() => {
+          console.log('页面级别: 登录成功回调被调用');
+          // 不做任何特殊处理，让状态自然更新
+        }}
+      />
     </main>
-
   );
 }
