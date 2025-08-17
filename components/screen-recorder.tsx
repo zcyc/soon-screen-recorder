@@ -2620,10 +2620,10 @@ export default function ScreenRecorder() {
                     <Globe className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                     <div className="text-sm">
                       <p className="font-medium text-blue-800 dark:text-blue-300 mb-1">
-                        游客模式
+                        {t.guest.status}
                       </p>
                       <p className="text-blue-700 dark:text-blue-400">
-                        您可以录制和下载视频，但需要登录才能上传到云端。
+                        {t.guest.notification}
                       </p>
                     </div>
                   </div>
@@ -2657,7 +2657,7 @@ export default function ScreenRecorder() {
                       variant="outline" 
                       disabled
                       className="opacity-50 cursor-not-allowed"
-                      title="请登录后上传"
+                      title={t.guest.loginPrompt}
                     >
                       <Upload className="h-4 w-4 mr-2" />
                       {t.recording.upload}
@@ -2669,7 +2669,7 @@ export default function ScreenRecorder() {
                       className="bg-blue-600 hover:bg-blue-700 text-white"
                     >
                       <ExternalLink className="h-4 w-4 mr-1" />
-                      登录以上传
+                      {t.guest.loginPrompt}
                     </Button>
                   </>
                 )}

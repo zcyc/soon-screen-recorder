@@ -46,7 +46,7 @@ function UserMenu() {
       <div className="flex items-center space-x-4">
         <Avatar className="cursor-pointer size-9" onClick={() => window.location.href = '/sign-in'}>
           <AvatarFallback className="bg-muted text-muted-foreground hover:bg-muted/80 transition-colors">
-            游客
+            {t.guest.status}
           </AvatarFallback>
         </Avatar>
       </div>

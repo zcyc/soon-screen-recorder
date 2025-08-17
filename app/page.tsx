@@ -57,10 +57,10 @@ export default function HomePage() {
                 <Globe className="h-5 w-5 text-primary" />
                 <div>
                   <span className="text-sm font-medium text-primary">
-                    游客模式 - 立即开始录制
+                    {t.guest.status} - {t.recording.start}
                   </span>
                   <p className="text-xs text-primary/80 mt-1">
-                    当前可以录制和下载视频，登录后可上传到云端。
+                    {t.guest.notification}
                   </p>
                 </div>
               </div>
@@ -71,7 +71,7 @@ export default function HomePage() {
                 onClick={() => window.location.href = '/sign-in'}
                 className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
               >
-                登录
+                {t.auth.signIn}
               </Button>
             </div>
           </div>
