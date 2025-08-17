@@ -8,6 +8,7 @@ export interface Translations {
   appName: string;
   // Navigation
   nav: {
+    record: string;
     dashboard: string;
     discover: string;
     devices: string;
@@ -309,6 +310,7 @@ export const translations: Record<Locale, Translations> = {
   en: {
     appName: 'SOON',
     nav: {
+      record: 'Record',
       dashboard: 'Dashboard',
       discover: 'Discover',
       devices: 'Devices', 
@@ -594,6 +596,7 @@ export const translations: Record<Locale, Translations> = {
   zh: {
     appName: 'SOON',
     nav: {
+      record: '录制',
       dashboard: '仪表盘',
       discover: '发现',
       devices: '设备',

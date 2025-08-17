@@ -123,6 +123,18 @@ export default function Header() {
             <span className="ml-2 text-xl font-semibold text-foreground">{t.appName}</span>
           </Link>
           <nav className="flex items-center space-x-4">
+            <Link
+              href="/"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {t.nav.record}
+            </Link>
+            <Link
+              href="/discover"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {t.nav.discover}
+            </Link>
             {user && (
               <Link
                 href="/dashboard"
@@ -131,12 +143,6 @@ export default function Header() {
                 {t.nav.dashboard}
               </Link>
             )}
-            <Link
-              href="/discover"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {t.nav.discover}
-            </Link>
           </nav>
         </div>
         <div className="header-user-menu flex items-center space-x-4">
