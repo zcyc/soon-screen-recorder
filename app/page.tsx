@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowRight, Video, Monitor, Camera, Mic } from 'lucide-react';
+import { ArrowRight, Video, Monitor, Camera, Mic, Globe } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
@@ -46,6 +46,34 @@ export default function HomePage() {
             <p className="text-muted-foreground mt-2">
               {t.dashboard.welcomeDescription}
             </p>
+          </div>
+        )}
+
+        {/* Guest Status Indicator - Only for non-logged users */}
+        {!user && (
+          <div className="mb-6 bg-primary/10 border border-primary/20 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Globe className="h-5 w-5 text-primary" />
+                <div>
+                  <span className="text-sm font-medium text-primary">
+                    游客模式 - 立即开始录制
+                  </span>
+                  <p className="text-xs text-primary/80 mt-1">
+                    当前可以录制和下载视频，登录后可上传到云端。
+                  </p>
+                </div>
+              </div>
+              
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => window.location.href = '/sign-in'}
+                className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+              >
+                登录
+              </Button>
+            </div>
           </div>
         )}
 
