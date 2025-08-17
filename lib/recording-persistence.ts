@@ -290,7 +290,7 @@ export const loadRecordingState = async (): Promise<{
         console.error('Blob恢复失败:', blobError);
         
         // 如果是数据完整性校验失败，尝试不校验直接恢复
-        if (blobError.message.includes('Data integrity')) {
+        if (blobError instanceof Error && blobError.message.includes('Data integrity')) {
           console.warn('数据完整性校验失败，尝试强制恢复...');
           try {
             // 直接创建Blob，不做完整性校验

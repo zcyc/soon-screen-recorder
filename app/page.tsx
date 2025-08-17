@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowRight, Video, Monitor, Camera, Mic, Globe } from 'lucide-react';
+import { ArrowRight, Video, Download, Globe } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -111,7 +111,7 @@ export default function HomePage() {
                 <div className="grid md:grid-cols-3 gap-8">
                   <div className="text-center">
                     <div className="bg-primary/10 rounded-full p-6 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
-                      <Monitor className="h-10 w-10 text-primary" />
+                      <Download className="h-10 w-10 text-primary" />
                     </div>
                     <h3 className="text-xl font-semibold mb-2">{t.home.screenRecordingTitle}</h3>
                     <p className="text-muted-foreground">
@@ -121,7 +121,7 @@ export default function HomePage() {
                   
                   <div className="text-center">
                     <div className="bg-primary/10 rounded-full p-6 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
-                      <Camera className="h-10 w-10 text-primary" />
+                      <Globe className="h-10 w-10 text-primary" />
                     </div>
                     <h3 className="text-xl font-semibold mb-2">{t.home.cameraRecordingTitle}</h3>
                     <p className="text-muted-foreground">
@@ -131,7 +131,7 @@ export default function HomePage() {
                   
                   <div className="text-center">
                     <div className="bg-primary/10 rounded-full p-6 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
-                      <Mic className="h-10 w-10 text-primary" />
+                      <Video className="h-10 w-10 text-primary" />
                     </div>
                     <h3 className="text-xl font-semibold mb-2">{t.home.audioRecordingTitle}</h3>
                     <p className="text-muted-foreground">
