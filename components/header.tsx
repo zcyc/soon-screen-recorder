@@ -122,28 +122,22 @@ export default function Header() {
             <Video className="h-6 w-6 text-primary" />
             <span className="ml-2 text-xl font-semibold text-foreground">{t.appName}</span>
           </Link>
-          {user && (
-            <nav className="flex items-center space-x-4">
+          <nav className="flex items-center space-x-4">
+            {user && (
               <Link
                 href="/dashboard"
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 {t.nav.dashboard}
               </Link>
-              <Link
-                href="/discover"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {t.nav.discover}
-              </Link>
-              <Link
-                href="/devices"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {t.nav.devices}
-              </Link>
-            </nav>
-          )}
+            )}
+            <Link
+              href="/discover"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {t.nav.discover}
+            </Link>
+          </nav>
         </div>
         <div className="header-user-menu flex items-center space-x-4">
           <ThemeControls />
