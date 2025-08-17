@@ -134,14 +134,6 @@ export default function Header() {
             >
               {t.nav.discover}
             </Link>
-            {user && (
-              <Link
-                href="/dashboard"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {t.nav.dashboard}
-              </Link>
-            )}
           </nav>
         </div>
         <div className="header-user-menu flex items-center space-x-4">
