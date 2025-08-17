@@ -17,12 +17,14 @@ import { useAuth } from '@/contexts/auth-context';
 import ThemeControls from '@/components/theme-controls';
 import { logoutAction } from '@/app/actions/user-actions';
 import { useRouter } from 'next/navigation';
+import LoginModal from '@/components/login-modal';
 
 
 
 
 function UserMenu() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const { user, refreshUser } = useAuth();
   const { t } = useI18n();
   const router = useRouter();
@@ -43,14 +45,22 @@ function UserMenu() {
 
   if (!user) {
     return (
-      <div className="flex items-center space-x-4">
-        <Button asChild variant="outline" className="rounded-full min-w-[100px] text-center">
-          <Link href="/sign-in">{t.auth.signIn}</Link>
-        </Button>
-        <Button asChild className="rounded-full min-w-[100px] text-center">
-          <Link href="/sign-up">{t.auth.signUp}</Link>
-        </Button>
-      </div>
+      <>
+        <div className="flex items-center space-x-4">
+          <Avatar className="cursor-pointer size-9" onClick={() => setShowLoginModal(true)}>
+            <AvatarFallback className="bg-muted text-muted-foreground hover:bg-muted/80 transition-colors">
+              {t.guest.status}
+            </AvatarFallback>
+          </Avatar>
+        </div>
+        <LoginModal 
+          isOpen={showLoginModal}
+          onClose={() => setShowLoginModal(false)}
+          onSuccess={() => {
+            console.log('Header: 登录成功!');
+          }}
+        />
+      </>
     );
   }
 
@@ -122,28 +132,20 @@ export default function Header() {
             <Video className="h-6 w-6 text-primary" />
             <span className="ml-2 text-xl font-semibold text-foreground">{t.appName}</span>
           </Link>
-          {user && (
-            <nav className="flex items-center space-x-4">
-              <Link
-                href="/dashboard"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {t.nav.dashboard}
-              </Link>
-              <Link
-                href="/discover"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {t.nav.discover}
-              </Link>
-              <Link
-                href="/devices"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {t.nav.devices}
-              </Link>
-            </nav>
-          )}
+          <nav className="flex items-center space-x-4">
+            <Link
+              href="/"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {t.nav.record}
+            </Link>
+            <Link
+              href="/discover"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {t.nav.discover}
+            </Link>
+          </nav>
         </div>
         <div className="header-user-menu flex items-center space-x-4">
           <ThemeControls />

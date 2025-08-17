@@ -8,6 +8,7 @@ export interface Translations {
   appName: string;
   // Navigation
   nav: {
+    record: string;
     dashboard: string;
     discover: string;
     devices: string;
@@ -261,6 +262,13 @@ export interface Translations {
     unpublishedDescription: string;
   };
   
+  // Guest mode
+  guest: {
+    status: string;
+    notification: string;
+    loginPrompt: string;
+  };
+
   // Common
   common: {
     loading: string;
@@ -309,6 +317,7 @@ export const translations: Record<Locale, Translations> = {
   en: {
     appName: 'SOON',
     nav: {
+      record: 'Record',
       dashboard: 'Dashboard',
       discover: 'Discover',
       devices: 'Devices', 
@@ -555,6 +564,11 @@ export const translations: Record<Locale, Translations> = {
       publishedDescription: 'Video will appear on the Discovery Page for other users to browse',
       unpublishedDescription: 'Video will only be saved to your personal media library',
     },
+    guest: {
+      status: 'Guest',
+      notification: 'You are recording as a guest. You can record and download videos, but need to sign in to upload and share them.',
+      loginPrompt: 'Sign in to upload videos',
+    },
     common: {
       loading: 'Loading...',
       error: 'Error',
@@ -594,6 +608,7 @@ export const translations: Record<Locale, Translations> = {
   zh: {
     appName: 'SOON',
     nav: {
+      record: '录制',
       dashboard: '仪表盘',
       discover: '发现',
       devices: '设备',
@@ -839,6 +854,11 @@ export const translations: Record<Locale, Translations> = {
       removedFromDiscovery: '已从发现页面移除',
       publishedDescription: '视频将出现在发现页面供其他用户浏览',
       unpublishedDescription: '仅保存至个人媒体库',
+    },
+    guest: {
+      status: '游客',
+      notification: '您正在以游客身份录制。您可以录制和下载视频，但需要登录才能上传和分享视频。',
+      loginPrompt: '请登录以上传视频',
     },
     common: {
       loading: '加载中...',

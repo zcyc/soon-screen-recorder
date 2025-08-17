@@ -95,10 +95,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = async () => {
     try {
+      console.log('AuthContext: refreshUser 被调用');
       const result = await getCurrentUserAction();
+      console.log('AuthContext: getCurrentUserAction 结果:', result);
+      
       if (result.success && result.data) {
+        console.log('AuthContext: 设置用户状态:', {
+          userId: result.data.$id,
+          userName: result.data.name,
+          userEmail: result.data.email
+        });
         setUser(result.data);
       } else {
+        console.log('AuthContext: 清除用户状态，原因:', result.error || '未知');
         setUser(null);
       }
     } catch (error) {

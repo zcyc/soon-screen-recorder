@@ -78,14 +78,14 @@ export async function GET(request: Request) {
       // 不让活动记录失败影响登录流程
     }
 
-    // 重定向到仪表板 - 使用当前请求的host动态获取地址
+    // 重定向到OAuth完成页面 - 用于处理弹窗关闭
     const headersList = await headers();
     const redirectOrigin = headersList.get('host') 
       ? `https://${headersList.get('host')}` 
       : url.origin;
     
-    console.log('OAuth: Redirecting to dashboard at:', `${redirectOrigin}/dashboard`);
-    return NextResponse.redirect(`${redirectOrigin}/dashboard`);
+    console.log('OAuth: Redirecting to oauth-complete at:', `${redirectOrigin}/oauth-complete`);
+    return NextResponse.redirect(`${redirectOrigin}/oauth-complete`);
 
   } catch (error: any) {
     console.error('OAuth callback error:', error);
