@@ -675,7 +675,7 @@ export const translations: Record<Locale, Translations> = {
     },
     terms: {
       title: 'Terms of Service',
-      lastUpdated: 'Last updated: December 2024',
+      lastUpdated: 'Last updated: August 2025',
       introduction: 'Welcome to SOON. These Terms of Service ("Terms") govern your use of our screen recording service ("Service") operated by SOON ("us", "we", or "our").',
       acceptanceTitle: '1. Acceptance of Terms',
       acceptanceContent: 'By accessing and using our Service, you accept and agree to be bound by the terms and provision of this agreement.',
@@ -1024,7 +1024,7 @@ export const translations: Record<Locale, Translations> = {
     },
     terms: {
       title: '服务条款',
-      lastUpdated: '最后更新：2024年12月',
+      lastUpdated: '最后更新：2025年8月',
       introduction: '欢迎使用SOON。本服务条款（"条款"）管理您对我们由SOON（"我们"、"我们的"或"本公司"）运营的屏幕录制服务（"服务"）的使用。',
       acceptanceTitle: '1. 接受条款',
       acceptanceContent: '通过访问和使用我们的服务，您接受并同意受本协议条款和条件的约束。',
