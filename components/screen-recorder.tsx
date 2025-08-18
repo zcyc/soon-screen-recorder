@@ -1967,10 +1967,12 @@ export default function ScreenRecorder() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Recording Controls */}
       {!recordingState.isRecording && !recordingState.recordedBlob && (
-        <div className="space-y-6">
+        <Card>
+          <CardContent className="px-6 py-1">
+            <div className="space-y-4">
           {/* 第一行：录制质量和录制源 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="select-container">
@@ -2475,9 +2477,17 @@ export default function ScreenRecorder() {
               </div>
             )}
           </div>
-
-
-        </div>
+          
+          {/* Start Recording Button */}
+          <div className="pt-4">
+            <Button onClick={startRecording} className="w-full" size="lg">
+              <Circle className="h-5 w-5 mr-2 fill-current" />
+              {t.recording.start}
+            </Button>
+          </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
 
@@ -2545,7 +2555,7 @@ export default function ScreenRecorder() {
         return shouldShow;
       })() && (
         <Card className="mt-4 border-primary/20 dark:border-primary/30 bg-primary/5 dark:bg-primary/10">
-          <CardContent className="p-4">
+          <CardContent className="px-6 py-1">
             <div className="flex items-start space-x-3">
               <ExternalLink className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
               <div className="flex-1">
@@ -2606,17 +2616,19 @@ export default function ScreenRecorder() {
 
       {/* Recording Status */}
       {recordingState.isRecording && (
-        <Card className={`border-2 transition-colors ${
+        <Card className={`transition-colors ${
           isNearTimeLimit 
-            ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700' 
-            : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+            ? 'border-orange-300 dark:border-orange-700' 
+            : ''
         }`}>
-          <CardContent className="p-4 space-y-3">
+          <CardContent className="px-6 py-1 space-y-3">
             {/* Main Status Row */}
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                  <div className={`w-3 h-3 rounded-full animate-pulse ${
+                    isNearTimeLimit ? 'bg-orange-500' : 'bg-primary'
+                  }`}></div>
                   <span className="font-medium">
                     {recordingState.isPaused ? t.recording.paused : t.recording.recordingStatus}
                   </span>
@@ -2657,7 +2669,7 @@ export default function ScreenRecorder() {
                     className={`h-full transition-all duration-300 ${
                       isNearTimeLimit 
                         ? 'bg-orange-500 dark:bg-orange-400' 
-                        : 'bg-red-500 dark:bg-red-400'
+                        : 'bg-primary'
                     }`}
                     style={{
                       width: `${Math.min((recordingState.duration / recordingConfig.maxDurationSeconds) * 100, 100)}%`
@@ -2721,20 +2733,14 @@ export default function ScreenRecorder() {
         </Card>
       )}
 
-      {/* Start Recording Button */}
-      {!recordingState.isRecording && !recordingState.recordedBlob && (
-        <Button onClick={startRecording} className="w-full" size="lg">
-          <Circle className="h-5 w-5 mr-2 fill-current" />
-          {t.recording.start}
-        </Button>
-      )}
+
 
 
 
       {/* Recording Error Display */}
       {recordingError && (
         <Card className="border-destructive/50">
-          <CardContent className="p-4">
+          <CardContent className="px-6 py-1">
             <div className="text-center">
               <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-destructive/20 flex items-center justify-center">
                 <span className="text-destructive text-xl">⚠️</span>
@@ -2770,7 +2776,7 @@ export default function ScreenRecorder() {
       {/* Recording Complete - Not Uploaded Yet */}
       {recordingState.recordedBlob && !uploadedVideo && !recordingError && (
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="px-6 py-1">
             <div className="space-y-4">
               <div className="text-center">
                 <h3 className="font-medium">{t.recording.recordingComplete}</h3>
@@ -2913,7 +2919,7 @@ export default function ScreenRecorder() {
       {/* Recording Uploaded - Show Preview and Share Options */}
       {uploadedVideo && recordingState.recordedBlob && (
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="px-6 py-1">
             <div className="space-y-4">
               <div className="text-center">
                 <h3 className="font-medium text-green-600">{t.recording.uploadSuccess}</h3>

@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+
 import { ArrowRight, Video, Download, Globe } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
@@ -77,11 +77,7 @@ export default function HomePage() {
 
         {/* Recording Section */}
         <div className="mb-8">
-          <Card>
-            <CardContent>
-              <ScreenRecorder />
-            </CardContent>
-          </Card>
+          <ScreenRecorder />
         </div>
 
         {/* Conditional Content Based on User Status */}
@@ -101,11 +97,7 @@ export default function HomePage() {
                   <p className="text-xl text-muted-foreground">
                     {t.home.featuresSubtitle}
                   </p>
-                  {recordingConfig.enableTimeLimit && (
-                    <p className="text-sm text-primary bg-primary/10 px-3 py-2 rounded-lg inline-block mt-4">
-                      {t.home.timeLimitNotice()}
-                    </p>
-                  )}
+
                 </div>
                 
                 <div className="grid md:grid-cols-3 gap-8">
