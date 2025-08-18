@@ -2343,7 +2343,7 @@ export default function ScreenRecorder() {
                     </p>
                   )}
                   {!includeAudio && (
-                    <span className="text-xs text-orange-600 dark:text-orange-400">
+                    <span className="text-xs text-muted-foreground">
                       {t.subtitles.needMicrophoneForSubtitles || '需要开启麦克风才能生成字幕'}
                     </span>
                   )}
