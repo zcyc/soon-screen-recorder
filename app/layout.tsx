@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import { Manrope } from 'next/font/google';
 import Header from '@/components/header';
+import Footer from '@/components/footer';
 import { ThemeProvider } from '@/contexts/theme-context';
 import { AuthProvider } from '@/contexts/auth-context';
 import I18nProvider from '@/components/i18n-provider';
@@ -51,7 +52,10 @@ export default async function RootLayout({
             <AuthProvider>
               <div className="flex flex-col min-h-screen">
                 <Header />
-                {children}
+                <main className="flex-1">
+                  {children}
+                </main>
+                <Footer />
               </div>
             </AuthProvider>
           </I18nProvider>
