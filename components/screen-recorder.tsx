@@ -1967,12 +1967,12 @@ export default function ScreenRecorder() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Recording Controls */}
       {!recordingState.isRecording && !recordingState.recordedBlob && (
         <Card>
-          <CardContent className="p-6">
-            <div className="space-y-6">
+          <CardContent className="p-4">
+            <div className="space-y-4">
           {/* 第一行：录制质量和录制源 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="select-container">
@@ -2627,7 +2627,7 @@ export default function ScreenRecorder() {
               <div className="flex items-center space-x-3">
                 <div className="flex items-center space-x-2">
                   <div className={`w-3 h-3 rounded-full animate-pulse ${
-                    isNearTimeLimit ? 'bg-orange-500' : 'bg-blue-500'
+                    isNearTimeLimit ? 'bg-orange-500' : 'bg-primary'
                   }`}></div>
                   <span className="font-medium">
                     {recordingState.isPaused ? t.recording.paused : t.recording.recordingStatus}
@@ -2669,7 +2669,7 @@ export default function ScreenRecorder() {
                     className={`h-full transition-all duration-300 ${
                       isNearTimeLimit 
                         ? 'bg-orange-500 dark:bg-orange-400' 
-                        : 'bg-blue-500 dark:bg-blue-400'
+                        : 'bg-primary'
                     }`}
                     style={{
                       width: `${Math.min((recordingState.duration / recordingConfig.maxDurationSeconds) * 100, 100)}%`
