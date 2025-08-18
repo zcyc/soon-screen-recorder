@@ -311,6 +311,70 @@ export interface Translations {
     generated: string;
   };
 
+  // Footer
+  footer: {
+    copyright: string;
+    allRightsReserved: string;
+    termsOfService: string;
+    privacyPolicy: string;
+  };
+
+  // Terms of Service
+  terms: {
+    title: string;
+    lastUpdated: string;
+    introduction: string;
+    acceptanceTitle: string;
+    acceptanceContent: string;
+    serviceDescriptionTitle: string;
+    serviceDescriptionContent: string;
+    userAccountsTitle: string;
+    userAccountsContent: string;
+    privacyTitle: string;
+    privacyContent: string;
+    prohibitedUsesTitle: string;
+    prohibitedUsesContent: string;
+    intellectualPropertyTitle: string;
+    intellectualPropertyContent: string;
+    terminationTitle: string;
+    terminationContent: string;
+    disclaimerTitle: string;
+    disclaimerContent: string;
+    limitationTitle: string;
+    limitationContent: string;
+    changesTitle: string;
+    changesContent: string;
+    contactTitle: string;
+    contactContent: string;
+  };
+
+  // Privacy Policy
+  privacy: {
+    title: string;
+    lastUpdated: string;
+    introduction: string;
+    informationCollectionTitle: string;
+    informationCollectionContent: string;
+    informationUseTitle: string;
+    informationUseContent: string;
+    informationSharingTitle: string;
+    informationSharingContent: string;
+    cookiesTitle: string;
+    cookiesContent: string;
+    securityTitle: string;
+    securityContent: string;
+    dataRetentionTitle: string;
+    dataRetentionContent: string;
+    userRightsTitle: string;
+    userRightsContent: string;
+    thirdPartyTitle: string;
+    thirdPartyContent: string;
+    changesTitle: string;
+    changesContent: string;
+    contactTitle: string;
+    contactContent: string;
+  };
+
 }
 
 export const translations: Record<Locale, Translations> = {
@@ -603,6 +667,64 @@ export const translations: Record<Locale, Translations> = {
       ready: '🎬 Thumbnail ready',
       generated: 'Thumbnail generated',
     },
+    footer: {
+      copyright: '© 2024 SOON',
+      allRightsReserved: 'All rights reserved.',
+      termsOfService: 'Terms of Service',
+      privacyPolicy: 'Privacy Policy',
+    },
+    terms: {
+      title: 'Terms of Service',
+      lastUpdated: 'Last updated: December 2024',
+      introduction: 'Welcome to SOON. These Terms of Service ("Terms") govern your use of our screen recording service ("Service") operated by SOON ("us", "we", or "our").',
+      acceptanceTitle: '1. Acceptance of Terms',
+      acceptanceContent: 'By accessing and using our Service, you accept and agree to be bound by the terms and provision of this agreement.',
+      serviceDescriptionTitle: '2. Service Description',
+      serviceDescriptionContent: 'SOON provides a web-based screen recording service that allows users to capture screen content, camera feeds, and audio. The service is accessible through modern web browsers without requiring additional software installation.',
+      userAccountsTitle: '3. User Accounts',
+      userAccountsContent: 'You may create an account to access additional features. You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account.',
+      privacyTitle: '4. Privacy',
+      privacyContent: 'Your privacy is important to us. Please review our Privacy Policy, which also governs your use of the Service, to understand our practices.',
+      prohibitedUsesTitle: '5. Prohibited Uses',
+      prohibitedUsesContent: 'You may not use our Service for any illegal purposes or to violate any laws. You agree not to record copyrighted content without permission, engage in harassment, or distribute malicious content.',
+      intellectualPropertyTitle: '6. Intellectual Property',
+      intellectualPropertyContent: 'The Service and its original content, features, and functionality are owned by SOON and are protected by international copyright, trademark, patent, trade secret, and other intellectual property laws.',
+      terminationTitle: '7. Termination',
+      terminationContent: 'We may terminate or suspend your account and access to the Service immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach the Terms.',
+      disclaimerTitle: '8. Disclaimer',
+      disclaimerContent: 'The information on this Service is provided on an "as is" basis. To the fullest extent permitted by law, SOON excludes all warranties, express or implied.',
+      limitationTitle: '9. Limitation of Liability',
+      limitationContent: 'In no event shall SOON, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential, or punitive damages.',
+      changesTitle: '10. Changes to Terms',
+      changesContent: 'We reserve the right to modify or replace these Terms at any time. If a revision is material, we will try to provide at least 30 days notice prior to any new terms taking effect.',
+      contactTitle: '11. Contact Information',
+      contactContent: 'If you have any questions about these Terms, please contact us through our support channels.',
+    },
+    privacy: {
+      title: 'Privacy Policy',
+      lastUpdated: 'Last updated: December 2024',
+      introduction: 'SOON ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and share information about you when you use our screen recording service.',
+      informationCollectionTitle: '1. Information We Collect',
+      informationCollectionContent: 'We collect information you provide directly to us, such as when you create an account, use our services, or contact us for support. This may include your name, email address, and usage data.',
+      informationUseTitle: '2. How We Use Your Information',
+      informationUseContent: 'We use the information we collect to provide, maintain, and improve our services, process transactions, send communications, and comply with legal obligations.',
+      informationSharingTitle: '3. Information Sharing',
+      informationSharingContent: 'We do not sell, trade, or otherwise transfer your personal information to third parties without your consent, except as described in this policy or as required by law.',
+      cookiesTitle: '4. Cookies and Tracking',
+      cookiesContent: 'We use cookies and similar tracking technologies to track activity on our service and store certain information to improve your experience.',
+      securityTitle: '5. Data Security',
+      securityContent: 'We implement appropriate security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction.',
+      dataRetentionTitle: '6. Data Retention',
+      dataRetentionContent: 'We retain your personal information only for as long as necessary to provide you with our services and as described in this policy.',
+      userRightsTitle: '7. Your Rights',
+      userRightsContent: 'You have the right to access, update, or delete your personal information. You may also object to certain processing of your data.',
+      thirdPartyTitle: '8. Third-Party Services',
+      thirdPartyContent: 'Our service may contain links to third-party websites or services. We are not responsible for the privacy practices of these third parties.',
+      changesTitle: '9. Changes to This Policy',
+      changesContent: 'We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new policy on this page.',
+      contactTitle: '10. Contact Us',
+      contactContent: 'If you have any questions about this Privacy Policy, please contact us through our support channels.',
+    },
 
   },
   zh: {
@@ -893,6 +1015,64 @@ export const translations: Record<Locale, Translations> = {
       generateFailed: '缩略图生成失败',
       ready: '🎬 缩略图已准备就绪',
       generated: '缩略图已生成',
+    },
+    footer: {
+      copyright: '© 2024 SOON',
+      allRightsReserved: '版权所有。',
+      termsOfService: '服务条款',
+      privacyPolicy: '隐私政策',
+    },
+    terms: {
+      title: '服务条款',
+      lastUpdated: '最后更新：2024年12月',
+      introduction: '欢迎使用SOON。本服务条款（"条款"）管理您对我们由SOON（"我们"、"我们的"或"本公司"）运营的屏幕录制服务（"服务"）的使用。',
+      acceptanceTitle: '1. 接受条款',
+      acceptanceContent: '通过访问和使用我们的服务，您接受并同意受本协议条款和条件的约束。',
+      serviceDescriptionTitle: '2. 服务描述',
+      serviceDescriptionContent: 'SOON提供基于Web的屏幕录制服务，允许用户捕获屏幕内容、摄像头和音频。该服务可通过现代Web浏览器访问，无需安装额外软件。',
+      userAccountsTitle: '3. 用户账户',
+      userAccountsContent: '您可以创建账户以访问额外功能。您有责任保持账户凭据的机密性，并对您账户下发生的所有活动负责。',
+      privacyTitle: '4. 隐私',
+      privacyContent: '您的隐私对我们很重要。请查看我们的隐私政策，该政策也管理您对服务的使用，以了解我们的做法。',
+      prohibitedUsesTitle: '5. 禁止使用',
+      prohibitedUsesContent: '您不得将我们的服务用于任何非法目的或违反任何法律。您同意不在未经许可的情况下录制受版权保护的内容，不进行骚扰，不分发恶意内容。',
+      intellectualPropertyTitle: '6. 知识产权',
+      intellectualPropertyContent: '服务及其原创内容、功能和功能性属于Soon所有，受国际版权、商标、专利、商业秘密和其他知识产权法律保护。',
+      terminationTitle: '7. 终止',
+      terminationContent: '我们可以立即终止或暂停您的账户和对服务的访问，无需事先通知或承担责任，无论出于任何原因，包括但不限于您违反条款。',
+      disclaimerTitle: '8. 免责声明',
+      disclaimerContent: '本服务上的信息按"现状"提供。在法律允许的最大范围内，SOON排除所有明示或默示的保证。',
+      limitationTitle: '9. 责任限制',
+      limitationContent: '在任何情况下，SOON及其董事、员工、合作伙伴、代理人、供应商或关联公司均不对任何间接、附带、特殊、后果性或惩罚性损害承担责任。',
+      changesTitle: '10. 条款变更',
+      changesContent: '我们保留随时修改或更换这些条款的权利。如果修订内容重大，我们将尝试在新条款生效前至少提前30天通知。',
+      contactTitle: '11. 联系信息',
+      contactContent: '如果您对这些条款有任何疑问，请通过我们的支持渠道联系我们。',
+    },
+    privacy: {
+      title: '隐私政策',
+      lastUpdated: '最后更新：2024年12月',
+      introduction: 'SOON（"我们"、"我们的"或"本公司"）致力于保护您的隐私。本隐私政策解释了当您使用我们的屏幕录制服务时，我们如何收集、使用和共享有关您的信息。',
+      informationCollectionTitle: '1. 我们收集的信息',
+      informationCollectionContent: '我们收集您直接向我们提供的信息，比如当您创建账户、使用我们的服务或联系我们寻求支持时。这可能包括您的姓名、电子邮件地址和使用数据。',
+      informationUseTitle: '2. 我们如何使用您的信息',
+      informationUseContent: '我们使用所收集的信息来提供、维护和改进我们的服务，处理交易，发送通信，并遵守法律义务。',
+      informationSharingTitle: '3. 信息共享',
+      informationSharingContent: '未经您的同意，我们不会向第三方出售、交易或以其他方式转移您的个人信息，除本政策中所述或法律要求的情况外。',
+      cookiesTitle: '4. Cookie和跟踪',
+      cookiesContent: '我们使用Cookie和类似的跟踪技术来跟踪我们服务上的活动并存储某些信息以改善您的体验。',
+      securityTitle: '5. 数据安全',
+      securityContent: '我们实施适当的安全措施来保护您的个人信息免受未经授权的访问、更改、披露或销毁。',
+      dataRetentionTitle: '6. 数据保留',
+      dataRetentionContent: '我们仅在为您提供服务所必需的时间内保留您的个人信息，并按本政策所述进行。',
+      userRightsTitle: '7. 您的权利',
+      userRightsContent: '您有权访问、更新或删除您的个人信息。您也可以反对对您数据的某些处理。',
+      thirdPartyTitle: '8. 第三方服务',
+      thirdPartyContent: '我们的服务可能包含指向第三方网站或服务的链接。我们不对这些第三方的隐私做法负责。',
+      changesTitle: '9. 政策变更',
+      changesContent: '我们可能会不时更新此隐私政策。我们将通过在此页面上发布新政策来通知您任何变更。',
+      contactTitle: '10. 联系我们',
+      contactContent: '如果您对此隐私政策有任何疑问，请通过我们的支持渠道联系我们。',
     },
 
   },
