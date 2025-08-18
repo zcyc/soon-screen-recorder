@@ -668,7 +668,7 @@ export const translations: Record<Locale, Translations> = {
       generated: 'Thumbnail generated',
     },
     footer: {
-      copyright: '© 2024 SOON',
+      copyright: '© 2025 SOON',
       allRightsReserved: 'All rights reserved.',
       termsOfService: 'Terms of Service',
       privacyPolicy: 'Privacy Policy',
@@ -1017,7 +1017,7 @@ export const translations: Record<Locale, Translations> = {
       generated: '缩略图已生成',
     },
     footer: {
-      copyright: '© 2024 SOON',
+      copyright: '© 2025 SOON',
       allRightsReserved: '版权所有。',
       termsOfService: '服务条款',
       privacyPolicy: '隐私政策',
