@@ -101,11 +101,7 @@ export default function HomePage() {
                   <p className="text-xl text-muted-foreground">
                     {t.home.featuresSubtitle}
                   </p>
-                  {recordingConfig.enableTimeLimit && (
-                    <p className="text-sm text-primary bg-primary/10 px-3 py-2 rounded-lg inline-block mt-4">
-                      {t.home.timeLimitNotice()}
-                    </p>
-                  )}
+
                 </div>
                 
                 <div className="grid md:grid-cols-3 gap-8">
