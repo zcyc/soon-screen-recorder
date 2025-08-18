@@ -1970,7 +1970,9 @@ export default function ScreenRecorder() {
     <div className="space-y-6">
       {/* Recording Controls */}
       {!recordingState.isRecording && !recordingState.recordedBlob && (
-        <div className="space-y-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="space-y-6">
           {/* 第一行：录制质量和录制源 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="select-container">
@@ -2475,9 +2477,17 @@ export default function ScreenRecorder() {
               </div>
             )}
           </div>
-
-
-        </div>
+          
+          {/* Start Recording Button */}
+          <div className="pt-4">
+            <Button onClick={startRecording} className="w-full" size="lg">
+              <Circle className="h-5 w-5 mr-2 fill-current" />
+              {t.recording.start}
+            </Button>
+          </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
 
@@ -2606,17 +2616,19 @@ export default function ScreenRecorder() {
 
       {/* Recording Status */}
       {recordingState.isRecording && (
-        <Card className={`border-2 transition-colors ${
+        <Card className={`transition-colors ${
           isNearTimeLimit 
-            ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700' 
-            : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+            ? 'border-orange-300 dark:border-orange-700' 
+            : ''
         }`}>
           <CardContent className="p-4 space-y-3">
             {/* Main Status Row */}
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                  <div className={`w-3 h-3 rounded-full animate-pulse ${
+                    isNearTimeLimit ? 'bg-orange-500' : 'bg-blue-500'
+                  }`}></div>
                   <span className="font-medium">
                     {recordingState.isPaused ? t.recording.paused : t.recording.recordingStatus}
                   </span>
@@ -2657,7 +2669,7 @@ export default function ScreenRecorder() {
                     className={`h-full transition-all duration-300 ${
                       isNearTimeLimit 
                         ? 'bg-orange-500 dark:bg-orange-400' 
-                        : 'bg-red-500 dark:bg-red-400'
+                        : 'bg-blue-500 dark:bg-blue-400'
                     }`}
                     style={{
                       width: `${Math.min((recordingState.duration / recordingConfig.maxDurationSeconds) * 100, 100)}%`
@@ -2721,13 +2733,7 @@ export default function ScreenRecorder() {
         </Card>
       )}
 
-      {/* Start Recording Button */}
-      {!recordingState.isRecording && !recordingState.recordedBlob && (
-        <Button onClick={startRecording} className="w-full" size="lg">
-          <Circle className="h-5 w-5 mr-2 fill-current" />
-          {t.recording.start}
-        </Button>
-      )}
+
 
 
 
