@@ -219,21 +219,19 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
 
   const handleDeleteClick = (video: Video) => {
     openDeleteModal({
-      id: video.$id,
       title: video.title,
-      description: '此操作不可逆转。视频将被永久删除。'
+      description: '此操作不可逆转。视频将被永久删除。',
+      onConfirm: () => handleDeleteConfirm(video.$id)
     });
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!deleteData) return;
-    
+  const handleDeleteConfirm = async (videoId: string) => {
     try {
-      setDeletingVideoId(deleteData.id);
-      const result = await deleteVideoAction(deleteData.id);
+      setDeletingVideoId(videoId);
+      const result = await deleteVideoAction(videoId);
       
       if (result.success) {
-        setVideos(videos.filter(video => video.$id !== deleteData.id));
+        setVideos(videos.filter(video => video.$id !== videoId));
         closeDeleteModal();
       } else {
         throw new Error(result.error || 'Failed to delete video');
@@ -451,16 +449,16 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
                         variant="outline"
                         onClick={() => handlePublishToggle(selectedVideo)}
                         disabled={updatingPublishId === selectedVideo.$id}
-                        className={selectedVideo.isPublished ? "border-red-300 text-red-700 hover:bg-red-50" : "border-blue-300 text-blue-700 hover:bg-blue-50"}
+                        className={selectedVideo.isPublish ? "border-red-300 text-red-700 hover:bg-red-50" : "border-blue-300 text-blue-700 hover:bg-blue-50"}
                       >
                         {updatingPublishId === selectedVideo.$id ? (
                           <div className="animate-spin rounded-full h-4 w-4 mr-2 border border-current border-t-transparent" />
-                        ) : selectedVideo.isPublished ? (
+                        ) : selectedVideo.isPublish ? (
                           <Shield className="h-4 w-4 mr-2" />
                         ) : (
                           <Rss className="h-4 w-4 mr-2" />
                         )}
-                        {selectedVideo.isPublished ? t.videos.unpublish : t.videos.publish}
+                        {selectedVideo.isPublish ? t.publish.removeFromDiscovery : t.publish.publishToDiscovery}
                       </Button>
                     </>
                   )}
@@ -495,12 +493,11 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
       {/* Delete Modal */}
       <DeleteModal
         isOpen={isDeleteModalOpen}
-        title="删除视频"
+        title={deleteData?.title || ''}
         description={deleteData?.description || ''}
-        itemName={deleteData?.title || ''}
-        onConfirm={handleDeleteConfirm}
-        onCancel={closeDeleteModal}
-        isDeleting={Boolean(deletingVideoId)}
+        onConfirm={deleteData?.onConfirm || (() => {})}
+        onClose={closeDeleteModal}
+        isLoading={Boolean(deletingVideoId)}
       />
     </div>
   );
