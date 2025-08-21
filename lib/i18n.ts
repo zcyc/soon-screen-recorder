@@ -227,6 +227,9 @@ export interface Translations {
     duration: string;
     quality: string;
     delete: string;
+    copyLink: string;
+    download: string;
+    deleteConfirmation: string;
   };
   share: {
     loading: string;
@@ -598,6 +601,9 @@ export const translations: Record<Locale, Translations> = {
       duration: 'Duration',
       quality: 'Quality',
       delete: 'Delete',
+      copyLink: 'Copy Link',
+      download: 'Download',
+      deleteConfirmation: 'This action cannot be undone. The video will be permanently deleted.',
     },
     share: {
       loading: 'Loading video...',
@@ -949,6 +955,9 @@ export const translations: Record<Locale, Translations> = {
       duration: '时长',
       quality: '质量',
       delete: '删除',
+      copyLink: '复制链接',
+      download: '下载',
+      deleteConfirmation: '此操作不可逆转。视频将被永久删除。',
     },
     share: {
       loading: '加载视频中...',
