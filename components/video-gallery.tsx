@@ -25,7 +25,8 @@ import {
   Unlock,
   Globe,
   Shield,
-  Play
+  Play,
+  Rss
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { type Video } from '@/lib/database';
@@ -248,6 +249,12 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
           
           // Update video list immediately
           setVideos(videos.filter(v => v.$id !== video.$id));
+          
+          // Close modal if the deleted video was currently selected
+          if (selectedVideo && selectedVideo.$id === video.$id) {
+            setSelectedVideo(null);
+            setIsVideoPlaying(false);
+          }
           
           // Show appropriate success message
           if (result.data && result.data.message) {
@@ -517,6 +524,19 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
                       </Button>
                       <Button
                         variant="outline"
+                        onClick={() => handlePublishToggle(selectedVideo)}
+                        disabled={updatingPublishId === selectedVideo.$id}
+                        className={selectedVideo.isPublish ? "border-purple-300 text-purple-700 hover:bg-purple-50" : "border-blue-300 text-blue-700 hover:bg-blue-50"}
+                      >
+                        {updatingPublishId === selectedVideo.$id ? (
+                          <div className="animate-spin rounded-full h-4 w-4 mr-2 border border-current border-t-transparent" />
+                        ) : (
+                          <Rss className={`h-4 w-4 mr-2 ${selectedVideo.isPublish ? 'text-purple-500' : ''}`} />
+                        )}
+                        {selectedVideo.isPublish ? (t.publish?.removeFromDiscovery || '从发现页移除') : (t.publish?.publishToDiscovery || '发布到发现页')}
+                      </Button>
+                      <Button
+                        variant="outline"
                         onClick={() => handleCopyShareLink(selectedVideo)}
                       >
                         <Link className="h-4 w-4 mr-2" />
@@ -535,6 +555,19 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
                       >
                         <Download className="h-4 w-4 mr-2" />
                         {t.recording.download || '下载'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => handleDeleteClick(selectedVideo)}
+                        disabled={deletingVideoId === selectedVideo.$id}
+                        className="border-red-300 text-red-700 hover:bg-red-50"
+                      >
+                        {deletingVideoId === selectedVideo.$id ? (
+                          <div className="animate-spin rounded-full h-4 w-4 mr-2 border border-current border-t-transparent" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 mr-2" />
+                        )}
+                        {t.recording.delete || '删除'}
                       </Button>
                     </>
                   )}
