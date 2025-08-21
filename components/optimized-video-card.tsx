@@ -5,17 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
   Eye, 
-  Clock, 
-  Share, 
-  Download, 
-  Trash2, 
-  Copy,
-  Link,
   Lock,
-  Unlock,
   Globe,
-  Play,
-  Rss
+  Play
 } from 'lucide-react';
 import { type Video } from '@/lib/database';
 import { generatePlaceholderThumbnail } from '@/lib/video-utils';
@@ -171,125 +163,9 @@ export default function OptimizedVideoCard({
           </div>
         </div>
         
-        {/* Action Buttons - Owner's videos */}
-        {(isOwner && !showPublic) && (
-          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-in-out">
-            <Button
-              size="sm"
-              variant="ghost"
-              className={`h-8 w-8 p-0 transition-all duration-300 hover:scale-110 bg-white/90 hover:bg-opacity-100 text-gray-800 backdrop-blur-sm shadow-md ${
-                video.isPublic 
-                  ? "hover:bg-orange-600 hover:text-white hover:shadow-lg" 
-                  : "hover:bg-green-600 hover:text-white hover:shadow-lg"
-              }`}
-              onClick={(e) => {
-                e.stopPropagation();
-                onPrivacyToggle(video);
-              }}
-              title={video.isPublic ? t.videos.makePrivate : t.videos.makePublic}
-              disabled={updatingPrivacyId === video.$id}
-            >
-              {updatingPrivacyId === video.$id ? (
-                <div className="animate-spin rounded-full h-3 w-3 border border-current border-t-transparent" />
-              ) : video.isPublic ? (
-                <Lock className="h-3 w-3" />
-              ) : (
-                <Globe className="h-3 w-3" />
-              )}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className={`h-8 w-8 p-0 transition-all duration-300 hover:scale-110 bg-white/90 hover:bg-opacity-100 text-gray-800 backdrop-blur-sm shadow-md ${
-                video.isPublish 
-                  ? "hover:bg-purple-600 hover:text-white hover:shadow-lg" 
-                  : "hover:bg-blue-600 hover:text-white hover:shadow-lg"
-              }`}
-              onClick={(e) => {
-                e.stopPropagation();
-                onPublishToggle(video);
-              }}
-              title={video.isPublish ? t.publish.removeFromDiscovery : t.publish.publishToDiscovery}
-              disabled={updatingPublishId === video.$id}
-            >
-              {updatingPublishId === video.$id ? (
-                <div className="animate-spin rounded-full h-3 w-3 border border-current border-t-transparent" />
-              ) : (
-                <Rss className={`h-3 w-3 ${video.isPublish ? 'text-purple-500' : ''}`} />
-              )}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 w-8 p-0 bg-white/90 hover:bg-blue-600 text-gray-800 hover:text-white transition-all duration-300 hover:scale-110 hover:shadow-lg backdrop-blur-sm shadow-md"
-              onClick={(e) => {
-                e.stopPropagation();
-                onCopyLink(video);
-              }}
-              title={t.recording.copyShareLink || '复制分享链接'}
-            >
-              <Link className="h-3 w-3" />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 w-8 p-0 bg-white/90 hover:bg-primary text-gray-800 hover:text-white transition-all duration-300 hover:scale-110 hover:shadow-lg backdrop-blur-sm shadow-md"
-              onClick={(e) => {
-                e.stopPropagation();
-                onShare(video);
-              }}
-            >
-              <Share className="h-3 w-3" />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 w-8 p-0 bg-white/90 hover:bg-green-600 text-gray-800 hover:text-white transition-all duration-300 hover:scale-110 hover:shadow-lg backdrop-blur-sm shadow-md"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDownload(video);
-              }}
-            >
-              <Download className="h-3 w-3" />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 w-8 p-0 bg-white/90 hover:bg-red-600 text-gray-800 hover:text-white transition-all duration-300 hover:scale-110 hover:shadow-lg backdrop-blur-sm shadow-md"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                e.nativeEvent.stopImmediatePropagation();
-                onDelete(video);
-              }}
-              disabled={deletingVideoId === video.$id}
-            >
-              {deletingVideoId === video.$id ? (
-                <div className="animate-spin rounded-full h-3 w-3 border border-current border-t-transparent" />
-              ) : (
-                <Trash2 className="h-3 w-3" />
-              )}
-            </Button>
-          </div>
-        )}
+        {/* Floating action buttons removed - all functionality moved to modal */}
         
-        {/* Action Buttons - Public videos or other users' videos */}
-        {(!isOwner || showPublic) && (
-          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-in-out">
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 w-8 p-0 bg-white/90 hover:bg-blue-600 text-gray-800 hover:text-white transition-all duration-300 hover:scale-110 hover:shadow-lg backdrop-blur-sm shadow-md"
-              onClick={(e) => {
-                e.stopPropagation();
-                onCopyLink(video);
-              }}
-              title={t.recording.copyShareLink || '复制分享链接'}
-            >
-              <Link className="h-3 w-3" />
-            </Button>
-          </div>
-        )}
+        {/* Public video floating buttons removed - functionality available in modal */}
       </CardContent>
     </Card>
   );
