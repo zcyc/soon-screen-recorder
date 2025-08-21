@@ -220,7 +220,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
   const handleDeleteClick = (video: Video) => {
     openDeleteModal({
       title: video.title,
-      description: '此操作不可逆转。视频将被永久删除。',
+      description: t.videos.deleteConfirmation,
       onConfirm: () => handleDeleteConfirm(video.$id)
     });
   };

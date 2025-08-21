@@ -229,6 +229,7 @@ export interface Translations {
     delete: string;
     copyLink: string;
     download: string;
+    deleteConfirmation: string;
   };
   share: {
     loading: string;
@@ -602,6 +603,7 @@ export const translations: Record<Locale, Translations> = {
       delete: 'Delete',
       copyLink: 'Copy Link',
       download: 'Download',
+      deleteConfirmation: 'This action cannot be undone. The video will be permanently deleted.',
     },
     share: {
       loading: 'Loading video...',
@@ -955,6 +957,7 @@ export const translations: Record<Locale, Translations> = {
       delete: '删除',
       copyLink: '复制链接',
       download: '下载',
+      deleteConfirmation: '此操作不可逆转。视频将被永久删除。',
     },
     share: {
       loading: '加载视频中...',
