@@ -17,8 +17,6 @@ import {
   Download, 
   Trash2, 
   ExternalLink,
-  Grid,
-  List,
   Copy,
   Link,
   Lock,
@@ -55,8 +53,6 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-
   const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
   const [updatingPrivacyId, setUpdatingPrivacyId] = useState<string | null>(null);
   const [updatingPublishId, setUpdatingPublishId] = useState<string | null>(null);
@@ -91,8 +87,6 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
       document.body.style.overflow = 'unset';
     };
   }, [selectedVideo]);
-
-
 
   const loadVideos = async () => {
     try {
@@ -200,138 +194,88 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
     const shareLink = `${window.location.origin}/share/${video.$id}`;
     try {
       await navigator.clipboard.writeText(shareLink);
-
+      // 成功复制，可以在这里添加成功提示
     } catch (error) {
       console.error('复制失败:', error);
-      // 回退方法
-      const textArea = document.createElement('textarea');
-      textArea.value = shareLink;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-
+      // 复制失败，可以在这里添加失败提示
     }
   };
 
   const handleDownload = async (video: Video) => {
     try {
-      const result = await getFileUrlAction(video.fileId);
-      if (!result.success || !result.data?.url) {
-
-        return;
+      const videoUrl = await getVideoUrl(video.fileId);
+      if (videoUrl && videoUrl !== '#') {
+        const link = document.createElement('a');
+        link.href = videoUrl;
+        link.download = `${video.title}.${video.quality === '4K' ? 'mp4' : 'mp4'}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
-      
-      const link = document.createElement('a');
-      link.href = result.data.url;
-      link.download = `${video.title}.webm`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
     } catch (error) {
-      console.error('Error downloading video:', error);
-
+      console.error('下载失败:', error);
     }
   };
 
   const handleDeleteClick = (video: Video) => {
     openDeleteModal({
+      id: video.$id,
       title: video.title,
-      description: '此操作无法撤销，视频将永久从您的账户中移除。',
-      onConfirm: async () => {
-        try {
-          setDeletingVideoId(video.$id);
-          const result = await deleteVideoAction(video.$id, video.fileId);
-          
-          if (result.error) {
-            throw new Error(result.error);
-          }
-          
-          // Update video list immediately
-          setVideos(videos.filter(v => v.$id !== video.$id));
-          
-          // Close modal if the deleted video was currently selected
-          if (selectedVideo && selectedVideo.$id === video.$id) {
-            setSelectedVideo(null);
-            setIsVideoPlaying(false);
-          }
-          
-          // Show appropriate success message
-          if (result.data && result.data.message) {
-
-          } else {
-
-          }
-        } catch (error: any) {
-          console.error('Error deleting video:', error);
-
-          throw error; // 重新抛出错误，保持模态框打开
-        } finally {
-          setDeletingVideoId(null);
-        }
-      }
+      description: '此操作不可逆转。视频将被永久删除。'
     });
   };
 
-  const handlePrivacyToggle = async (video: Video) => {
-    if (!user) {
-
-      return;
+  const handleDeleteConfirm = async () => {
+    if (!deleteData) return;
+    
+    try {
+      setDeletingVideoId(deleteData.id);
+      const result = await deleteVideoAction(deleteData.id);
+      
+      if (result.success) {
+        setVideos(videos.filter(video => video.$id !== deleteData.id));
+        closeDeleteModal();
+      } else {
+        throw new Error(result.error || 'Failed to delete video');
+      }
+    } catch (error: any) {
+      console.error('Error deleting video:', error);
+      // 这里可以添加错误提示
+    } finally {
+      setDeletingVideoId(null);
     }
+  };
 
+  const handlePrivacyToggle = async (video: Video) => {
     try {
       setUpdatingPrivacyId(video.$id);
-      
-      // Call the server action
       const result = await toggleVideoPrivacyAction(video.$id);
       
-      if (result.error) {
-        throw new Error(result.error);
+      if (result.success && result.data) {
+        // Update video list immediately
+        setVideos(videos.map(v => v.$id === video.$id ? result.data! : v));
+      } else {
+        throw new Error(result.error || 'Failed to update privacy');
       }
-      
-      // Update the video in the local state
-      setVideos(videos.map(v => 
-        v.$id === video.$id 
-          ? { ...v, isPublic: result.data.isPublic }
-          : v
-      ));
-      
-
     } catch (error: any) {
       console.error('Error updating privacy:', error);
-
     } finally {
       setUpdatingPrivacyId(null);
     }
   };
 
   const handlePublishToggle = async (video: Video) => {
-    if (!user) {
-
-      return;
-    }
-
     try {
       setUpdatingPublishId(video.$id);
-      
-      // Call the server action
       const result = await toggleVideoPublishStatusAction(video.$id);
       
-      if (result.error) {
-        throw new Error(result.error);
+      if (result.success && result.data) {
+        setVideos(videos.map(v => v.$id === video.$id ? result.data! : v));
+      } else {
+        throw new Error(result.error || 'Failed to update publish status');
       }
-      
-      // Update the video in the local state
-      setVideos(videos.map(v => 
-        v.$id === video.$id 
-          ? { ...v, isPublish: result.data.isPublish }
-          : v
-      ));
-      
-
     } catch (error: any) {
       console.error('Error updating publish status:', error);
-
     } finally {
       setUpdatingPublishId(null);
     }
@@ -339,14 +283,16 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border border-current border-t-transparent"></div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto p-6 space-y-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         {!showPublic && (
@@ -355,35 +301,15 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
           </h2>
         )}
         
-        <div className="flex items-center gap-2">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={t.videos.searchPlaceholder}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 w-64"
-            />
-          </div>
-          
-          {/* View Mode Toggle */}
-          <div className="flex border rounded-md">
-            <Button
-              variant={viewMode === 'grid' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('grid')}
-            >
-              <Grid className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === 'list' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('list')}
-            >
-              <List className="h-4 w-4" />
-            </Button>
-          </div>
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={t.videos.searchPlaceholder}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 w-64"
+          />
         </div>
       </div>
 
@@ -397,12 +323,8 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
         </div>
       )}
 
-      {/* Video Grid/List */}
-      <div className={
-        viewMode === 'grid' 
-          ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-3 gap-y-1"
-          : "space-y-1"
-      }>
+      {/* Video Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-3 gap-y-1">
         {filteredVideos.map((video) => (
           <VideoCardWithUrl
             key={video.$id}
@@ -524,64 +446,42 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
                         )}
                         {selectedVideo.isPublic ? t.videos.makePrivate : t.videos.makePublic}
                       </Button>
+                      
                       <Button
                         variant="outline"
                         onClick={() => handlePublishToggle(selectedVideo)}
                         disabled={updatingPublishId === selectedVideo.$id}
-                        className={selectedVideo.isPublish ? "border-purple-300 text-purple-700 hover:bg-purple-50" : "border-blue-300 text-blue-700 hover:bg-blue-50"}
+                        className={selectedVideo.isPublished ? "border-red-300 text-red-700 hover:bg-red-50" : "border-blue-300 text-blue-700 hover:bg-blue-50"}
                       >
                         {updatingPublishId === selectedVideo.$id ? (
                           <div className="animate-spin rounded-full h-4 w-4 mr-2 border border-current border-t-transparent" />
+                        ) : selectedVideo.isPublished ? (
+                          <Shield className="h-4 w-4 mr-2" />
                         ) : (
-                          <Rss className={`h-4 w-4 mr-2 ${selectedVideo.isPublish ? 'text-purple-500' : ''}`} />
+                          <Rss className="h-4 w-4 mr-2" />
                         )}
-                        {selectedVideo.isPublish ? (t.publish?.removeFromDiscovery || '从发现页移除') : (t.publish?.publishToDiscovery || '发布到发现页')}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => handleCopyShareLink(selectedVideo)}
-                      >
-                        <Link className="h-4 w-4 mr-2" />
-                        {t.recording.copyShareLink || '复制分享链接'}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => handleShare(selectedVideo)}
-                      >
-                        <Share className="h-4 w-4 mr-2" />
-                        {t.recording.shareVideo || '分享视频'}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => handleDownload(selectedVideo)}
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        {t.recording.download || '下载'}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => handleDeleteClick(selectedVideo)}
-                        disabled={deletingVideoId === selectedVideo.$id}
-                        className="border-red-300 text-red-700 hover:bg-red-50"
-                      >
-                        {deletingVideoId === selectedVideo.$id ? (
-                          <div className="animate-spin rounded-full h-4 w-4 mr-2 border border-current border-t-transparent" />
-                        ) : (
-                          <Trash2 className="h-4 w-4 mr-2" />
-                        )}
-                        删除
+                        {selectedVideo.isPublished ? t.videos.unpublish : t.videos.publish}
                       </Button>
                     </>
                   )}
                   
-                  {/* 公开视频或别人的视频 - 只显示复制链接 */}
-                  {(showPublic || (user && user.$id !== selectedVideo.userId)) && (
-                    <Button
-                      variant="outline"
-                      onClick={() => handleCopyShareLink(selectedVideo)}
-                    >
-                      <Link className="h-4 w-4 mr-2" />
-                      {t.recording.copyShareLink || '复制分享链接'}
+                  {/* 分享按钮 - 所有情况都显示 */}
+                  <Button variant="outline" onClick={() => handleShare(selectedVideo)}>
+                    <Share className="h-4 w-4 mr-2" />
+                    {t.videos.share}
+                  </Button>
+                  
+                  {/* 复制链接按钮 - 所有情况都显示 */}
+                  <Button variant="outline" onClick={() => handleCopyShareLink(selectedVideo)}>
+                    <Copy className="h-4 w-4 mr-2" />
+                    {t.videos.copyLink}
+                  </Button>
+                  
+                  {/* 下载按钮 - 仅私有页面显示 */}
+                  {!showPublic && (
+                    <Button variant="outline" onClick={() => handleDownload(selectedVideo)}>
+                      <Download className="h-4 w-4 mr-2" />
+                      {t.videos.download}
                     </Button>
                   )}
                 </div>
@@ -592,16 +492,15 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
         document.body
       )}
       
-
-      
       {/* Delete Modal */}
       <DeleteModal
         isOpen={isDeleteModalOpen}
-        onClose={closeDeleteModal}
-        onConfirm={deleteData?.onConfirm || (() => {})}
-        title={deleteData?.title || ''}
-        description={deleteData?.description || '此操作无法撤销，请确认要继续。'}
-        isLoading={deletingVideoId !== null}
+        title="删除视频"
+        description={deleteData?.description || ''}
+        itemName={deleteData?.title || ''}
+        onConfirm={handleDeleteConfirm}
+        onCancel={closeDeleteModal}
+        isDeleting={Boolean(deletingVideoId)}
       />
     </div>
   );
