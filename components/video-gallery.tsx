@@ -349,9 +349,11 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-2xl font-bold">
-          {showPublic ? t.dashboard.publicVideos : t.dashboard.myVideos}
-        </h2>
+        {!showPublic && (
+          <h2 className="text-2xl font-bold">
+            {t.dashboard.myVideos}
+          </h2>
+        )}
         
         <div className="flex items-center gap-2">
           {/* Search */}
@@ -567,7 +569,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
                         ) : (
                           <Trash2 className="h-4 w-4 mr-2" />
                         )}
-                        {t.recording.delete || '删除'}
+                        删除
                       </Button>
                     </>
                   )}

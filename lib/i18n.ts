@@ -129,6 +129,7 @@ export interface Translations {
     // Safari/Firefox specific options
     systemSettings: string;
     systemSettingsDesc: string;
+    delete: string;
   };
   
   // Subtitles
@@ -225,6 +226,7 @@ export interface Translations {
     created: string;
     duration: string;
     quality: string;
+    delete: string;
   };
   share: {
     loading: string;
@@ -506,6 +508,7 @@ export const translations: Record<Locale, Translations> = {
       // Safari/Firefox specific options
       systemSettings: 'Use System Settings',
       systemSettingsDesc: 'Use system default screen sharing selection, browser will show all available options',
+      delete: 'Delete',
     },
     subtitles: {
       enableSubtitles: 'Enable Speech to Subtitles',
@@ -594,6 +597,7 @@ export const translations: Record<Locale, Translations> = {
       created: 'Created',
       duration: 'Duration',
       quality: 'Quality',
+      delete: 'Delete',
     },
     share: {
       loading: 'Loading video...',
@@ -855,6 +859,7 @@ export const translations: Record<Locale, Translations> = {
       // Safari/Firefox specific options
       systemSettings: '使用系统设置',
       systemSettingsDesc: '使用系统默认录屏选择，浏览器将显示所有可用选项',
+      delete: '删除',
     },
     subtitles: {
       enableSubtitles: '开启语音转字幕',
@@ -943,6 +948,7 @@ export const translations: Record<Locale, Translations> = {
       created: '创建时间',
       duration: '时长',
       quality: '质量',
+      delete: '删除',
     },
     share: {
       loading: '加载视频中...',
