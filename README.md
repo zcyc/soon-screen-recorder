@@ -135,9 +135,27 @@ Before starting, ensure you have:
    • emoji - Size: 10
    ```
 
+##### 📋 Activity Logs Collection
+
+1. **Create Collection**
+   - Collection ID: `activity_logs`
+   - Collection Name: `Activity Logs`
+
+2. **Add Attributes**:
+   
+   **String Attributes:**
+   ```
+   • userId - Size: 255, Required: ✅
+   • action - Size: 50, Required: ✅ (SIGN_UP, SIGN_IN, SIGN_OUT, etc.)
+   • ipAddress - Size: 45, Required: ❌
+   • metadata - Size: 1000, Required: ❌
+   • timestamp - Size: 30, Required: ✅
+   • userName - Size: 255, Required: ❌
+   ```
+
 #### 4. Configure Permissions 🔐
 
-**Critical Step** - For both collections:
+**Critical Step** - For all collections:
 
 1. **Videos Collection**:
    - Click `videos` → `Settings` → `Permissions`
@@ -152,6 +170,13 @@ Before starting, ensure you have:
    - **Create**: `users`
    - **Update**: `users`
    - **Delete**: `users`
+
+3. **Activity Logs Collection**:
+   - Click `activity_logs` → `Settings` → `Permissions`
+   - **Read**: `users` (users can read their own logs)
+   - **Create**: `users`
+   - **Update**: No permissions (logs should be immutable)
+   - **Delete**: No permissions (logs should be permanent)
 
 #### 5. Create Storage Bucket
 
@@ -189,18 +214,30 @@ Before starting, ensure you have:
    
    Create a `.env.local` file in the root directory:
    ```env
-   # Appwrite Configuration
+   # Appwrite Configuration (Server-side)
+   NEXT_APPWRITE_ENDPOINT="https://cloud.appwrite.io/v1"
+   NEXT_APPWRITE_PROJECT_ID="soon"
+   NEXT_APPWRITE_DATABASE_ID="soon"
+   NEXT_APPWRITE_BUCKET_ID="videos"
+   
+   # Collection IDs
+   NEXT_APPWRITE_COLLECTION_VIDEO_ID="videos"
+   NEXT_APPWRITE_COLLECTION_VIDEO_REACTIONS_ID="reactions"
+   NEXT_APPWRITE_COLLECTION_ACTIVITY_LOGS_ID="activity_logs"
+   
+   # Server-side API Key (DO NOT expose to client-side)
+   NEXT_APPWRITE_API_KEY="your_server_api_key"
+   
+   # Client-side Configuration (if needed for specific features)
    NEXT_PUBLIC_APPWRITE_ENDPOINT="https://cloud.appwrite.io/v1"
    NEXT_PUBLIC_APPWRITE_PROJECT_ID="soon"
    NEXT_PUBLIC_APPWRITE_DATABASE_ID="soon"
    NEXT_PUBLIC_APPWRITE_BUCKET_ID="videos"
    
-   # Collection IDs
-   NEXT_PUBLIC_APPWRITE_COLLECTION_VIDEO_ID="videos"
-   NEXT_PUBLIC_APPWRITE_COLLECTION_VIDEO_REACTIONS_ID="reactions"
-   
-   # Server-side API Key (DO NOT expose to client-side)
-   APPWRITE_API_KEY="your_server_api_key"
+   # Recording Configuration
+   NEXT_PUBLIC_RECORDING_MAX_DURATION_SECONDS=120
+   NEXT_PUBLIC_RECORDING_TIME_WARNING_THRESHOLD=100
+   NEXT_PUBLIC_RECORDING_ENABLE_TIME_LIMIT=true
    
    # Optional: Analytics & Monitoring
    NEXT_PUBLIC_ANALYTICS_ID="your_analytics_id"
@@ -235,12 +272,27 @@ Before starting, ensure you have:
 #### Environment Variables Checklist
 
 Ensure these variables are properly set:
-- ✅ `NEXT_PUBLIC_APPWRITE_ENDPOINT` - Appwrite endpoint
-- ✅ `NEXT_PUBLIC_APPWRITE_STORAGE_ENDPOINT` - Appwrite storage endpoint (for file URLs)
-- ✅ `NEXT_PUBLIC_APPWRITE_PROJECT_ID` - Your project ID
-- ✅ `NEXT_PUBLIC_APPWRITE_DATABASE_ID` - Database ID
-- ✅ `NEXT_PUBLIC_APPWRITE_BUCKET_ID` - Storage bucket ID
-- ✅ `APPWRITE_API_KEY` - Server-side API key
+
+**Server-side Variables (Required):**
+- ✅ `NEXT_APPWRITE_ENDPOINT` - Appwrite endpoint
+- ✅ `NEXT_APPWRITE_PROJECT_ID` - Your project ID  
+- ✅ `NEXT_APPWRITE_DATABASE_ID` - Database ID
+- ✅ `NEXT_APPWRITE_BUCKET_ID` - Storage bucket ID
+- ✅ `NEXT_APPWRITE_API_KEY` - Server-side API key
+- ✅ `NEXT_APPWRITE_COLLECTION_VIDEO_ID` - Videos collection ID
+- ✅ `NEXT_APPWRITE_COLLECTION_VIDEO_REACTIONS_ID` - Reactions collection ID
+- ✅ `NEXT_APPWRITE_COLLECTION_ACTIVITY_LOGS_ID` - Activity logs collection ID
+
+**Client-side Variables (Optional, for specific features):**
+- ✅ `NEXT_PUBLIC_APPWRITE_ENDPOINT` - Appwrite endpoint (client-side)
+- ✅ `NEXT_PUBLIC_APPWRITE_PROJECT_ID` - Your project ID (client-side)
+- ✅ `NEXT_PUBLIC_APPWRITE_DATABASE_ID` - Database ID (client-side)
+- ✅ `NEXT_PUBLIC_APPWRITE_BUCKET_ID` - Storage bucket ID (client-side)
+
+**Recording Configuration (Optional):**
+- ✅ `NEXT_PUBLIC_RECORDING_MAX_DURATION_SECONDS` - Maximum recording duration
+- ✅ `NEXT_PUBLIC_RECORDING_TIME_WARNING_THRESHOLD` - Time warning threshold
+- ✅ `NEXT_PUBLIC_RECORDING_ENABLE_TIME_LIMIT` - Enable/disable time limit
 
 ## 📝 Usage
 
