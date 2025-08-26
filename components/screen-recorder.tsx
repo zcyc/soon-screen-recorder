@@ -80,7 +80,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/lib/i18n';
 import { recordingConfig } from '@/lib/config';
 import { uploadVideoFileAction } from '@/app/actions/video-actions';
-import { detectBrowser } from '@/lib/browser-compatibility';
+import { detectBrowser as detectBrowserFromLib } from '@/lib/browser-compatibility';
 
 import { getFileUrlAction, uploadFileAction, updateVideoThumbnailAction } from '@/app/actions/video-actions';
 import { generateVideoThumbnailBlob } from '@/lib/video-utils';
@@ -210,7 +210,7 @@ const RestoreableVideo: React.FC<{
     
     // Safari 特殊处理：强制显示第一帧
     if (videoRef.current) {
-      const browser = detectBrowser();
+      const browser = detectBrowserFromLib();
       
       if (browser.isSafari) {
         console.log('🍎 Safari 视频元数据加载完成，准备显示第一帧...');
@@ -275,7 +275,7 @@ const RestoreableVideo: React.FC<{
   }
 
   // Safari 特殊属性
-  const browser = detectBrowser();
+  const browser = detectBrowserFromLib();
   const safariProps = browser.isSafari ? {
     // Safari 特殊属性以确保视频正确显示
     'webkit-playsinline': 'true',
@@ -383,8 +383,8 @@ export default function ScreenRecorder() {
   const generateThumbnailInBackground = async (videoId: string, recordedBlob: Blob) => {
     try {
       
-      const browser = detectBrowser();
-      console.log(`🎨 Starting thumbnail generation for recording ${videoId} in ${browser.browserName}`);
+      const browser = detectBrowserFromLib();
+      console.log(`🎨 Starting thumbnail generation for recording ${videoId} in ${browser.name}`);
       
       // 将 Blob 转换为 File 以供缩略图生成使用
       const videoFile = new File([recordedBlob], 'recording.webm', { type: recordedBlob.type });
@@ -852,7 +852,7 @@ export default function ScreenRecorder() {
 
 
   const detectPiPSupport = useCallback(() => {
-    const browser = detectBrowser();
+    const browser = detectBrowserFromLib();
     
     // 对Firefox做特殊处理 - Firefox可能不提供document.pictureInPictureEnabled
     let supported = false;
@@ -881,7 +881,7 @@ export default function ScreenRecorder() {
       supported,
       canAutoStart: browser.isChrome, // 只有Chrome支持自动启动
       needsUserInteraction: browser.isSafari || browser.isFirefox,
-      browser: browser.browserName
+      browser: browser.name
     };
   }, []);
   
@@ -1187,7 +1187,7 @@ export default function ScreenRecorder() {
 
   const getScreenStream = async (): Promise<MediaStream> => {
     const constraints = getQualityConstraints(quality);
-    const browser = detectBrowser();
+    const browser = detectBrowserFromLib();
     
     // Configure display media constraints based on screen source type
     const displayConstraints: any = {
@@ -1200,7 +1200,7 @@ export default function ScreenRecorder() {
     
     console.log('屏幕音频状态:', includeAudio ? '开启' : '关闭');
     console.log('浏览器信息:', {
-      name: browser.browserName,
+      name: browser.name,
       supportsDisplaySurface: browser.supportsDisplaySurface
     });
 
@@ -1230,7 +1230,7 @@ export default function ScreenRecorder() {
       }
     } else {
       // Safari/Firefox: Use standard getDisplayMedia without displaySurface constraints
-      console.log(`${browser.browserName} detected: Using standard getDisplayMedia without displaySurface constraints`);
+      console.log(`${browser.name} detected: Using standard getDisplayMedia without displaySurface constraints`);
       if (browser.isSafari || browser.isFirefox) {
         console.log(`Safari/Firefox will show native source selection dialog with all available options`);
       }
@@ -1499,7 +1499,7 @@ export default function ScreenRecorder() {
         active: finalStream.active
       });
       
-      const browser = detectBrowser();
+      const browser = detectBrowserFromLib();
       
       // 浏览器兼容性增强
       const isFirefoxRecording = browser.isFirefox;
@@ -1572,7 +1572,7 @@ export default function ScreenRecorder() {
         }
       } else {
         // Chrome, Edge 等其他浏览器使用高质量设置
-        console.log(`🌐 其他浏览器 (${browser.browserName}) 检测到，使用标准设置...`);
+        console.log(`🌐 其他浏览器 (${browser.name}) 检测到，使用标准设置...`);
         
         options = {
           mimeType: 'video/webm;codecs=vp9,opus',
@@ -1592,10 +1592,8 @@ export default function ScreenRecorder() {
       
       console.log('🎥 MediaRecorder 配置:', {
         options,
-        isFirefox: isFirefoxRecording,
-        isSafari: isSafariRecording,
-        browserName: browser.browserName,
-        browser: browser.browserName,
+        browserName: browser.name,
+        browser: browser.name,
         isFirefox: browser.isFirefox,
         isSafari: browser.isSafari,
         streamActive: finalStream.active,
@@ -1624,7 +1622,7 @@ export default function ScreenRecorder() {
             totalSizeKB: Math.round(totalSize / 1024),
             isFirefox: isFirefoxRecording,
             isSafari: isSafariRecording,
-            browser: browser.browserName
+            browser: browser.name
           });
           
           if (browser.isFirefox) {
@@ -1699,7 +1697,7 @@ export default function ScreenRecorder() {
           sizeInKB: Math.round(blob.size / 1024),
           sizeInMB: Math.round(blob.size / 1024 / 1024 * 100) / 100,
           chunksUsed: chunksRef.current.length,
-          browser: browser.browserName
+          browser: browser.name
         });
         
         if (blob.size === 0) {
@@ -1858,7 +1856,7 @@ export default function ScreenRecorder() {
 
       // Firefox 优化: 使用更短的时间片段来提高数据收集频率
       const timeSlice = browser.isFirefox ? 100 : 1000; // Firefox 使用 100ms，其他 1000ms
-      console.log(`🎥 开始录制 - 时间片段: ${timeSlice}ms, 浏览器: ${browser.browserName}`);
+      console.log(`🎥 开始录制 - 时间片段: ${timeSlice}ms, 浏览器: ${browser.name}`);
       
       try {
         mediaRecorderRef.current.start(timeSlice);
@@ -2105,7 +2103,7 @@ export default function ScreenRecorder() {
                 </SelectTrigger>
                 <SelectContent>
                   {(() => {
-                    const browser = detectBrowser();
+                    const browser = detectBrowserFromLib();
                     
                     // Chrome/Edge: 显示完整选项（屏幕、窗口、标签页、摄像头）
                     if (browser.supportsDisplaySurface) {
