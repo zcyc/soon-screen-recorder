@@ -80,6 +80,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/lib/i18n';
 import { recordingConfig } from '@/lib/config';
 import { uploadVideoFileAction } from '@/app/actions/video-actions';
+import { detectBrowser } from '@/lib/browser-compatibility';
 
 import { getFileUrlAction, uploadFileAction, updateVideoThumbnailAction } from '@/app/actions/video-actions';
 import { generateVideoThumbnailBlob } from '@/lib/video-utils';
@@ -118,6 +119,8 @@ const RestoreableVideo: React.FC<{
 }> = ({ blob, className }) => {
   const [videoSrc, setVideoSrc] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState<boolean>(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     if (!blob) {
@@ -198,6 +201,48 @@ const RestoreableVideo: React.FC<{
 
   const handleVideoLoad = () => {
     setError(null);
+    setIsLoaded(true);
+  };
+
+  const handleVideoLoadedMetadata = () => {
+    setError(null);
+    setIsLoaded(true);
+    
+    // Safari 特殊处理：强制显示第一帧
+    if (videoRef.current) {
+      const browser = detectBrowser();
+      
+      if (browser.isSafari) {
+        console.log('🍎 Safari 视频元数据加载完成，准备显示第一帧...');
+        
+        // Safari需要显式地寻址到第一帧来触发画面显示
+        const video = videoRef.current;
+        
+        // 方法1：设置currentTime来强制加载第一帧
+        video.currentTime = 0.1;
+        
+        // 方法2：使用loadeddata事件确保画面显示
+        const handleLoadedData = () => {
+          console.log('🍎 Safari 视频数据加载完成，第一帧应该可见');
+          video.removeEventListener('loadeddata', handleLoadedData);
+          
+          // 确保视频在第一帧暂停
+          if (!video.paused) {
+            video.pause();
+          }
+        };
+        
+        video.addEventListener('loadeddata', handleLoadedData);
+        
+        // 方法3：强制渲染
+        setTimeout(() => {
+          if (video.readyState >= 2) { // HAVE_CURRENT_DATA
+            video.currentTime = 0;
+            console.log('🍎 Safari 强制设置到第一帧');
+          }
+        }, 50);
+      }
+    }
   };
 
   if (error) {
@@ -229,18 +274,39 @@ const RestoreableVideo: React.FC<{
     );
   }
 
+  // Safari 特殊属性
+  const browser = detectBrowser();
+  const safariProps = browser.isSafari ? {
+    // Safari 特殊属性以确保视频正确显示
+    'webkit-playsinline': 'true',
+    'x5-video-player-type': 'h5',
+    'x5-video-player-fullscreen': 'true'
+  } : {};
+
   return (
     <video
+      ref={videoRef}
       className={className}
       controls
       src={videoSrc}
       onError={handleVideoError}
       onLoadedData={handleVideoLoad}
-      onLoadedMetadata={handleVideoLoad}
-      preload="metadata"
+      onLoadedMetadata={handleVideoLoadedMetadata}
+      preload={browser.isSafari ? "auto" : "metadata"}
       muted
       playsInline
       crossOrigin="anonymous"
+      poster=""
+      {...safariProps}
+      style={{
+        backgroundColor: '#000',
+        objectFit: 'contain',
+        // Safari 特殊样式
+        ...(browser.isSafari ? {
+          WebkitTransform: 'translateZ(0)',
+          WebkitBackfaceVisibility: 'hidden'
+        } : {})
+      }}
     />
   );
 };
@@ -783,22 +849,7 @@ export default function ScreenRecorder() {
 
   // 检测画中画API支持情况
   // Unified browser detection function
-  const detectBrowser = useCallback(() => {
-    const userAgent = navigator.userAgent;
-    const isFirefox = userAgent.includes('Firefox');
-    const isSafari = userAgent.includes('Safari') && !userAgent.includes('Chrome');
-    const isChrome = userAgent.includes('Chrome') && !userAgent.includes('Edg');
-    const isEdge = userAgent.includes('Edg');
-    
-    return {
-      isFirefox,
-      isSafari,
-      isChrome,
-      isEdge,
-      supportsDisplaySurface: isChrome || isEdge, // Only Chrome/Edge support displaySurface
-      browserName: isFirefox ? 'Firefox' : isSafari ? 'Safari' : isChrome ? 'Chrome' : isEdge ? 'Edge' : 'Other'
-    };
-  }, []);
+
 
   const detectPiPSupport = useCallback(() => {
     const browser = detectBrowser();
@@ -832,7 +883,7 @@ export default function ScreenRecorder() {
       needsUserInteraction: browser.isSafari || browser.isFirefox,
       browser: browser.browserName
     };
-  }, [detectBrowser]);
+  }, []);
   
   // 启动摄像头预览 - 重写画中画逻辑
   const startCameraPreview = async () => {
@@ -1339,7 +1390,6 @@ export default function ScreenRecorder() {
         };
         
         console.log(`请求屏幕录制权限 (${sourceNames[screenSource]})...`);
-        const browser = detectBrowser();
         
         try {
           const screenStream = await getScreenStream();
@@ -1449,11 +1499,15 @@ export default function ScreenRecorder() {
         active: finalStream.active
       });
       
-      // Firefox 兼容性增强
-      const isFirefoxRecording = navigator.userAgent.includes('Firefox');
+      const browser = detectBrowser();
+      
+      // 浏览器兼容性增强
+      const isFirefoxRecording = browser.isFirefox;
+      const isSafariRecording = browser.isSafari;
+
       let options: MediaRecorderOptions = {};
       
-      if (isFirefoxRecording) {
+      if (browser.isFirefox) {
         console.log('🤊 Firefox 检测到，使用优化设置...');
         
         // Firefox 兼容性检查
@@ -1484,8 +1538,42 @@ export default function ScreenRecorder() {
         if (includeAudio) {
           options.audioBitsPerSecond = 64000; // 64kbps
         }
+      } else if (isSafariRecording) {
+        console.log('🍎 Safari 检测到，使用Safari兼容设置...');
+        
+        // Safari 兼容性格式优先级 - 避免VP9
+        const safariSupportedTypes = [
+          'video/mp4',
+          'video/webm;codecs=vp8,opus',
+          'video/webm;codecs=vp8', 
+          'video/webm',
+          ''
+        ];
+        
+        for (const mimeType of safariSupportedTypes) {
+          const isSupported = mimeType === '' || MediaRecorder.isTypeSupported(mimeType);
+          console.log(`Safari 检查 MIME 类型: ${mimeType || 'default'} - ${isSupported ? '支持' : '不支持'}`);
+          
+          if (isSupported) {
+            if (mimeType) {
+              options.mimeType = mimeType;
+            } else {
+              options.mimeType = 'video/mp4';
+            }
+            break;
+          }
+        }
+        
+        // Safari 优化参数 - 降低码率以提高兼容性
+        options.videoBitsPerSecond = quality === '1080p' ? 3000000 : 1500000;
+        if (includeAudio) {
+          options.audioBitsPerSecond = 128000; // Safari 音频编码优化
+
+        }
       } else {
-        // 其他浏览器使用高质量设置
+        // Chrome, Edge 等其他浏览器使用高质量设置
+        console.log(`🌐 其他浏览器 (${browser.browserName}) 检测到，使用标准设置...`);
+        
         options = {
           mimeType: 'video/webm;codecs=vp9,opus',
           videoBitsPerSecond: quality === '1080p' ? 5000000 : 2500000
@@ -1505,6 +1593,11 @@ export default function ScreenRecorder() {
       console.log('🎥 MediaRecorder 配置:', {
         options,
         isFirefox: isFirefoxRecording,
+        isSafari: isSafariRecording,
+        browserName: browser.browserName,
+        browser: browser.browserName,
+        isFirefox: browser.isFirefox,
+        isSafari: browser.isSafari,
         streamActive: finalStream.active,
         videoTracks: finalStream.getVideoTracks().length,
         audioTracks: finalStream.getAudioTracks().length
@@ -1518,7 +1611,7 @@ export default function ScreenRecorder() {
         console.log(`=== 数据可用事件 [${timestamp}] ===`, { 
           size: event.data.size, 
           type: event.data.type,
-          browser: isFirefoxRecording ? 'Firefox' : 'Other'
+          browser: isFirefoxRecording ? 'Firefox' : isSafariRecording ? 'Safari' : 'Other'
         });
         
         if (event.data.size > 0) {
@@ -1529,10 +1622,12 @@ export default function ScreenRecorder() {
             currentSize: event.data.size,
             totalChunks: chunksRef.current.length,
             totalSizeKB: Math.round(totalSize / 1024),
-            isFirefox: isFirefoxRecording
+            isFirefox: isFirefoxRecording,
+            isSafari: isSafariRecording,
+            browser: browser.browserName
           });
           
-          if (isFirefoxRecording) {
+          if (browser.isFirefox) {
             console.log('🤊 Firefox 数据收集进展:', {
               chunkIndex: chunksRef.current.length,
               chunkType: event.data.type,
@@ -1544,7 +1639,7 @@ export default function ScreenRecorder() {
         } else {
           console.error('❌ 收到空数据块！这是一个严重问题。');
           
-          if (isFirefoxRecording) {
+          if (browser.isFirefox) {
             console.error('🤊 Firefox 检测到空数据块，可能原因:');
             console.error('1. 媒体流不活跃或已停止');
             console.error('2. 编码器不支持当前格式');
@@ -1570,7 +1665,7 @@ export default function ScreenRecorder() {
           
           let errorMessage = '录制失败：没有收集到视频数据';
           
-          if (isFirefoxRecording) {
+          if (browser.isFirefox) {
             console.error('🤊 Firefox 没有数据块，可能原因:');
             console.error('- 媒体流没有正确启动或已被停止');
             console.error('- MediaRecorder 不支持当前媒体格式');
@@ -1604,7 +1699,7 @@ export default function ScreenRecorder() {
           sizeInKB: Math.round(blob.size / 1024),
           sizeInMB: Math.round(blob.size / 1024 / 1024 * 100) / 100,
           chunksUsed: chunksRef.current.length,
-          isFirefox: isFirefoxRecording
+          browser: browser.browserName
         });
         
         if (blob.size === 0) {
@@ -1762,8 +1857,8 @@ export default function ScreenRecorder() {
       };
 
       // Firefox 优化: 使用更短的时间片段来提高数据收集频率
-      const timeSlice = isFirefoxRecording ? 100 : 1000; // Firefox 使用 100ms，其他 1000ms
-      console.log(`🎥 开始录制 - 时间片段: ${timeSlice}ms, 浏览器: ${isFirefoxRecording ? 'Firefox' : 'Other'}`);
+      const timeSlice = browser.isFirefox ? 100 : 1000; // Firefox 使用 100ms，其他 1000ms
+      console.log(`🎥 开始录制 - 时间片段: ${timeSlice}ms, 浏览器: ${browser.browserName}`);
       
       try {
         mediaRecorderRef.current.start(timeSlice);
