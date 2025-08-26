@@ -15,6 +15,7 @@ export interface BrowserInfo {
   supportsMOV: boolean;
   supportsCreateObjectURL: boolean;
   supportsCanvasVideoCapture: boolean;
+  supportsDisplaySurface: boolean;
 }
 
 /**
@@ -36,6 +37,7 @@ export function detectBrowser(): BrowserInfo {
       supportsMOV: false,
       supportsCreateObjectURL: true,
       supportsCanvasVideoCapture: true,
+      supportsDisplaySurface: false,
     };
   }
 
@@ -81,6 +83,7 @@ export function detectBrowser(): BrowserInfo {
     supportsMOV: checkMOVSupport(),
     supportsCreateObjectURL: checkCreateObjectURLSupport(),
     supportsCanvasVideoCapture: checkCanvasVideoCapture(),
+    supportsDisplaySurface: checkDisplaySurfaceSupport(isChrome, isEdge),
   };
 }
 
@@ -144,6 +147,15 @@ function checkCanvasVideoCapture(): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Check if browser supports displaySurface constraints for getDisplayMedia
+ * This is primarily supported by Chrome and Edge
+ */
+function checkDisplaySurfaceSupport(isChrome: boolean, isEdge: boolean): boolean {
+  // DisplaySurface constraints are supported by Chrome and Edge (Chromium-based browsers)
+  return isChrome || isEdge;
 }
 
 /**
