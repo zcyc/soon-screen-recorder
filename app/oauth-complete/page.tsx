@@ -60,15 +60,9 @@ export default function OAuthCompletePage() {
       <div className="text-center space-y-4">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
         {error ? (
-          <>
-            <p className="text-sm text-destructive">认证失败，正在关闭窗口...</p>
-            <p className="text-xs text-destructive">Authentication failed, closing window...</p>
-          </>
+          <p className="text-sm text-destructive">{t.auth.authenticationFailedClosing}</p>
         ) : (
-          <>
-            <p className="text-sm text-muted-foreground">登录成功，正在关闭窗口...</p>
-            <p className="text-xs text-muted-foreground">Login successful, closing window...</p>
-          </>
+          <p className="text-sm text-muted-foreground">{t.auth.loginSuccessfulClosing}</p>
         )}
       </div>
     </div>
