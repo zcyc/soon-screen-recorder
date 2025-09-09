@@ -35,11 +35,13 @@ export async function GET(request: Request) {
     const { account, users } = await createAdminClient();
     console.log('OAuth: Creating session with Admin Client');
     
+    let session: any;
+    
     // 检查注册是否被禁用
     if (!registrationConfig.enableRegistration) {
       try {
         // 先创建会话来检查用户是否存在
-        const session = await account.createSession(userId, secret);
+        session = await account.createSession(userId, secret);
         
         // 获取用户信息检查创建时间
         const user = await users.get(userId);
@@ -86,11 +88,19 @@ export async function GET(request: Request) {
       }
     } else {
       // 注册允许，正常创建会话
-      const session = await account.createSession(userId, secret);
+      session = await account.createSession(userId, secret);
       console.log('OAuth: Session created successfully');
     }
     
-    // 会话在上面的逻辑中已经创建
+    // 确保会话存在才设置cookie
+    if (!session) {
+      console.error('OAuth: Session not created');
+      const headersList = await headers();
+      const redirectOrigin = headersList.get('host') 
+        ? `https://${headersList.get('host')}` 
+        : url.origin;
+      return NextResponse.redirect(`${redirectOrigin}/oauth-complete?error=registration_disabled`);
+    }
 
     // 设置会话 cookie
     const cookieStore = await cookies();
@@ -158,6 +168,8 @@ export async function GET(request: Request) {
     const redirectOrigin = headersList.get('host') 
       ? `https://${headersList.get('host')}` 
       : url.origin;
-    return NextResponse.redirect(`${redirectOrigin}/sign-in?error=oauth_session_failed`);
+    
+    // 在catch块中也重定向到oauth-complete页面以便正确关闭弹窗
+    return NextResponse.redirect(`${redirectOrigin}/oauth-complete?error=oauth_session_failed`);
   }
 }
