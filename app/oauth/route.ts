@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/appwrite-server";
+import { registrationConfig } from "@/lib/config";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { activityService, ActivityType } from "@/lib/services/activity-service";
@@ -31,11 +32,65 @@ export async function GET(request: Request) {
     }
 
     // 使用 Admin Client 创建会话
-    const { account } = await createAdminClient();
+    const { account, users } = await createAdminClient();
     console.log('OAuth: Creating session with Admin Client');
     
-    const session = await account.createSession(userId, secret);
-    console.log('OAuth: Session created successfully');
+    // 检查注册是否被禁用
+    if (!registrationConfig.enableRegistration) {
+      try {
+        // 先创建会话来检查用户是否存在
+        const session = await account.createSession(userId, secret);
+        
+        // 获取用户信息检查创建时间
+        const user = await users.get(userId);
+        const userCreationTime = new Date(user.$createdAt).getTime();
+        const sessionCreationTime = new Date(session.$createdAt).getTime();
+        const timeDiff = Math.abs(sessionCreationTime - userCreationTime);
+        
+        // 如果用户和会话创建时间相近（小于5分钟），认为是新注册
+        if (timeDiff < 300000) { // 5分钟
+          console.log('OAuth: New user registration detected and registration disabled');
+          
+          // 删除刚创建的会话
+          try {
+            await account.deleteSession(session.$id);
+          } catch (sessionError) {
+            console.warn('OAuth: Failed to delete session:', sessionError);
+          }
+          
+          // 删除新用户
+          try {
+            await users.delete(userId);
+            console.log('OAuth: New user deleted due to registration disabled');
+          } catch (deleteError) {
+            console.warn('OAuth: Failed to delete new user:', deleteError);
+          }
+          
+          const headersList = await headers();
+          const redirectOrigin = headersList.get('host') 
+            ? `https://${headersList.get('host')}` 
+            : url.origin;
+          return NextResponse.redirect(`${redirectOrigin}/oauth-complete?error=registration_disabled`);
+        }
+        
+        console.log('OAuth: Existing user login allowed');
+        // 会话已创建，继续正常流程
+      } catch (error) {
+        console.error('OAuth: Error checking user registration status:', error);
+        // 如果检查失败，为了安全起见，阻止登录
+        const headersList = await headers();
+        const redirectOrigin = headersList.get('host') 
+          ? `https://${headersList.get('host')}` 
+          : url.origin;
+        return NextResponse.redirect(`${redirectOrigin}/oauth-complete?error=registration_disabled`);
+      }
+    } else {
+      // 注册允许，正常创建会话
+      const session = await account.createSession(userId, secret);
+      console.log('OAuth: Session created successfully');
+    }
+    
+    // 会话在上面的逻辑中已经创建
 
     // 设置会话 cookie
     const cookieStore = await cookies();

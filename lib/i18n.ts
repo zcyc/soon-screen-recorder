@@ -183,6 +183,7 @@ export interface Translations {
     githubLoginFailed: string;
     githubAuthCancelled: string;
     authenticationFailed: string;
+    registrationDisabled: string;
 
   };
   
@@ -561,6 +562,7 @@ export const translations: Record<Locale, Translations> = {
       githubLoginFailed: 'GitHub login failed',
       githubAuthCancelled: 'GitHub authentication was cancelled',
       authenticationFailed: 'Authentication failed. Please try again.',
+      registrationDisabled: 'User registration is currently disabled',
 
     },
     devices: {
@@ -915,6 +917,7 @@ export const translations: Record<Locale, Translations> = {
       githubLoginFailed: 'GitHub 登录失败',
       githubAuthCancelled: 'GitHub 认证已取消',
       authenticationFailed: '认证失败，请重试。',
+      registrationDisabled: '用户注册功能已被禁用',
 
     },
     devices: {

@@ -61,7 +61,7 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
           errorMessage = 'OAuth callback processing failed';
           break;
         case 'registration_disabled':
-          errorMessage = 'User registration is currently disabled';
+          errorMessage = t.auth.registrationDisabled;
           break;
         default:
           errorMessage = `OAuth error: ${oauthError}`;
