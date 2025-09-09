@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAccount, login } from '@/lib/auth/server-auth';
+import { registrationConfig } from '@/lib/config';
 import { z } from 'zod';
 
 const signUpSchema = z.object({
@@ -10,6 +11,14 @@ const signUpSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if user registration is enabled
+    if (!registrationConfig.enableRegistration) {
+      return NextResponse.json(
+        { error: 'User registration is currently disabled' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const result = signUpSchema.safeParse(body);
     

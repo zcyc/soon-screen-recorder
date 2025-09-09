@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { X, Github, Chrome } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
+import { registrationConfig } from '@/lib/config';
 import { useAuth } from '@/contexts/auth-context';
 import { signInWithEmailPassword, signInWithGithub, signInWithGoogle } from '@/lib/auth/client-auth';
 
@@ -20,7 +21,8 @@ interface LoginModalProps {
 export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
   const { t } = useI18n();
   const { refreshUser } = useAuth();
-  const [isSignUp, setIsSignUp] = useState(false);
+  // Don't allow signup mode if registration is disabled
+  const [isSignUp, setIsSignUp] = useState(false && registrationConfig.enableRegistration);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -310,33 +312,36 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
               </Button>
             </div>
 
-            <div className="text-center text-sm">
-              {isSignUp ? (
-                <>
-                  {t.auth.alreadyHaveAccount}{' '}
-                  <button
-                    type="button"
-                    className="text-primary hover:underline"
-                    onClick={() => setIsSignUp(false)}
-                    disabled={isLoading}
-                  >
-                    {t.auth.signInToExistingAccount}
-                  </button>
-                </>
-              ) : (
-                <>
-                  {t.auth.newToSoon}{' '}
-                  <button
-                    type="button"
-                    className="text-primary hover:underline"
-                    onClick={() => setIsSignUp(true)}
-                    disabled={isLoading}
-                  >
-                    {t.auth.createAccount}
-                  </button>
-                </>
-              )}
-            </div>
+            {/* Only show signup toggle if registration is enabled */}
+            {registrationConfig.enableRegistration && (
+              <div className="text-center text-sm">
+                {isSignUp ? (
+                  <>
+                    {t.auth.alreadyHaveAccount}{' '}
+                    <button
+                      type="button"
+                      className="text-primary hover:underline"
+                      onClick={() => setIsSignUp(false)}
+                      disabled={isLoading}
+                    >
+                      {t.auth.signInToExistingAccount}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {t.auth.newToSoon}{' '}
+                    <button
+                      type="button"
+                      className="text-primary hover:underline"
+                      onClick={() => setIsSignUp(true)}
+                      disabled={isLoading}
+                    >
+                      {t.auth.createAccount}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

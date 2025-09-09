@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Video, Github, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useI18n } from '@/lib/i18n';
+import { registrationConfig } from '@/lib/config';
 import { loginAction, registerAction } from '@/app/actions/user-actions';
 import { signInWithGithub, signUpWithGithub, signInWithGoogle, signUpWithGoogle } from '@/lib/server/oauth';
 // import { OAuthFallbackGuide } from '@/components/oauth-fallback-guide';
@@ -59,6 +60,9 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
         case 'oauth_processing_failed':
           errorMessage = 'OAuth callback processing failed';
           break;
+        case 'registration_disabled':
+          errorMessage = 'User registration is currently disabled';
+          break;
         default:
           errorMessage = `OAuth error: ${oauthError}`;
           break;
@@ -103,9 +107,10 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
     });
   };
 
-  // 使用 Server Action 处理 OAuth
-  const handleGitHubOAuth = mode === 'signin' ? signInWithGithub : signUpWithGithub;
-  const handleGoogleOAuth = mode === 'signin' ? signInWithGoogle : signUpWithGoogle;
+  // 使用 Server Action 处理 OAuth - 如果注册被禁用，强制使用登录模式
+  const effectiveMode = (!registrationConfig.enableRegistration && mode === 'signup') ? 'signin' : mode;
+  const handleGitHubOAuth = effectiveMode === 'signin' ? signInWithGithub : signUpWithGithub;
+  const handleGoogleOAuth = effectiveMode === 'signin' ? signInWithGoogle : signUpWithGoogle;
 
   return (
     <div className="min-h-[100dvh] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 bg-background">
@@ -272,31 +277,37 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
             <OAuthFallbackGuide />
           </div> */}
           
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-background text-muted-foreground">
-                  {mode === 'signin'
-                    ? t.auth.newToSoon
-                    : t.auth.alreadyHaveAccount}
-                </span>
-              </div>
-            </div>
-            
+          {/* Only show signup/signin toggle if registration is enabled or if we're in signin mode */}
+          {(registrationConfig.enableRegistration || mode === 'signin') && (
             <div className="mt-6">
-              <Link
-                href={mode === 'signin' ? '/sign-up' : '/sign-in'}
-                className="w-full flex justify-center py-2 px-4 border border-input rounded-full shadow-sm text-sm font-medium text-foreground bg-background hover:bg-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-              >
-                {mode === 'signin'
-                  ? t.auth.createAccount
-                  : t.auth.signInToExistingAccount}
-              </Link>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-background text-muted-foreground">
+                    {mode === 'signin'
+                      ? (registrationConfig.enableRegistration ? t.auth.newToSoon : '')
+                      : t.auth.alreadyHaveAccount}
+                  </span>
+                </div>
+              </div>
+              
+              {/* Show sign up link only if registration is enabled, or always show sign in link */}
+              {((mode === 'signin' && registrationConfig.enableRegistration) || mode === 'signup') && (
+                <div className="mt-6">
+                  <Link
+                    href={mode === 'signin' ? '/sign-up' : '/sign-in'}
+                    className="w-full flex justify-center py-2 px-4 border border-input rounded-full shadow-sm text-sm font-medium text-foreground bg-background hover:bg-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                  >
+                    {mode === 'signin'
+                      ? t.auth.createAccount
+                      : t.auth.signInToExistingAccount}
+                  </Link>
+                </div>
+              )}
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
