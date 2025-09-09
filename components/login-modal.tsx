@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { X, Github, Chrome } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
+import { registrationConfig } from '@/lib/config';
 import { useAuth } from '@/contexts/auth-context';
 import { signInWithEmailPassword, signInWithGithub, signInWithGoogle } from '@/lib/auth/client-auth';
 
@@ -20,7 +21,8 @@ interface LoginModalProps {
 export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
   const { t } = useI18n();
   const { refreshUser } = useAuth();
-  const [isSignUp, setIsSignUp] = useState(false);
+  // Don't allow signup mode if registration is disabled
+  const [isSignUp, setIsSignUp] = useState(false && registrationConfig.enableRegistration);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -89,39 +91,73 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
         
         // 监听来自弹窗的消息
         const messageListener = (event: MessageEvent) => {
-          if (event.origin === window.location.origin && event.data.type === 'OAUTH_SUCCESS') {
-            console.log('GitHub OAuth success message received');
-            window.removeEventListener('message', messageListener);
-            clearInterval(checkClosed);
-            
-            // 登录成功处理 - 不刷新页面
-            console.log('GitHub OAuth 登录成功，更新认证状态');
-            setTimeout(async () => {
-              await refreshUser();
-              onSuccess?.();
-              onClose();
-              console.log('GitHub 登录模态已关闭，用户状态已更新');
-            }, 500);
+          if (event.origin === window.location.origin) {
+            if (event.data.type === 'OAUTH_SUCCESS') {
+              console.log('GitHub OAuth success message received');
+              window.removeEventListener('message', messageListener);
+              clearInterval(checkClosed);
+              
+              // 登录成功处理 - 不刷新页面
+              console.log('GitHub OAuth 登录成功，更新认证状态');
+              setTimeout(async () => {
+                await refreshUser();
+                onSuccess?.();
+                onClose();
+                console.log('GitHub 登录模态已关闭，用户状态已更新');
+              }, 500);
+            } else if (event.data.type === 'OAUTH_ERROR') {
+              console.log('GitHub OAuth error message received:', event.data.error);
+              window.removeEventListener('message', messageListener);
+              clearInterval(checkClosed);
+              
+              // 显示错误信息
+              setError(event.data.error || t.auth.githubLoginFailed);
+              setIsLoading(false);
+            }
           }
         };
         
-        window.addEventListener('message', messageListener);
+        // messageListener 已在上面的 wrappedMessageListener 中添加
         
         // 备用检查：监听窗口关闭（防止消息未收到）
+        let hasReceivedMessage = false;
+        
+        const originalMessageListener = messageListener;
+        const wrappedMessageListener = (event: MessageEvent) => {
+          hasReceivedMessage = true;
+          originalMessageListener(event);
+        };
+        
+        window.addEventListener('message', wrappedMessageListener);
+        
         const checkClosed = setInterval(() => {
           if (popup?.closed) {
             console.log('GitHub OAuth popup closed');
             clearInterval(checkClosed);
-            window.removeEventListener('message', messageListener);
+            window.removeEventListener('message', wrappedMessageListener);
             
-            // 检查登录状态 - 不刷新页面
-            console.log('GitHub OAuth 弹窗关闭，检查登录状态');
-            setTimeout(async () => {
-              await refreshUser();
-              onSuccess?.();
-              onClose();
-              console.log('GitHub 登录处理完成，用户状态已更新');
-            }, 1000);
+            // 只有在没有收到消息时才检查登录状态
+            if (!hasReceivedMessage) {
+              console.log('GitHub OAuth 弹窗关闭且未收到消息，检查登录状态');
+              setTimeout(async () => {
+                await refreshUser();
+                // 检查是否有用户登录（通过简单的API调用）
+                try {
+                  const response = await fetch('/api/user');
+                  if (response.ok) {
+                    onSuccess?.();
+                    onClose();
+                    console.log('GitHub 登录处理完成，用户状态已更新');
+                  } else {
+                    setIsLoading(false);
+                    console.log('GitHub OAuth 弹窗关闭但未登录成功');
+                  }
+                } catch (error) {
+                  setIsLoading(false);
+                  console.log('GitHub OAuth 检查登录状态失败');
+                }
+              }, 1000);
+            }
           }
         }, 1000);
       }
@@ -146,39 +182,73 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
         
         // 监听来自弹窗的消息
         const messageListener = (event: MessageEvent) => {
-          if (event.origin === window.location.origin && event.data.type === 'OAUTH_SUCCESS') {
-            console.log('Google OAuth success message received');
-            window.removeEventListener('message', messageListener);
-            clearInterval(checkClosed);
-            
-            // 登录成功处理 - 不刷新页面
-            console.log('Google OAuth 登录成功，更新认证状态');
-            setTimeout(async () => {
-              await refreshUser();
-              onSuccess?.();
-              onClose();
-              console.log('Google 登录模态已关闭，用户状态已更新');
-            }, 500);
+          if (event.origin === window.location.origin) {
+            if (event.data.type === 'OAUTH_SUCCESS') {
+              console.log('Google OAuth success message received');
+              window.removeEventListener('message', messageListener);
+              clearInterval(checkClosed);
+              
+              // 登录成功处理 - 不刷新页面
+              console.log('Google OAuth 登录成功，更新认证状态');
+              setTimeout(async () => {
+                await refreshUser();
+                onSuccess?.();
+                onClose();
+                console.log('Google 登录模态已关闭，用户状态已更新');
+              }, 500);
+            } else if (event.data.type === 'OAUTH_ERROR') {
+              console.log('Google OAuth error message received:', event.data.error);
+              window.removeEventListener('message', messageListener);
+              clearInterval(checkClosed);
+              
+              // 显示错误信息
+              setError(event.data.error || 'Google login failed');
+              setIsLoading(false);
+            }
           }
         };
         
-        window.addEventListener('message', messageListener);
+        // messageListener 已在上面的 wrappedMessageListener 中添加
         
         // 备用检查：监听窗口关闭（防止消息未收到）
+        let hasReceivedMessage = false;
+        
+        const originalMessageListener = messageListener;
+        const wrappedMessageListener = (event: MessageEvent) => {
+          hasReceivedMessage = true;
+          originalMessageListener(event);
+        };
+        
+        window.addEventListener('message', wrappedMessageListener);
+        
         const checkClosed = setInterval(() => {
           if (popup?.closed) {
             console.log('Google OAuth popup closed');
             clearInterval(checkClosed);
-            window.removeEventListener('message', messageListener);
+            window.removeEventListener('message', wrappedMessageListener);
             
-            // 检查登录状态 - 不刷新页面
-            console.log('Google OAuth 弹窗关闭，检查登录状态');
-            setTimeout(async () => {
-              await refreshUser();
-              onSuccess?.();
-              onClose();
-              console.log('Google 登录处理完成，用户状态已更新');
-            }, 1000);
+            // 只有在没有收到消息时才检查登录状态
+            if (!hasReceivedMessage) {
+              console.log('Google OAuth 弹窗关闭且未收到消息，检查登录状态');
+              setTimeout(async () => {
+                await refreshUser();
+                // 检查是否有用户登录（通过简单的API调用）
+                try {
+                  const response = await fetch('/api/user');
+                  if (response.ok) {
+                    onSuccess?.();
+                    onClose();
+                    console.log('Google 登录处理完成，用户状态已更新');
+                  } else {
+                    setIsLoading(false);
+                    console.log('Google OAuth 弹窗关闭但未登录成功');
+                  }
+                } catch (error) {
+                  setIsLoading(false);
+                  console.log('Google OAuth 检查登录状态失败');
+                }
+              }, 1000);
+            }
           }
         }, 1000);
       }
@@ -310,33 +380,36 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
               </Button>
             </div>
 
-            <div className="text-center text-sm">
-              {isSignUp ? (
-                <>
-                  {t.auth.alreadyHaveAccount}{' '}
-                  <button
-                    type="button"
-                    className="text-primary hover:underline"
-                    onClick={() => setIsSignUp(false)}
-                    disabled={isLoading}
-                  >
-                    {t.auth.signInToExistingAccount}
-                  </button>
-                </>
-              ) : (
-                <>
-                  {t.auth.newToSoon}{' '}
-                  <button
-                    type="button"
-                    className="text-primary hover:underline"
-                    onClick={() => setIsSignUp(true)}
-                    disabled={isLoading}
-                  >
-                    {t.auth.createAccount}
-                  </button>
-                </>
-              )}
-            </div>
+            {/* Only show signup toggle if registration is enabled */}
+            {registrationConfig.enableRegistration && (
+              <div className="text-center text-sm">
+                {isSignUp ? (
+                  <>
+                    {t.auth.alreadyHaveAccount}{' '}
+                    <button
+                      type="button"
+                      className="text-primary hover:underline"
+                      onClick={() => setIsSignUp(false)}
+                      disabled={isLoading}
+                    >
+                      {t.auth.signInToExistingAccount}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {t.auth.newToSoon}{' '}
+                    <button
+                      type="button"
+                      className="text-primary hover:underline"
+                      onClick={() => setIsSignUp(true)}
+                      disabled={isLoading}
+                    >
+                      {t.auth.createAccount}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -49,7 +49,7 @@ function UserMenu() {
         <div className="flex items-center space-x-4">
           <Avatar className="cursor-pointer size-9" onClick={() => setShowLoginModal(true)}>
             <AvatarFallback className="bg-muted text-muted-foreground hover:bg-muted/80 transition-colors">
-              {t.guest.status}
+              <UserIcon className="h-5 w-5" />
             </AvatarFallback>
           </Avatar>
         </div>

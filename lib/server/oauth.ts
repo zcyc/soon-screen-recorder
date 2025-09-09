@@ -1,6 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/appwrite-server";
+import { registrationConfig } from "@/lib/config";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { OAuthProvider } from "node-appwrite";
@@ -40,6 +41,11 @@ export async function signInWithGithub() {
  * GitHub OAuth 注册
  */
 export async function signUpWithGithub() {
+  // Check if user registration is enabled
+  if (!registrationConfig.enableRegistration) {
+    redirect('/sign-in?error=registration_disabled');
+  }
+
   try {
     const { account } = await createAdminClient();
 
@@ -101,6 +107,11 @@ export async function signInWithGoogle() {
  * Google OAuth 注册
  */
 export async function signUpWithGoogle() {
+  // Check if user registration is enabled
+  if (!registrationConfig.enableRegistration) {
+    redirect('/sign-in?error=registration_disabled');
+  }
+
   try {
     const { account } = await createAdminClient();
 

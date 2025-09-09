@@ -13,3 +13,9 @@ export const recordingConfig = {
   // Enable/disable recording time limit
   enableTimeLimit: process.env.NEXT_PUBLIC_RECORDING_ENABLE_TIME_LIMIT !== 'false',
 };
+
+// User registration configuration
+export const registrationConfig = {
+  // Enable/disable user registration functionality (default: true)
+  enableRegistration: process.env.NEXT_PUBLIC_ENABLE_REGISTRATION !== 'false',
+};
