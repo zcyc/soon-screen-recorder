@@ -12,8 +12,8 @@ import { useSafariURLCleanup } from '@/lib/safari-url-manager';
 
 interface ClientThumbnailGeneratorProps {
   videoId: string;
-  videoFile?: File; // 使用原始文件而不是 URL
-  videoUrl?: string; // 保持 URL 作为备选
+  videoFile?: File; // Use original file instead of URL
+  videoUrl?: string; // Keep URL as fallback
   onThumbnailGenerated?: (thumbnailUrl: string) => void;
   onError?: (error: string) => void;
 }
@@ -28,16 +28,17 @@ export default function ClientThumbnailGenerator({
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [processedSources, setProcessedSources] = useState<Set<string>>(new Set());
-  // 添加一个额外的检查，防止对同一个videoId重复生成缩略图
+  // Add an additional check to prevent generating thumbnails multiple times for the same videoId
   const [completedVideoIds, setCompletedVideoIds] = useState<Set<string>>(new Set());
   
-  // 使用 ref 来跟踪当前正在处理的视频，防止竞态条件
+
+  // Use ref to track videos being processed, preventing race conditions
   const currentlyProcessingRef = useRef<Set<string>>(new Set());
   const abortControllerRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
   
   // Create a stable source identifier that changes only when the actual source changes
-  // 移除lastModified以避免死循环，只使用size和name来识别文件
+  // Removed lastModified to avoid infinite loops, only using size and name to identify the file
   const sourceIdentifier = useMemo(() => {
     if (videoFile) {
       return `file-${videoId}-${videoFile.size}-${videoFile.name}`;
@@ -80,7 +81,7 @@ export default function ClientThumbnailGenerator({
     try {
       console.log(`🚀 Starting thumbnail generation for video ${videoId}...`);
 
-      // 1. 在客户端生成缩略图 blob
+     // 1. Generate thumbnail blob on the client side
       const thumbnailBlob = await generateVideoThumbnailBlob(videoSource, {
         width: 320,
         height: 180,
@@ -94,12 +95,13 @@ export default function ClientThumbnailGenerator({
 
       console.log('📸 Thumbnail blob generated, size:', thumbnailBlob.size);
 
-      // 2. 将 Blob 转换为 File
+
+      // 2. Convert Blob to File
       const thumbnailFile = new File([thumbnailBlob], `thumbnail-${videoId}.jpg`, {
         type: 'image/jpeg'
       });
 
-      // 3. 上传缩略图文件
+      // 3. Upload thumbnail file
       console.log('📤 Uploading thumbnail file...');
       const uploadResult = await uploadFileAction(thumbnailFile);
       
@@ -111,7 +113,7 @@ export default function ClientThumbnailGenerator({
 
       console.log('🔄 Thumbnail uploaded, updating video record...');
 
-      // 4. 更新视频记录的缩略图 URL
+      // 4. Update thumbnail URL in video record
       const updateResult = await updateVideoThumbnailAction(
         videoId,
         uploadResult.data.url

@@ -8,13 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Video, Github, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { useI18n } from '@/lib/i18n';
+import { AUTH } from '@/lib/constants';
 import { registrationConfig } from '@/lib/config';
 import { loginAction, registerAction } from '@/app/actions/user-actions';
 import { signInWithGithub, signUpWithGithub, signInWithGoogle, signUpWithGoogle } from '@/lib/server/oauth';
 // import { OAuthFallbackGuide } from '@/components/oauth-fallback-guide';
 
-// Google 图标组件
+// Google Icon Component
 const GoogleIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -26,7 +26,7 @@ const GoogleIcon = ({ className }: { className?: string }) => (
 
 function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
   const { user, refreshUser } = useAuth();
-  const { t } = useI18n();
+  // Removed useI18n, using AUTH constants directly
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/dashboard';
@@ -46,10 +46,10 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
       let errorMessage;
       switch (oauthError) {
         case 'oauth_cancelled':
-          errorMessage = t.auth.githubAuthCancelled || 'GitHub authentication was cancelled';
+          errorMessage = AUTH.githubAuthCancelled || 'GitHub authentication was cancelled';
           break;
         case 'oauth_failed':
-          errorMessage = t.auth.authenticationFailed || 'OAuth authentication failed';
+          errorMessage = AUTH.authenticationFailed || 'OAuth authentication failed';
           break;
         case 'oauth_incomplete':
           errorMessage = 'OAuth callback parameters were incomplete';
@@ -61,7 +61,7 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
           errorMessage = 'OAuth callback processing failed';
           break;
         case 'registration_disabled':
-          errorMessage = t.auth.registrationDisabled;
+          errorMessage = AUTH.registrationDisabled;
           break;
         default:
           errorMessage = `OAuth error: ${oauthError}`;
@@ -74,7 +74,7 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
     if (user) {
       router.push(redirect);
     }
-  }, [user, router, redirect, searchParams, t.auth]);
+  }, [user, router, redirect, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,7 +88,7 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
           result = await loginAction(email, password);
         } else {
           if (!name.trim()) {
-            throw new Error(t.auth.nameRequired);
+            throw new Error(AUTH.nameRequired);
           }
           result = await registerAction(email, password, name);
         }
@@ -96,18 +96,18 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
         if (result.error) {
           setError(result.error);
         } else {
-          // 刷新用户信息并重定向
+          // Refresh user info and redirect
           await refreshUser();
           router.push(redirect);
         }
       } catch (error: any) {
         console.error('Auth error:', error);
-        setError(error.message || t.auth.errorOccurred);
+        setError(error.message || AUTH.errorOccurred);
       }
     });
   };
 
-  // 使用 Server Action 处理 OAuth - 如果注册被禁用，强制使用登录模式
+  // Use Server Action to handle OAuth - if registration is disabled, force signin mode
   const effectiveMode = (!registrationConfig.enableRegistration && mode === 'signup') ? 'signin' : mode;
   const handleGitHubOAuth = effectiveMode === 'signin' ? signInWithGithub : signUpWithGithub;
   const handleGoogleOAuth = effectiveMode === 'signin' ? signInWithGoogle : signUpWithGoogle;
@@ -120,13 +120,13 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-foreground">
           {mode === 'signin'
-            ? t.auth.signInToSoon
-            : t.auth.createSoonAccount}
+            ? AUTH.signInToSoon
+            : AUTH.createSoonAccount}
         </h2>
         <p className="mt-2 text-center text-sm text-muted-foreground">
           {mode === 'signin'
-            ? t.auth.signInDescription
-            : t.auth.signUpDescription}
+            ? AUTH.signInDescription
+            : AUTH.signUpDescription}
         </p>
       </div>
 
@@ -138,7 +138,7 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
                 htmlFor="name"
                 className="block text-sm font-medium text-foreground"
               >
-                {t.auth.fullName}
+                {AUTH.fullName}
               </Label>
               <div className="mt-1">
                 <Input
@@ -151,7 +151,7 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
                   required
                   maxLength={50}
                   className="rounded-full"
-                  placeholder={t.auth.enterFullName}
+                  placeholder={AUTH.enterFullName}
                 />
               </div>
             </div>
@@ -162,7 +162,7 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
               htmlFor="email"
               className="block text-sm font-medium text-foreground"
             >
-              {t.auth.email}
+              {AUTH.email}
             </Label>
             <div className="mt-1">
               <Input
@@ -175,7 +175,7 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
                 required
                 maxLength={50}
                 className="rounded-full"
-                placeholder={t.auth.enterEmail}
+                placeholder={AUTH.enterEmail}
               />
             </div>
           </div>
@@ -185,7 +185,7 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
               htmlFor="password"
               className="block text-sm font-medium text-foreground"
             >
-              {t.auth.password}
+              {AUTH.password}
             </Label>
             <div className="mt-1">
               <Input
@@ -201,7 +201,7 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
                 minLength={8}
                 maxLength={100}
                 className="rounded-full"
-                placeholder={t.auth.enterPassword}
+                placeholder={AUTH.enterPassword}
               />
             </div>
           </div>
@@ -219,12 +219,12 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
               {isPending ? (
                 <>
                   <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                  {t.auth.loading}
+                  {AUTH.loading}
                 </>
               ) : mode === 'signin' ? (
-                t.auth.signIn
+                AUTH.signIn
               ) : (
-                t.auth.signUp
+                AUTH.signUp
               )}
             </Button>
           </div>
@@ -237,7 +237,7 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="px-2 bg-background text-muted-foreground">
-                {t.auth.orContinueWith}
+                {AUTH.orContinueWith}
               </span>
             </div>
           </div>
@@ -254,7 +254,7 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
                 disabled={isPending}
               >
                 <Github className="mr-2 h-4 w-4" />
-                {t.auth.continueWithGitHub}
+                {AUTH.continueWithGitHub}
               </Button>
             </form>
             
@@ -267,7 +267,7 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
                 disabled={isPending}
               >
                 <GoogleIcon className="mr-2 h-4 w-4" />
-                {t.auth.continueWithGoogle}
+                {AUTH.continueWithGoogle}
               </Button>
             </form>
           </div>
@@ -287,8 +287,8 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
                 <div className="relative flex justify-center text-sm">
                   <span className="px-2 bg-background text-muted-foreground">
                     {mode === 'signin'
-                      ? (registrationConfig.enableRegistration ? t.auth.newToSoon : '')
-                      : t.auth.alreadyHaveAccount}
+                      ? (registrationConfig.enableRegistration ? AUTH.newToSoon : '')
+                      : AUTH.alreadyHaveAccount}
                   </span>
                 </div>
               </div>
@@ -301,8 +301,8 @@ function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
                     className="w-full flex justify-center py-2 px-4 border border-input rounded-full shadow-sm text-sm font-medium text-foreground bg-background hover:bg-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                   >
                     {mode === 'signin'
-                      ? t.auth.createAccount
-                      : t.auth.signInToExistingAccount}
+                      ? AUTH.createAccount
+                      : AUTH.signInToExistingAccount}
                   </Link>
                 </div>
               )}

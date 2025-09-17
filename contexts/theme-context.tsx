@@ -12,7 +12,7 @@ const GREEN_THEME = {
 
 interface ThemeContextType {
   mode: ThemeMode;
-  actualMode: 'light' | 'dark'; // 实际生效的模式
+  actualMode: 'light' | 'dark'; // Actually effective mode
   toggleMode: () => void;
 }
 
@@ -30,10 +30,10 @@ interface ThemeProviderProps {
   children: React.ReactNode;
 }
 
-// 获取基于时间的主题模式
+// Get time-based theme mode
 function getTimeBasedTheme(): 'light' | 'dark' {
   const hour = new Date().getHours();
-  // 6:00 - 18:00 为浅色模式，18:00 - 6:00 为深色模式
+  // 6:00 - 18:00 for light mode, 18:00 - 6:00 for dark mode
   return (hour >= 6 && hour < 18) ? 'light' : 'dark';
 }
 
@@ -85,7 +85,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
 
     const root = document.documentElement;
     
-    // 计算实际应该应用的模式
+    // Calculate actual mode that should be applied
     let effectiveMode: 'light' | 'dark';
     if (mode === 'auto') {
       effectiveMode = getTimeBasedTheme();
@@ -93,7 +93,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       effectiveMode = mode as 'light' | 'dark';
     }
     
-    // 只在模式真的改变时更新 actualMode
+    // Only update actualMode when mode actually changes
     if (effectiveMode !== actualMode) {
       setActualMode(effectiveMode);
     }
@@ -101,7 +101,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     // Batch DOM updates to minimize repaints
     const updates: Array<() => void> = [];
     
-    // Apply dark/light mode - 只在需要时修改，避免不必要的闪烁
+    // Apply dark/light mode - only modify when needed, avoid unnecessary flickering
     const hasDarkClass = root.classList.contains('dark');
     if (effectiveMode === 'dark' && !hasDarkClass) {
       updates.push(() => root.classList.add('dark'));
@@ -132,7 +132,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     }
   }, [mode, mounted, actualMode]);
 
-  // 自动更新基于时间的主题（仅在 auto 模式下）
+  // Auto update time-based theme (only in auto mode)
   useEffect(() => {
     if (!mounted || mode !== 'auto') return;
     
@@ -143,10 +143,10 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       }
     };
     
-    // 立即检查一次，确保与服务器端保持同步
+    // Check immediately once to ensure sync with server side
     updateTimeBasedTheme();
     
-    // 每分钟检查一次时间变化
+    // Check time changes every minute
     const interval = setInterval(updateTimeBasedTheme, 60000);
     
     return () => clearInterval(interval);

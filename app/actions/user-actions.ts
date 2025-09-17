@@ -1,6 +1,8 @@
 'use server';
 
 import { getCurrentUser, verifySession, updatePreferences, createOAuth2Session, login, logout, createAccount, handleOAuthCallback, extractOAuthCallbackData } from '@/lib/auth/server-auth';
+import { cookies } from 'next/headers';
+import { signOutUser } from '@/lib/auth/local-auth';
 import { activityService, ActivityType } from '@/lib/services/activity-service';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -76,10 +78,10 @@ export async function loginAction(email: string, password: string): Promise<Acti
 // Register user
 export async function registerAction(email: string, password: string, name: string): Promise<ActionResult> {
   try {
-    // 创建账户
+    // Create account
     await createAccount(email, password, name);
     
-    // 自动登录
+    // Auto login
     await login(email, password);
     
     revalidatePath('/dashboard');
@@ -94,14 +96,41 @@ export async function registerAction(email: string, password: string, name: stri
 // Logout user
 export async function logoutAction(): Promise<ActionResult> {
   try {
-    await logout();
+    // Local JWT logout logic
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth-token')?.value;
+    
+    if (token) {
+      // Clear session in database
+      await signOutUser(token);
+    }
+    
+    // Clear cookie
+    cookieStore.set('auth-token', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0 // Expire immediately
+    });
     
     revalidatePath('/');
     
     return { success: true };
   } catch (error: any) {
     console.error('Logout error:', error);
-    return { error: error.message || 'Failed to logout' };
+    // Clear cookie even if logout fails
+    try {
+      const cookieStore = await cookies();
+      cookieStore.set('auth-token', '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 0
+      });
+    } catch (cookieError) {
+      console.error('Cookie clear error:', cookieError);
+    }
+    return { success: true }; // Return success even if error to ensure logout UX
   }
 }
 

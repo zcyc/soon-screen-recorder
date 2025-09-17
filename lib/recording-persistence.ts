@@ -1,4 +1,4 @@
-// 录制状态持久化工具
+// Recording state persistence utility
 export interface PersistedRecordingState {
   duration: number;
   videoTitle: string;
@@ -15,9 +15,9 @@ export interface PersistedRecordingState {
 }
 
 const RECORDING_STORAGE_KEY = 'soon-recording-state';
-const STORAGE_EXPIRY_MS = 30 * 60 * 1000; // 30分钟过期
+const STORAGE_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes expiry
 
-// 将Blob转换为ArrayBuffer用于存储
+// Convert Blob to ArrayBuffer for storage
 export const blobToArrayBuffer = async (blob: Blob): Promise<ArrayBuffer> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -27,18 +27,18 @@ export const blobToArrayBuffer = async (blob: Blob): Promise<ArrayBuffer> => {
   });
 };
 
-// 将ArrayBuffer和类型信息恢复为Blob
+// Restore ArrayBuffer and type info to Blob
 export const arrayBufferToBlob = (buffer: ArrayBuffer, type: string): Blob => {
-  // 确保类型信息有效
+  // Ensure type information is valid
   const normalizedType = type || 'video/webm';
   
-  // 检查ArrayBuffer有效性
+  // Check ArrayBuffer validity
   if (!buffer || buffer.byteLength === 0) {
-    console.warn('ArrayBuffer为空或无数据');
+    console.warn('ArrayBuffer is empty or has no data');
     throw new Error('Invalid ArrayBuffer data');
   }
   
-  console.log('恢复Blob:', {
+  console.log('Restoring Blob:', {
     bufferSize: buffer.byteLength,
     type: normalizedType,
     bufferSizeKB: Math.round(buffer.byteLength / 1024)
@@ -47,19 +47,19 @@ export const arrayBufferToBlob = (buffer: ArrayBuffer, type: string): Blob => {
   return new Blob([buffer], { type: normalizedType });
 };
 
-// 验证Blob是否有效（宽松模式）
+// Validate if Blob is valid (lenient mode)
 export const validateBlob = async (blob: Blob): Promise<{valid: boolean, warnings: string[]}> => {
   const warnings: string[] = [];
   
   try {
-    // 基本属性检查
+    // Basic property checks
     if (!blob) {
-      return { valid: false, warnings: ['Blob对象为空'] };
+      return { valid: false, warnings: ['Blob object is empty'] };
     }
     
     if (blob.size === 0) {
-      warnings.push('Blob大小为0，可能是空文件');
-      // 不直接返回false，继续检查
+      warnings.push('Blob size is 0, might be empty file');
+      // Don't return false directly, continue checking
     }
     
     // 检查MIME类型（容错处理）
@@ -73,7 +73,7 @@ export const validateBlob = async (blob: Blob): Promise<{valid: boolean, warning
       if (!isVideoType) {
         warnings.push(`MIME类型可能不是视频: ${blob.type}`);
       } else {
-        console.log('localStorage: 检测到视频MIME类型:', blob.type);
+        console.log('localStorage: Video MIME type detected:', blob.type);
       }
     } else {
       warnings.push('Blob没有MIME类型信息');
@@ -87,7 +87,7 @@ export const validateBlob = async (blob: Blob): Promise<{valid: boolean, warning
       return { valid: false, warnings: [`文件大小过大: ${Math.round(blob.size / 1024 / 1024)}MB`] };
     }
     
-    console.log('localStorage: Blob基本信息:', {
+    console.log('localStorage: Blob basic information:', {
       size: blob.size,
       type: blob.type || '未知类型',
       sizeKB: Math.round(blob.size / 1024),
@@ -98,7 +98,7 @@ export const validateBlob = async (blob: Blob): Promise<{valid: boolean, warning
     let url: string | null = null;
     try {
       url = URL.createObjectURL(blob);
-      console.log('Blob URL 创建成功，基本验证通过');
+      console.log('Blob URL created successfully, basic validation passed');
       return { valid: true, warnings };
     } catch (urlError) {
       warnings.push(`URL创建失败: ${urlError}`);
@@ -114,7 +114,7 @@ export const validateBlob = async (blob: Blob): Promise<{valid: boolean, warning
   }
 };
 
-// 保存录制状态到localStorage
+// Save recording state to localStorage
 export const saveRecordingState = async (
   recordedBlob: Blob | null,
   duration: number,
@@ -145,7 +145,7 @@ export const saveRecordingState = async (
       // 只保存较小的录制文件（小于50MB）
       if (recordedBlob.size < 50 * 1024 * 1024) {
         try {
-          console.log('开始保存Blob到localStorage:', {
+          console.log('Starting to save Blob to localStorage:', {
             size: recordedBlob.size,
             type: recordedBlob.type,
             sizeKB: Math.round(recordedBlob.size / 1024)
@@ -170,7 +170,7 @@ export const saveRecordingState = async (
             });
             throw new Error('Data integrity check failed - significant size difference');
           } else if (sizeDifference > 0) {
-            console.log('数据大小微小差异（在允许范围内）:', {
+            console.log('Minor data size difference (within allowed range):', {
               originalSize,
               bufferSize,
               difference: sizeDifference,
@@ -178,7 +178,7 @@ export const saveRecordingState = async (
             });
           }
           
-          console.log('Blob保存完成，数据完整性校验通过');
+          console.log('Blob save completed, data integrity verification passed');
         } catch (blobSerializationError) {
           console.error('Blob序列化失败:', blobSerializationError);
           // 不保存Blob数据，但保存其他状态
@@ -192,7 +192,7 @@ export const saveRecordingState = async (
     }
 
     localStorage.setItem(RECORDING_STORAGE_KEY, JSON.stringify(state));
-    console.log('录制状态已保存到localStorage');
+    console.log('Recording state saved to localStorage');
   } catch (error) {
     console.error('保存录制状态失败:', error);
     // 如果存储失败（通常是因为空间不足），清理旧数据
@@ -200,7 +200,7 @@ export const saveRecordingState = async (
   }
 };
 
-// 从localStorage恢复录制状态
+// Restore recording state from localStorage
 export const loadRecordingState = async (): Promise<{
   recordedBlob: Blob | null;
   duration: number;
@@ -221,7 +221,7 @@ export const loadRecordingState = async (): Promise<{
     
     // 检查是否过期
     if (Date.now() - state.timestamp > STORAGE_EXPIRY_MS) {
-      console.log('录制状态已过期，清理');
+      console.log('Recording state expired, cleaning up');
       clearRecordingState();
       return null;
     }
@@ -229,7 +229,7 @@ export const loadRecordingState = async (): Promise<{
     let recordedBlob: Blob | null = null;
     if (state.blobData && state.blobType) {
       try {
-        console.log('开始从 localStorage 恢复Blob:', {
+        console.log('Starting to restore Blob from localStorage:', {
           bufferSize: state.blobData.byteLength,
           type: state.blobType,
           bufferSizeKB: Math.round(state.blobData.byteLength / 1024)
@@ -253,14 +253,14 @@ export const loadRecordingState = async (): Promise<{
           });
           throw new Error('Data integrity verification failed - significant size difference after restoration');
         } else if (sizeDifference > 0) {
-          console.log('数据大小微小差异（恢复后，在允许范围内）:', {
+          console.log('Minor data size difference (after restoration, within allowed range):', {
             expectedSize,
             actualSize,
             difference: sizeDifference,
             differencePercent: sizeDifferencePercent.toFixed(4) + '%'
           });
         } else {
-          console.log('数据完整性校验通过：大小完全一致');
+          console.log('Data integrity verification passed: size completely consistent');
         }
         
         // 尝试验证恢复的Blob（容错处理）
@@ -273,7 +273,7 @@ export const loadRecordingState = async (): Promise<{
             if (validation.warnings.length > 0) {
               console.warn('恢复的Blob验证通过，但有警告:', validation.warnings);
             } else {
-              console.log('恢复的Blob验证完全通过');
+              console.log('Restored Blob validation completely passed');
             }
           }
         } catch (validationError) {
@@ -281,7 +281,7 @@ export const loadRecordingState = async (): Promise<{
           // 继续使用未验证的Blob
         }
         
-        console.log('恢复的Blob处理完成', { 
+        console.log('Restored Blob processing completed', { 
           size: recordedBlob.size, 
           type: recordedBlob.type,
           sizeKB: Math.round(recordedBlob.size / 1024)
@@ -315,7 +315,7 @@ export const loadRecordingState = async (): Promise<{
       }
     }
 
-    console.log('录制状态已从localStorage恢复');
+    console.log('Recording state restored from localStorage');
     return {
       recordedBlob,
       duration: state.duration,
@@ -339,7 +339,7 @@ export const loadRecordingState = async (): Promise<{
 export const clearRecordingState = (): void => {
   try {
     localStorage.removeItem(RECORDING_STORAGE_KEY);
-    console.log('录制状态已清理');
+    console.log('Recording state cleared');
   } catch (error) {
     console.error('清理录制状态失败:', error);
   }
@@ -355,7 +355,7 @@ export const hasPersistedRecordingState = (): boolean => {
     
     // 检查是否过期
     if (Date.now() - state.timestamp > STORAGE_EXPIRY_MS) {
-      console.log('录制状态已过期，清理:', {
+      console.log('Recording state expired, cleaning up:', {
         age: Date.now() - state.timestamp,
         expiry: STORAGE_EXPIRY_MS
       });
@@ -365,7 +365,7 @@ export const hasPersistedRecordingState = (): boolean => {
     
     // 检查是否有Blob数据
     const hasBlob = !!(state.blobData && state.blobType);
-    console.log('检查录制状态:', {
+    console.log('Checking recording state:', {
       hasBlob,
       blobSize: state.blobData ? state.blobData.byteLength : 0,
       age: Date.now() - state.timestamp
@@ -396,7 +396,7 @@ export const forceCleanCorruptedData = (): void => {
     for (const key of keys) {
       if (key.includes('recording') || key.includes('soon')) {
         localStorage.removeItem(key);
-        console.log('清理可能损坏的键:', key);
+        console.log('Cleaning up potentially corrupted key:', key);
       }
     }
   } catch (error) {

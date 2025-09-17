@@ -14,7 +14,7 @@ export default function OAuthCallbackPage() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // 显示调试信息
+        // Show debug info
         const debugData = {
           url: window.location.href,
           searchParams: Array.from(searchParams.entries()),
@@ -24,45 +24,45 @@ export default function OAuthCallbackPage() {
         
         console.log('OAuth callback page loaded with:', debugData);
         
-        // 提取回调参数
+        // Extract callback parameters
         const userId = searchParams.get('userId');
         const secret = searchParams.get('secret');
         const error = searchParams.get('error');
 
-        // 检查是否有错误
+        // Check if there are errors
         if (error) {
           console.error('OAuth callback error from URL:', error);
           setError(`OAuth error: ${error}`);
           setStatus('error');
           
-          // 3秒后重定向到登录页
+          // Redirect to login page after 3 seconds
           setTimeout(() => {
             router.push('/sign-in?error=oauth_failed');
           }, 3000);
           return;
         }
 
-        // 检查必需参数
+        // Check required parameters
         if (!userId || !secret) {
           console.error('Missing OAuth callback parameters:', { userId: !!userId, secret: !!secret });
           setError('Missing OAuth callback parameters');
           setStatus('error');
           
-          // 3秒后重定向到登录页
+          // Redirect to login page after 3 seconds
           setTimeout(() => {
             router.push('/sign-in?error=oauth_incomplete');
           }, 3000);
           return;
         }
 
-        // 处理 OAuth 回调
+        // Handle OAuth callback
         console.log('Processing OAuth callback...');
         const result = await handleOAuthCallbackAction(userId, secret);
         
         if (result.success && result.data?.user) {
           console.log('OAuth callback successful, user:', result.data.user.$id);
           
-          // 记录登录活动
+          // Record login activity
           try {
             const activityResult = await logOAuthActivityAction(result.data.user.$id, 'GitHub OAuth login');
             if (activityResult.data?.warning) {
@@ -70,12 +70,12 @@ export default function OAuthCallbackPage() {
             }
           } catch (activityError) {
             console.warn('Failed to log OAuth activity:', activityError);
-            // 不阻止登录流程
+            // Don't block login flow
           }
           
           setStatus('success');
           
-          // 1秒后重定向到仪表板
+          // Redirect to dashboard after 1 second
           setTimeout(() => {
             router.push('/dashboard');
           }, 1000);
@@ -85,7 +85,7 @@ export default function OAuthCallbackPage() {
           setError(result.error || 'Failed to establish session');
           setStatus('error');
           
-          // 3秒后重定向到登录页
+          // Redirect to login page after 3 seconds
           setTimeout(() => {
             router.push('/sign-in?error=oauth_session_failed');
           }, 3000);

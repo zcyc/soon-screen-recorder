@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Settings, Monitor, Camera, Mic, CheckCircle, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
-import { useI18n } from '@/lib/i18n';
+import { DEVICES } from '@/lib/constants';
 
 interface PermissionStatus {
   camera: 'granted' | 'denied' | 'prompt' | 'unknown';
@@ -13,7 +13,7 @@ interface PermissionStatus {
 }
 
 export default function RecordingStatus() {
-  const { t } = useI18n();
+
   const [permissions, setPermissions] = useState<PermissionStatus>({
     camera: 'unknown',
     microphone: 'unknown',
@@ -100,17 +100,17 @@ export default function RecordingStatus() {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'granted':
-        return t.devices.granted;
+        return DEVICES.granted;
       case 'supported':
-        return t.devices.supported;
+        return DEVICES.supported;
       case 'denied':
-        return t.devices.denied;
+        return DEVICES.denied;
       case 'unsupported':
-        return t.devices.unsupported;
+        return DEVICES.unsupported;
       case 'prompt':
-        return t.devices.needsPermission;
+        return DEVICES.needsPermission;
       default:
-        return t.devices.unknown;
+        return DEVICES.unknown;
     }
   };
 
@@ -135,7 +135,7 @@ export default function RecordingStatus() {
         <CardContent className="flex items-center justify-center py-6">
           <div className="flex items-center space-x-2 text-muted-foreground">
             <RefreshCw className="h-4 w-4 animate-spin" />
-            <span>{t.devices.checkingPermissions}</span>
+            <span>{DEVICES.checkingPermissions}</span>
           </div>
         </CardContent>
       </Card>
@@ -155,17 +155,17 @@ export default function RecordingStatus() {
                 <XCircle className="h-4 w-4 text-red-600" />
               )}
             </div>
-            <span className="text-sm font-medium">{t.devices.httpsConnection}</span>
+            <span className="text-sm font-medium">{DEVICES.httpsConnection}</span>
           </div>
           <span className={`text-sm ${isHttps ? 'text-green-600' : 'text-red-600'}`}>
-            {isHttps ? t.devices.httpsSecure : t.devices.httpsInsecure}
+            {isHttps ? 'Secure' : 'Insecure'}
           </span>
         </div>
 
         {!isHttps && (
           <div className="p-3 bg-red-50 dark:bg-red-950 rounded-lg border border-red-200 dark:border-red-800">
             <p className="text-red-700 dark:text-red-300 text-xs">
-              {t.devices.httpsWarning}
+              {DEVICES.httpsRequired}
             </p>
           </div>
         )}
@@ -174,7 +174,7 @@ export default function RecordingStatus() {
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <Monitor className="h-4 w-4 mr-2" />
-            <span className="text-sm">{t.devices.screenRecording}</span>
+            <span className="text-sm">{DEVICES.screenRecording}</span>
           </div>
           <div className="flex items-center space-x-2">
             {getStatusIcon(permissions.screen)}
@@ -188,7 +188,7 @@ export default function RecordingStatus() {
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <Camera className="h-4 w-4 mr-2" />
-            <span className="text-sm">{t.devices.cameraRecording}</span>
+            <span className="text-sm">Camera Access</span>
           </div>
           <div className="flex items-center space-x-2">
             {getStatusIcon(permissions.camera)}
@@ -202,7 +202,7 @@ export default function RecordingStatus() {
                 onClick={() => requestPermission('camera')}
                 className="h-6 px-2 text-xs"
               >
-                {t.devices.authorize}
+                Authorize
               </Button>
             )}
           </div>
@@ -212,7 +212,7 @@ export default function RecordingStatus() {
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <Mic className="h-4 w-4 mr-2" />
-            <span className="text-sm">{t.devices.microphoneRecording}</span>
+            <span className="text-sm">Microphone Access</span>
           </div>
           <div className="flex items-center space-x-2">
             {getStatusIcon(permissions.microphone)}
@@ -226,7 +226,7 @@ export default function RecordingStatus() {
                 onClick={() => requestPermission('microphone')}
                 className="h-6 px-2 text-xs"
               >
-                {t.devices.authorize}
+                Authorize
               </Button>
             )}
           </div>
@@ -242,7 +242,7 @@ export default function RecordingStatus() {
             disabled={isLoading}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            {t.devices.refreshPermissionStatus}
+            Refresh Status
           </Button>
         </div>
 
@@ -250,7 +250,7 @@ export default function RecordingStatus() {
         {(permissions.camera === 'denied' || permissions.microphone === 'denied') && (
           <div className="p-3 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
             <p className="text-amber-700 dark:text-amber-300 text-xs">
-              {t.devices.permissionTroubleshooting}
+              If permissions are denied, please check your browser settings and refresh the page.
             </p>
           </div>
         )}

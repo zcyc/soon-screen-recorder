@@ -21,7 +21,6 @@ interface VideoCardWithUrlProps {
   deletingVideoId: string | null;
   updatingPrivacyId: string | null;
   updatingPublishId: string | null;
-  t: any;
 }
 
 export default function VideoCardWithUrl(props: VideoCardWithUrlProps) {

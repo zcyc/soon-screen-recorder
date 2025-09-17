@@ -56,6 +56,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   Monitor, 
   Camera, 
@@ -77,13 +78,43 @@ import {
   Globe
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { useI18n } from '@/lib/i18n';
+import { RECORDING, SUBTITLES, PERMISSIONS, COMMON, GUEST, VIDEOS, PUBLISH, DEVICES } from '@/lib/constants';
+import { isInIframe, isMediaAccessBlocked, openInNewWindow, getIframeRestrictionMessage } from '@/lib/iframe-detector';
 import { recordingConfig } from '@/lib/config';
 import { uploadVideoFileAction } from '@/app/actions/video-actions';
 import { detectBrowser as detectBrowserFromLib } from '@/lib/browser-compatibility';
 
 import { getFileUrlAction, uploadFileAction, updateVideoThumbnailAction } from '@/app/actions/video-actions';
 import { generateVideoThumbnailBlob } from '@/lib/video-utils';
+
+// Utility function to check Permissions Policy support
+const checkPermissionsPolicy = (): { supported: boolean; allowed: boolean; error?: string } => {
+  try {
+    // Check if Permissions Policy API is available
+    if (typeof document !== 'undefined' && 'featurePolicy' in document) {
+      const policy = (document as any).featurePolicy;
+      if (policy && typeof policy.allowsFeature === 'function') {
+        const displayCaptureAllowed = policy.allowsFeature('display-capture');
+        return { supported: true, allowed: displayCaptureAllowed };
+      }
+    }
+    
+    // Check for newer Permissions Policy API
+    if (typeof document !== 'undefined' && 'permissionsPolicy' in document) {
+      const policy = (document as any).permissionsPolicy;
+      if (policy && typeof policy.allowsFeature === 'function') {
+        const displayCaptureAllowed = policy.allowsFeature('display-capture');
+        return { supported: true, allowed: displayCaptureAllowed };
+      }
+    }
+    
+    // If no Permissions Policy API, assume allowed (older browsers)
+    return { supported: false, allowed: true };
+  } catch (error) {
+    console.warn('Error checking Permissions Policy:', error);
+    return { supported: false, allowed: true, error: (error as Error).message };
+  }
+};
 
 type RecordingQuality = '720p' | '1080p';
 type RecordingSource = 'screen' | 'camera' | 'both' | 'camera-only';
@@ -134,18 +165,18 @@ const RestoreableVideo: React.FC<{
     try {
       // 基本验证
       if (!blob || blob.size === 0) {
-        setError('视频数据无效');
+        setError('Invalid video data');
         return;
       }
       
       if (!(blob instanceof Blob)) {
-        setError('无效的视频数据类型');
+        setError('Invalid video data type');
         return;
       }
 
       // 检查文件大小
       if (blob.size > 500 * 1024 * 1024) { // 大于500MB
-        setError('视频文件过大（超过500MB）');
+        setError('Video file too large (over 500MB)');
         return;
       }
       
@@ -154,18 +185,18 @@ const RestoreableVideo: React.FC<{
       setVideoSrc(objectUrl);
       setError(null);
       
-      console.log('视频预览准备就绪:', {
+      console.log('Video preview ready:', {
         size: blob.size,
         type: blob.type,
         sizeKB: Math.round(blob.size / 1024)
       });
       
     } catch (err: any) {
-      console.error('创建视频URL失败:', err);
+      console.error('Failed to create video URL:', err);
       if (objectUrl) {
         URL.revokeObjectURL(objectUrl);
       }
-      setError(`视频加载失败: ${err.message}`);
+      setError(`Video loading failed: ${err.message}`);
       setVideoSrc(null);
     }
 
@@ -179,21 +210,21 @@ const RestoreableVideo: React.FC<{
 
   const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
     const video = e.target as HTMLVideoElement;
-    console.error('视频播放错误:', {
+    console.error('Video playback error:', {
       errorCode: video.error?.code,
       errorMessage: video.error?.message,
       blobSize: blob?.size,
       blobType: blob?.type
     });
     
-    let errorMessage = '视频播放失败';
+    let errorMessage = 'Video playback failed';
     if (video.error) {
       switch (video.error.code) {
-        case 1: errorMessage = '视频加载被中断'; break;
-        case 2: errorMessage = '网络错误'; break;
-        case 3: errorMessage = '视频解码失败'; break;
-        case 4: errorMessage = '视频格式不支持'; break;
-        default: errorMessage = `视频错误 (${video.error.code})`;
+        case 1: errorMessage = 'Video loading interrupted'; break;
+        case 2: errorMessage = 'Network error'; break;
+        case 3: errorMessage = 'Video decoding failed'; break;
+        case 4: errorMessage = 'Video format not supported'; break;
+        default: errorMessage = `Video error (${video.error.code})`;
       }
     }
     setError(errorMessage);
@@ -213,7 +244,7 @@ const RestoreableVideo: React.FC<{
       const browser = detectBrowserFromLib();
       
       if (browser.isSafari) {
-        console.log('🍎 Safari 视频元数据加载完成，准备显示第一帧...');
+        console.log('🍎 Safari video metadata loaded, preparing to display first frame...');
         
         // Safari需要显式地寻址到第一帧来触发画面显示
         const video = videoRef.current;
@@ -223,7 +254,7 @@ const RestoreableVideo: React.FC<{
         
         // 方法2：使用loadeddata事件确保画面显示
         const handleLoadedData = () => {
-          console.log('🍎 Safari 视频数据加载完成，第一帧应该可见');
+          console.log('🍎 Safari video data loaded, first frame should be visible');
           video.removeEventListener('loadeddata', handleLoadedData);
           
           // 确保视频在第一帧暂停
@@ -238,7 +269,7 @@ const RestoreableVideo: React.FC<{
         setTimeout(() => {
           if (video.readyState >= 2) { // HAVE_CURRENT_DATA
             video.currentTime = 0;
-            console.log('🍎 Safari 强制设置到第一帧');
+            console.log('🍎 Safari forced to first frame');
           }
         }, 50);
       }
@@ -256,7 +287,7 @@ const RestoreableVideo: React.FC<{
             <p className="font-medium text-destructive">{error}</p>
           </div>
           <div className="text-xs text-muted-foreground mb-3">
-            <p>请尝试重新录制视频</p>
+            <p>Please try recording the video again</p>
           </div>
         </div>
       </div>
@@ -268,7 +299,7 @@ const RestoreableVideo: React.FC<{
       <div className={`flex items-center justify-center bg-muted ${className}`}>
         <div className="text-center text-sm text-muted-foreground">
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-current mx-auto mb-2"></div>
-          <p>加载视频中...</p>
+          <p>Loading video...</p>
         </div>
       </div>
     );
@@ -313,7 +344,7 @@ const RestoreableVideo: React.FC<{
 
 export default function ScreenRecorder() {
   const { user } = useAuth();
-  const { t } = useI18n();
+
   const [recordingState, setRecordingState] = useState<RecordingState>({
     isRecording: false,
     isPaused: false,
@@ -355,7 +386,7 @@ export default function ScreenRecorder() {
       setIsPiPRequesting(true);
       // 设置3秒超时保护
       pipTimeoutRef.current = setTimeout(() => {
-        console.log('PiP请求超时，自动清理状态');
+        console.log('PiP request timeout, automatically cleaning up state');
         setIsPiPRequesting(false);
         pipTimeoutRef.current = null;
       }, 3000);
@@ -454,7 +485,7 @@ export default function ScreenRecorder() {
     setVideoTitle('');
     setIsVideoPublic(true);
     
-    console.log('开始新录制，重置内存中的状态');
+    console.log('Starting new recording, resetting state in memory');
     
     setIsVideoPublished(false);
     setUploadedVideo(null);
@@ -492,7 +523,7 @@ export default function ScreenRecorder() {
     recognition.maxAlternatives = 1;
     
     recognition.onstart = () => {
-      console.log('语音识别已启动');
+      console.log('Speech recognition started');
       setSubtitleState(prev => ({ ...prev, isListening: true }));
     };
     
@@ -553,7 +584,7 @@ export default function ScreenRecorder() {
     };
     
     recognition.onend = () => {
-      console.log('语音识别结束');
+      console.log('Speech recognition ended');
       setSubtitleState(prev => ({ ...prev, isListening: false }));
       
       // 如果字幕功能仍然启用且正在录制，重新启动识别
@@ -676,7 +707,7 @@ export default function ScreenRecorder() {
       await navigator.clipboard.writeText(shareUrl);
 
     } catch (error) {
-      console.error(t.recording.copyFailed, error);
+      console.error(RECORDING.copyFailed, error);
       // Fallback for older browsers
       const textArea = document.createElement('textarea');
       textArea.value = shareUrl;
@@ -695,14 +726,14 @@ export default function ScreenRecorder() {
       try {
         await navigator.share({
           title: video.title,
-          text: `${t.recording.watchVideo}: ${video.title}`,
+          text: `${RECORDING.watchVideo}: ${video.title}`,
           url: shareUrl,
         });
         // 原生分享成功，不显示消息
       } catch (error) {
         // 用户取消分享或其他错误，不作任何操作
         if (error instanceof Error && error.name !== 'AbortError') {
-          console.log('分享取消或失败:', error.message);
+          console.log('Share cancelled or failed:', error.message);
         }
       }
     } else {
@@ -727,23 +758,23 @@ export default function ScreenRecorder() {
   useEffect(() => {
     // 只在组件完全挂载后才处理摄像头预览
     if (!isMounted) {
-      console.log('组件还未完全挂载，跳过摄像头预览');
+      console.log('Component not fully mounted yet, skipping camera preview');
       return;
     }
     
-    console.log('摄像头状态变化:', { includeCamera, isRecording: recordingState.isRecording, isMounted });
+    console.log('Camera state change:', { includeCamera, isRecording: recordingState.isRecording, isMounted });
     
     if (includeCamera) {
       // 开启摄像头时启动预览（录制时也保持开启）
       if (!cameraPreviewStream) {
-        console.log('启动摄像头预览...');
+        console.log('Starting camera preview...');
         startCameraPreview();
       } else if (recordingState.isRecording) {
-        console.log('录制中，保持摄像头画中画开启...');
+        console.log('Recording in progress, keeping camera picture-in-picture enabled...');
       }
     } else {
       // 关闭摄像头时停止预览
-      console.log('停止摄像头预览...');
+      console.log('Stopping camera preview...');
       stopCameraPreview();
     }
   }, [includeCamera, recordingState.isRecording, isMounted]);
@@ -753,7 +784,7 @@ export default function ScreenRecorder() {
     if ((screenSource === 'window' || screenSource === 'browser') && 
         source !== 'camera-only' && 
         includeCamera) {
-      console.log(`如选择${screenSource === 'window' ? '应用窗口' : '浏览器标签页'}，自动关闭摄像头`);
+      console.log(`Auto-closing camera when ${screenSource === 'window' ? 'application window' : 'browser tab'} is selected`);
       setIncludeCamera(false);
     }
   }, [screenSource, source, includeCamera]);
@@ -764,7 +795,7 @@ export default function ScreenRecorder() {
     
     // 不需要从 localStorage 恢复状态，因为不再存储 Blob 数据
     // 登录不会刷新页面，所有状态都在内存中保持
-    console.log('组件初始化，使用默认状态');
+    console.log('Component initialization, using default state');
     
     return () => {
       setIsMounted(false);
@@ -774,7 +805,7 @@ export default function ScreenRecorder() {
 
   // 状态变化监控 - 用于调试Firefox问题
   useEffect(() => {
-    console.log('=== RecordingState 变化 ===', {
+    console.log('=== RecordingState Change ===', {
       isRecording: recordingState.isRecording,
       isPaused: recordingState.isPaused,
       hasBlob: !!recordingState.recordedBlob,
@@ -784,8 +815,8 @@ export default function ScreenRecorder() {
     });
     
     if (recordingState.recordedBlob && !recordingState.isRecording) {
-      console.log('🎆 录制完成！预览页应该显示。');
-      console.log('Blob 详情:', {
+      console.log('🎆 Recording completed! Preview page should be displayed.');
+      console.log('Blob details:', {
         size: recordingState.recordedBlob.size,
         type: recordingState.recordedBlob.type,
         sizeInKB: Math.round(recordingState.recordedBlob.size / 1024)
@@ -793,7 +824,7 @@ export default function ScreenRecorder() {
       
       // 检查预览页显示条件
       const shouldShowPreview = recordingState.recordedBlob && !uploadedVideo;
-      console.log('预览页显示条件:', {
+      console.log('Preview page display conditions:', {
         hasBlob: !!recordingState.recordedBlob,
         noUploadedVideo: !uploadedVideo,
         shouldShow: shouldShowPreview
@@ -887,7 +918,7 @@ export default function ScreenRecorder() {
   
   // 启动摄像头预览 - 重写画中画逻辑
   const startCameraPreview = async () => {
-    console.log('开始启动摄像头预览...');
+    console.log('Starting camera preview initialization...');
     
     try {
       // 检查浏览器支持
@@ -895,7 +926,7 @@ export default function ScreenRecorder() {
         throw new Error('浏览器不支持摄像头功能');
       }
 
-      console.log('请求摄像头权限...');
+      console.log('Requesting camera permission...');
       
       // 使用尝试-降级策略来获取摄像头流
       let stream: MediaStream;
@@ -910,7 +941,7 @@ export default function ScreenRecorder() {
           },
           audio: false
         };
-        console.log('尝试理想设置:', idealConstraints);
+        console.log('Trying ideal settings:', idealConstraints);
         stream = await navigator.mediaDevices.getUserMedia(idealConstraints);
       } catch (firstError) {
         console.warn('理想设置失败，尝试基本设置:', firstError);
@@ -923,7 +954,7 @@ export default function ScreenRecorder() {
             },
             audio: false
           };
-          console.log('尝试基本设置:', basicConstraints);
+          console.log('Trying basic settings:', basicConstraints);
           stream = await navigator.mediaDevices.getUserMedia(basicConstraints);
         } catch (secondError) {
           console.warn('基本设置失败，尝试最简单设置:', secondError);
@@ -933,12 +964,12 @@ export default function ScreenRecorder() {
             video: true,
             audio: false
           };
-          console.log('尝试最简单设置:', minimalConstraints);
+          console.log('Trying minimal settings:', minimalConstraints);
           stream = await navigator.mediaDevices.getUserMedia(minimalConstraints);
         }
       }
       
-      console.log('摄像头流获取成功:', {
+      console.log('Camera stream obtained successfully:', {
         id: stream.id,
         active: stream.active,
         videoTracks: stream.getVideoTracks().length
@@ -960,27 +991,27 @@ export default function ScreenRecorder() {
         const maxRetries = 10;
         
         if (cameraPreviewRef.current) {
-          console.log('设置视频元素...');
+          console.log('Setting up video element...');
           cameraPreviewRef.current.srcObject = stream;
           
           // 根据画中画支持情况决定显示策略
           if (!pipSupport.supported) {
             // 不支持画中画，显示普通视频预览
-            console.log('浏览器不支持画中画，显示普通视频预览');
+            console.log('Browser does not support picture-in-picture, showing normal video preview');
 
           } else if (pipSupport.canAutoStart) {
             // Chrome - 尝试自动启动画中画
             cameraPreviewRef.current.onloadedmetadata = async () => {
-              console.log('Chrome检测到，尝试自动启动画中画');
+              console.log('Chrome detected, trying to auto-start picture-in-picture');
               try {
                 if (!document.pictureInPictureElement && !isPiPRequesting) {
                   setIsPiPRequestingWithTimeout(true);
                   await cameraPreviewRef.current!.requestPictureInPicture();
-                  console.log('Chrome画中画自动启动成功');
+                  console.log('Chrome picture-in-picture auto-start successful');
 
                 }
               } catch (error: any) {
-                console.log('Chrome自动启动失败，回退到手动模式:', error.message);
+                console.log('Chrome auto-start failed, falling back to manual mode:', error.message);
 
               } finally {
                 setIsPiPRequestingWithTimeout(false);
@@ -988,18 +1019,18 @@ export default function ScreenRecorder() {
             };
           } else {
             // Safari/Firefox - 显示引导信息
-            console.log(`${pipSupport.browser}检测到，需要用户手动启动画中画`);
+            console.log(`${pipSupport.browser} detected, requires manual picture-in-picture activation`);
 
           }
           
           // 设置通用事件监听器
           cameraPreviewRef.current.onenterpictureinpicture = () => {
-            console.log('进入画中画模式');
+            console.log('Entering picture-in-picture mode');
             setIsPiPRequestingWithTimeout(false);
           };
           
           cameraPreviewRef.current.onleavepictureinpicture = () => {
-            console.log('退出画中画模式');
+            console.log('Exiting picture-in-picture mode');
             setIsPiPRequestingWithTimeout(false);
           };
           
@@ -1009,13 +1040,13 @@ export default function ScreenRecorder() {
           
           // 播放视频
           cameraPreviewRef.current.play().then(() => {
-            console.log('视频播放成功');
+            console.log('Video playback successful');
           }).catch((playError) => {
             console.error('视频播放失败:', playError);
           });
           
         } else if (retryCount < maxRetries) {
-          console.log(`视频元素还未渲染，稍后重试 (${retryCount + 1}/${maxRetries})...`);
+          console.log(`Video element not rendered yet, retrying later (${retryCount + 1}/${maxRetries})...`);
           setTimeout(() => {
             setupVideoElement(retryCount + 1);
           }, 200);
@@ -1028,23 +1059,23 @@ export default function ScreenRecorder() {
       setupVideoElement();
       
     } catch (error: any) {
-      console.error('摄像头预览启动失败:', {
+      console.error('Camera preview startup failed:', {
         name: error.name,
         message: error.message,
         constraint: error.constraint
       });
       
-      let errorMessage = '无法启动摄像头预览';
+      let errorMessage = 'Unable to start camera preview';
       if (error.name === 'NotAllowedError') {
-        errorMessage = '摄像头权限被拒绝，请允许摄像头访问';
+        errorMessage = 'Camera permission denied. Please allow camera access';
       } else if (error.name === 'NotFoundError') {
-        errorMessage = '未找到摄像头设备';
+        errorMessage = 'Camera device not found';
       } else if (error.name === 'NotReadableError') {
-        errorMessage = '摄像头正被其他应用程序使用';
+        errorMessage = 'Camera is being used by another application';
       } else if (error.name === 'OverconstrainedError') {
-        errorMessage = `摄像头不支持请求的设置（${error.constraint}），已自动降级，请重试`;
+        errorMessage = `Camera does not support requested settings (${error.constraint}). Automatically downgraded, please retry`;
       } else if (error.name === 'TypeError') {
-        errorMessage = '浏览器不支持摄像头功能或缺少必要的权限';
+        errorMessage = 'Browser does not support camera functionality or lacks necessary permissions';
       }
       
 
@@ -1105,12 +1136,12 @@ export default function ScreenRecorder() {
       return;
     }
 
-    console.log(`开始${pipSupport.browser}浏览器手动画中画启动`);
+    console.log(`Starting manual picture-in-picture activation for ${pipSupport.browser} browser`);
     setIsPiPRequestingWithTimeout(true);
     
     try {
       await cameraPreviewRef.current.requestPictureInPicture();
-      console.log('手动启动画中画成功');
+      console.log('Manual picture-in-picture activation successful');
 
     } catch (error: any) {
       console.error('手动启动画中画失败:', error);
@@ -1144,14 +1175,14 @@ export default function ScreenRecorder() {
 
   // 停止摄像头预览 - 退出画中画模式
   const stopCameraPreview = async () => {
-    console.log('停止摄像头画中画预览...');
+    console.log('Stopping camera picture-in-picture preview...');
     
     try {
       // 所有模式都尝试退出画中画模式
       if (document.pictureInPictureElement) {
-        console.log('退出画中画模式...');
+        console.log('Exiting picture-in-picture mode...');
         await document.exitPictureInPicture();
-        console.log('画中画模式退出成功');
+        console.log('Picture-in-picture mode exit successful');
       }
     } catch (error) {
       console.warn('退出画中画模式失败:', error);
@@ -1159,16 +1190,16 @@ export default function ScreenRecorder() {
     }
     
     if (cameraPreviewStream) {
-      console.log('停止摄像头流...');
+      console.log('Stopping camera stream...');
       cameraPreviewStream.getTracks().forEach(track => {
-        console.log('停止轨道:', track.label);
+        console.log('Stopping track:', track.label);
         track.stop();
       });
       setCameraPreviewStream(null);
     }
     
     if (cameraPreviewRef.current) {
-      console.log('清理画中画视频元素...');
+      console.log('Cleaning up picture-in-picture video element...');
       // 暂停视频
       cameraPreviewRef.current.pause();
       // 清空视频源
@@ -1182,7 +1213,7 @@ export default function ScreenRecorder() {
     
 
     
-    console.log('摄像头画中画预览停止完成');
+    console.log('Camera picture-in-picture preview stop completed');
   };
 
   const getScreenStream = async (): Promise<MediaStream> => {
@@ -1198,8 +1229,8 @@ export default function ScreenRecorder() {
       audio: includeAudio // 支持独立的音频控制
     };
     
-    console.log('屏幕音频状态:', includeAudio ? '开启' : '关闭');
-    console.log('浏览器信息:', {
+    console.log('Screen audio status:', includeAudio ? 'enabled' : 'disabled');
+    console.log('Browser information:', {
       name: browser.name,
       supportsDisplaySurface: browser.supportsDisplaySurface
     });
@@ -1256,18 +1287,18 @@ export default function ScreenRecorder() {
         const surfaceType = settings.displaySurface;
         if (surfaceType) {
           const surfaceMap: Record<string, string> = {
-            monitor: '整个屏幕',
-            window: '应用窗口', 
-            browser: '浏览器标签页'
+            monitor: 'Entire Screen',
+            window: 'Application Window', 
+            browser: 'Browser Tab'
           };
-          console.log(`实际捕获类型: ${surfaceMap[surfaceType] || surfaceType}`);
+          console.log(`Actual capture type: ${surfaceMap[surfaceType] || surfaceType}`);
           
           // Show user what's actually being captured
           const actualType = surfaceMap[surfaceType] || surfaceType;
           const expectedType = surfaceMap[screenSource] || screenSource;
           
           if (surfaceType !== screenSource) {
-            console.warn(`用户选择: ${expectedType}, 实际捕获: ${actualType}`);
+            console.warn(`User selected: ${expectedType}, Actually captured: ${actualType}`);
             // Don't show alert during recording, just log for debugging
           }
         }
@@ -1298,20 +1329,20 @@ export default function ScreenRecorder() {
     if (!includeAudio) return null; // 如果不包含音频，直接返回null
     
     try {
-      console.log('获取独立音频流...');
+      console.log('Getting standalone audio stream...');
       const audioStream = await navigator.mediaDevices.getUserMedia({
         video: false,
         audio: true
       });
       
-      console.log('音频流获取成功:', {
+      console.log('Audio stream acquired successfully:', {
         id: audioStream.id,
         audioTracks: audioStream.getAudioTracks().length
       });
       
       return audioStream;
     } catch (error) {
-      console.error('音频流获取失败:', error);
+      console.error('Audio stream acquisition failed:', error);
       return null;
     }
   };
@@ -1376,7 +1407,7 @@ export default function ScreenRecorder() {
       setRecordingError(null);
       
       // 录制时保持画中画开启，屏幕录制会包含画中画内容
-      console.log('开始录制，保持摄像头画中画开启...');
+      console.log('Starting recording, keeping camera picture-in-picture enabled...');
       
       chunksRef.current = [];
       const streams: MediaStream[] = [];
@@ -1384,23 +1415,41 @@ export default function ScreenRecorder() {
       // Request permissions and get streams based on source
       if (source === 'screen' || source === 'both') {
         const sourceNames: Record<string, string> = {
-          monitor: '整个屏幕',
-          window: '应用窗口',
-          browser: '浏览器标签页'
+          monitor: 'Entire Screen',
+          window: 'Application Window',
+          browser: 'Browser Tab'
         };
         
-        console.log(`请求屏幕录制权限 (${sourceNames[screenSource]})...`);
+        // Check Permissions Policy before attempting screen capture
+        const policyCheck = checkPermissionsPolicy();
+        console.log('Permissions Policy check:', policyCheck);
+        
+        if (policyCheck.supported && !policyCheck.allowed) {
+          const errorMessage = 'Screen recording is blocked by permissions policy. Please ensure this page is opened in a new tab, not in an iframe or embedded environment.';
+          console.error(errorMessage);
+          setRecordingError(errorMessage);
+          return;
+        }
+        
+        console.log(`Requesting screen recording permission (${sourceNames[screenSource]})...`);
         
         try {
           const screenStream = await getScreenStream();
           screenStreamRef.current = screenStream;
           streams.push(screenStream);
-          console.log(`屏幕录制权限获取成功 - 目标: ${sourceNames[screenSource]}`);
+          console.log(`Screen recording permission granted - target: ${sourceNames[screenSource]}`);
           // Keep browser compatibility logic but remove user feedback
         } catch (error: any) {
           console.error('Screen recording permission denied:', error);
           if (error.name === 'NotAllowedError') {
-
+            const errorMessage = '屏幕录制权限被拒绝。请在浏览器弹窗中允许屏幕共享，或检查浏览器设置中的媒体权限。';
+            console.error(errorMessage);
+            setRecordingError(errorMessage);
+            return;
+          } else if (error.message && error.message.includes('display-capture')) {
+            const errorMessage = '浏览器不支持屏幕录制或被安全策略阻止。请尝试在新标签页中打开此页面，或检查浏览器的媒体权限设置。';
+            console.error(errorMessage);
+            setRecordingError(errorMessage);
             return;
           }
           throw error;
@@ -1432,10 +1481,14 @@ export default function ScreenRecorder() {
         } catch (error: any) {
           console.error('Camera permission denied:', error);
           if (error.name === 'NotAllowedError') {
-
+            const errorMessage = '摄像头访问权限被拒绝。请在浏览器弹窗中允许摄像头访问，或在浏览器设置中检查媒体权限。';
+            console.error(errorMessage);
+            setRecordingError(errorMessage);
             return;
           } else if (error.name === 'NotFoundError') {
-
+            const errorMessage = '未找到可用的摄像头设备。请确保摄像头已连接并且没有被其他应用程序占用。';
+            console.error(errorMessage);
+            setRecordingError(errorMessage);
             return;
           }
           throw error;
@@ -1446,12 +1499,12 @@ export default function ScreenRecorder() {
       if ((source === 'screen' || source === 'both')) {
         if (includeCamera) {
           // 如果开启了摄像头，使用摄像头流获取音频和画中画视频
-          console.log('添加摄像头流以获取音频（画中画提供视频）');
+          console.log('Adding camera stream for audio (picture-in-picture provides video)');
           try {
             const cameraStream = await getCameraStream();
             cameraStreamRef.current = cameraStream;
             streams.push(cameraStream);
-            console.log('摄像头流添加成功，包含音频轨道:', {
+            console.log('Camera stream added successfully, includes audio tracks:', {
               videoTracks: cameraStream.getVideoTracks().length,
               audioTracks: cameraStream.getAudioTracks().length,
               active: cameraStream.active
@@ -1462,12 +1515,12 @@ export default function ScreenRecorder() {
           }
         } else if (includeAudio) {
           // 如果关闭了摄像头但开启了音频，获取独立音频流
-          console.log('获取独立音频流...');
+          console.log('Getting standalone audio stream...');
           try {
             const audioStream = await getAudioOnlyStream();
             if (audioStream) {
               streams.push(audioStream);
-              console.log('独立音频流添加成功:', {
+              console.log('Independent audio stream added successfully:', {
                 audioTracks: audioStream.getAudioTracks().length
               });
             }
@@ -1508,7 +1561,7 @@ export default function ScreenRecorder() {
       let options: MediaRecorderOptions = {};
       
       if (browser.isFirefox) {
-        console.log('🤊 Firefox 检测到，使用优化设置...');
+        console.log('🤊 Firefox detected, using optimized settings...');
         
         // Firefox 兼容性检查
         const firefoxSupportedTypes = [
@@ -1520,7 +1573,7 @@ export default function ScreenRecorder() {
         
         for (const mimeType of firefoxSupportedTypes) {
           const isSupported = mimeType === '' || MediaRecorder.isTypeSupported(mimeType);
-          console.log(`Firefox 检查 MIME 类型: ${mimeType || 'default'} - ${isSupported ? '支持' : '不支持'}`);
+          console.log(`Firefox checking MIME type: ${mimeType || 'default'} - ${isSupported ? 'supported' : 'not supported'}`);
           
           if (isSupported) {
             if (mimeType) {
@@ -1539,7 +1592,7 @@ export default function ScreenRecorder() {
           options.audioBitsPerSecond = 64000; // 64kbps
         }
       } else if (isSafariRecording) {
-        console.log('🍎 Safari 检测到，使用Safari兼容设置...');
+        console.log('🍎 Safari detected, using Safari compatibility settings...');
         
         // Safari 兼容性格式优先级 - 避免VP9
         const safariSupportedTypes = [
@@ -1552,7 +1605,7 @@ export default function ScreenRecorder() {
         
         for (const mimeType of safariSupportedTypes) {
           const isSupported = mimeType === '' || MediaRecorder.isTypeSupported(mimeType);
-          console.log(`Safari 检查 MIME 类型: ${mimeType || 'default'} - ${isSupported ? '支持' : '不支持'}`);
+          console.log(`Safari checking MIME type: ${mimeType || 'default'} - ${isSupported ? 'supported' : 'not supported'}`);
           
           if (isSupported) {
             if (mimeType) {
@@ -1572,7 +1625,7 @@ export default function ScreenRecorder() {
         }
       } else {
         // Chrome, Edge 等其他浏览器使用高质量设置
-        console.log(`🌐 其他浏览器 (${browser.name}) 检测到，使用标准设置...`);
+        console.log(`🌐 Other browser (${browser.name}) detected, using standard settings...`);
         
         options = {
           mimeType: 'video/webm;codecs=vp9,opus',
@@ -1590,7 +1643,7 @@ export default function ScreenRecorder() {
         }
       }
       
-      console.log('🎥 MediaRecorder 配置:', {
+      console.log('🎥 MediaRecorder configuration:', {
         options,
         browserName: browser.name,
         browser: browser.name,
@@ -1606,7 +1659,7 @@ export default function ScreenRecorder() {
       // 增强的数据收集事件
       mediaRecorderRef.current.ondataavailable = (event) => {
         const timestamp = new Date().toISOString();
-        console.log(`=== 数据可用事件 [${timestamp}] ===`, { 
+        console.log(`=== Data available event [${timestamp}] ===`, { 
           size: event.data.size, 
           type: event.data.type,
           browser: isFirefoxRecording ? 'Firefox' : isSafariRecording ? 'Safari' : 'Other'
@@ -1616,7 +1669,7 @@ export default function ScreenRecorder() {
           chunksRef.current.push(event.data);
           const totalSize = chunksRef.current.reduce((sum, chunk) => sum + chunk.size, 0);
           
-          console.log('✅ 成功收集数据块:', {
+          console.log('✅ Successfully collected data chunk:', {
             currentSize: event.data.size,
             totalChunks: chunksRef.current.length,
             totalSizeKB: Math.round(totalSize / 1024),
@@ -1626,7 +1679,7 @@ export default function ScreenRecorder() {
           });
           
           if (browser.isFirefox) {
-            console.log('🤊 Firefox 数据收集进展:', {
+            console.log('🤊 Firefox data collection progress:', {
               chunkIndex: chunksRef.current.length,
               chunkType: event.data.type,
               chunkSize: event.data.size,
@@ -1644,7 +1697,7 @@ export default function ScreenRecorder() {
             console.error('3. Firefox 版本兼容性问题');
             
             // 检查媒体流状态
-            console.log('Firefox 媒体流状态检查:', {
+            console.log('Firefox media stream status check:', {
               streamActive: finalStream.active,
               videoTracks: finalStream.getVideoTracks().map(t => ({ label: t.label, enabled: t.enabled, readyState: t.readyState })),
               audioTracks: finalStream.getAudioTracks().map(t => ({ label: t.label, enabled: t.enabled, readyState: t.readyState }))
@@ -1654,14 +1707,14 @@ export default function ScreenRecorder() {
       };
 
       mediaRecorderRef.current.onstop = () => {
-        console.log('=== MediaRecorder 停止事件 ===');
-        console.log('📀 可用数据块数量:', chunksRef.current.length);
-        console.log('📄 数据块大小列表:', chunksRef.current.map(c => c.size));
+        console.log('=== MediaRecorder stop event ===');
+        console.log('📀 Available data chunks count:', chunksRef.current.length);
+        console.log('📄 Data chunk size list:', chunksRef.current.map(c => c.size));
         
         if (chunksRef.current.length === 0) {
           console.error('❌ 致命错误: 没有收集到任何数据！');
           
-          let errorMessage = '录制失败：没有收集到视频数据';
+          let errorMessage = 'Recording failed: No video data collected';
           
           if (browser.isFirefox) {
             console.error('🤊 Firefox 没有数据块，可能原因:');
@@ -1670,10 +1723,10 @@ export default function ScreenRecorder() {
             console.error('- Firefox 特定的权限或安全策略限制');
             console.error('- 网络或性能问题导致数据丢失');
             
-            errorMessage = 'Firefox录制失败：可能是权限限制或格式不支持，请检查浏览器设置';
+            errorMessage = 'Firefox recording failed: Possible permission restriction or unsupported format, please check browser settings';
             
             // 检查 MediaRecorder 状态
-            console.log('MediaRecorder 状态:', {
+            console.log('MediaRecorder status:', {
               state: mediaRecorderRef.current?.state,
               mimeType: mediaRecorderRef.current?.mimeType,
               videoBitsPerSecond: mediaRecorderRef.current?.videoBitsPerSecond,
@@ -1691,7 +1744,7 @@ export default function ScreenRecorder() {
         const blobType = options.mimeType || 'video/webm';
         const blob = new Blob(chunksRef.current, { type: blobType });
         
-        console.log('✅ 成功创建录制 Blob:', { 
+        console.log('✅ Successfully created recording Blob:', { 
           size: blob.size, 
           type: blob.type,
           sizeInKB: Math.round(blob.size / 1024),
@@ -1706,7 +1759,7 @@ export default function ScreenRecorder() {
         
         // 验证 blob 的有效性
         if (!blob || blob.size === 0) {
-          const errorMsg = blob ? '录制失败：生成的视频文件为空' : '录制失败：没有生成视频数据';
+          const errorMsg = blob ? 'Recording failed: Generated video file is empty' : 'Recording failed: No video data generated';
           console.error('录制停止但没有生成有效的Blob数据, size:', blob?.size);
           setRecordingError(errorMsg);
           setRecordingState(prev => ({ ...prev, recordedBlob: null }));
@@ -1715,7 +1768,7 @@ export default function ScreenRecorder() {
         
         if (!(blob instanceof Blob)) {
           console.error('录制数据不是有效的Blob对象:', typeof blob);
-          setRecordingError('录制失败：数据类型错误，请重新录制');
+          setRecordingError('Recording failed: Data type error, please try recording again');
           setRecordingState(prev => ({ ...prev, recordedBlob: null }));
           return;
         }
@@ -1723,11 +1776,11 @@ export default function ScreenRecorder() {
         // 检查blob的基本有效性
         if (blob.size < 1000) { // 小于1KB可能有问题
           console.warn('警告：录制文件过小，可能存在问题, size:', blob.size);
-          setRecordingError('录制可能有问题：文件过小，建议重新录制');
+          setRecordingError('Recording may have issues: File too small, recommend re-recording');
           // 不直接返回，让用户看到视频并决定是否重新录制
         }
         
-        console.log('录制停止，生成的Blob信息:', {
+        console.log('Recording stopped, generated Blob information:', {
           size: blob.size,
           type: blob.type,
           sizeKB: Math.round(blob.size / 1024),
@@ -1741,31 +1794,31 @@ export default function ScreenRecorder() {
         
         // 立即设置 blob，不等待清理完成
         setRecordingState(prev => {
-          console.log('设置 recordedBlob:', blob);
+          console.log('Setting recordedBlob:', blob);
           const newState = { ...prev, recordedBlob: blob };
           
           // 不再需要localStorage备份，因为登录不会刷新页面
-          console.log('录制完成，状态在内存中管理');
+          console.log('Recording completed, state managed in memory');
           
           return newState;
         });
         
-        console.log('录制停止，开始清理媒体流...');
+        console.log('Recording stopped, starting media stream cleanup...');
         
         // 全面清理所有媒体流
         if (screenStreamRef.current) {
-          console.log('停止屏幕/桌面共享流...');
+          console.log('Stopping screen/desktop sharing stream...');
           screenStreamRef.current.getTracks().forEach(track => {
-            console.log(`停止屏幕轨道: ${track.kind} - ${track.label}`);
+            console.log(`Stopping screen track: ${track.kind} - ${track.label}`);
             track.stop();
           });
           screenStreamRef.current = null;
         }
         
         if (cameraStreamRef.current) {
-          console.log('停止录制中的摄像头流...');
+          console.log('Stopping camera stream during recording...');
           cameraStreamRef.current.getTracks().forEach(track => {
-            console.log(`停止录制摄像头轨道: ${track.kind} - ${track.label}`);
+            console.log(`Stopping recording camera track: ${track.kind} - ${track.label}`);
             track.stop();
           });
           cameraStreamRef.current = null;
@@ -1774,13 +1827,13 @@ export default function ScreenRecorder() {
         // 对于Firefox，需要特殊处理以确保全面清理
         const isFirefox = navigator.userAgent.includes('Firefox');
         if (isFirefox) {
-          console.log('Firefox检测到，执行增强清理...');
+          console.log('Firefox detected, performing enhanced cleanup...');
           
           // 尝试停止所有可能的媒体轨道
           const allTracks = [...(navigator.mediaDevices as any).getAllActiveTracks?.() || []];
           allTracks.forEach((track: MediaStreamTrack) => {
             if (track.readyState === 'live') {
-              console.log(`停止活动轨道: ${track.kind} - ${track.label}`);
+              console.log(`Stopping active track: ${track.kind} - ${track.label}`);
               track.stop();
             }
           });
@@ -1789,17 +1842,17 @@ export default function ScreenRecorder() {
           try {
             // 检查是否有活动的屏幕共享
             if (navigator.mediaDevices && (navigator.mediaDevices as any).getDisplayMedia) {
-              console.log('Firefox检查并停止所有活动的显示流...');
+              console.log('Firefox checking and stopping all active display streams...');
               
               // 在Firefox中，尝试通过检查document.hidden和视频轨道状态来确保清理
               const videoTracks = document.querySelectorAll('video');
               videoTracks.forEach((video, index) => {
                 if (video !== cameraPreviewRef.current && video.srcObject) {
-                  console.log(`停止视频元素 ${index} 的流`);
+                  console.log(`Stopping video element ${index} stream`);
                   const stream = video.srcObject as MediaStream;
                   if (stream) {
                     stream.getTracks().forEach(track => {
-                      console.log(`停止视频元素轨道: ${track.kind} - ${track.label}`);
+                      console.log(`Stopping video element track: ${track.kind} - ${track.label}`);
                       track.stop();
                     });
                     video.srcObject = null;
@@ -1814,13 +1867,13 @@ export default function ScreenRecorder() {
           // 延迟更长时间再重启摄像头预览，但不影响预览页显示
           setTimeout(() => {
             if (includeCamera) {
-              console.log('Firefox延迟重启摄像头预览...');
+              console.log('Firefox delayed restart of camera preview...');
               startCameraPreview();
             }
           }, 2000); // Firefox需要更长的延迟
         } else {
           // 其他浏览器的正常处理
-          console.log('录制完成，摄像头画中画预览继续保持开启状态');
+          console.log('Recording completed, camera picture-in-picture preview continues to stay enabled');
         }
         
         // 确保预览页能够立即显示
@@ -1832,11 +1885,11 @@ export default function ScreenRecorder() {
           const attempts = [100, 300, 600, 1000];
           attempts.forEach((delay, index) => {
             setTimeout(() => {
-              console.log(`Firefox: 第${index + 1}次尝试检查和设置blob`);
+              console.log(`Firefox: Attempt ${index + 1} to check and set blob`);
               
               setRecordingState(prev => {
                 const hasValidBlob = prev.recordedBlob && prev.recordedBlob.size > 0;
-                console.log('Firefox 状态检查:', {
+                console.log('Firefox status check:', {
                   isRecording: prev.isRecording,
                   hasBlob: !!prev.recordedBlob,
                   blobSize: prev.recordedBlob?.size || 0,
@@ -1844,7 +1897,7 @@ export default function ScreenRecorder() {
                 });
                 
                 if (!hasValidBlob) {
-                  console.log('Firefox: 重新设置 blob');
+                  console.log('Firefox: Re-setting blob');
                   return { ...prev, recordedBlob: blob };
                 }
                 return prev;
@@ -1856,11 +1909,11 @@ export default function ScreenRecorder() {
 
       // Firefox 优化: 使用更短的时间片段来提高数据收集频率
       const timeSlice = browser.isFirefox ? 100 : 1000; // Firefox 使用 100ms，其他 1000ms
-      console.log(`🎥 开始录制 - 时间片段: ${timeSlice}ms, 浏览器: ${browser.name}`);
+      console.log(`🎥 Starting recording - time slice: ${timeSlice}ms, browser: ${browser.name}`);
       
       try {
         mediaRecorderRef.current.start(timeSlice);
-        console.log('✅ MediaRecorder 启动成功');
+        console.log('✅ MediaRecorder started successfully');
       } catch (startError) {
         console.error('❌ MediaRecorder 启动失败:', startError);
         throw startError;
@@ -1948,12 +2001,12 @@ export default function ScreenRecorder() {
       if (!isFirefox) {
         setTimeout(() => {
           if (includeCamera) {
-            console.log('非Firefox浏览器重启摄像头预览...');
+            console.log('Non-Firefox browser restarting camera preview...');
             startCameraPreview();
           }
         }, 500); // 稍微延迟以确保录制完全停止
       } else {
-        console.log('Firefox检测到，在onstop中延迟处理摄像头预览');
+        console.log('Firefox detected, delayed handling of camera preview in onstop');
       }
     }
   };
@@ -1989,7 +2042,7 @@ export default function ScreenRecorder() {
     }
 
     console.log('User authenticated:', {
-      userId: user.$id,
+      userId: user.id,
       userEmail: user.email,
       userName: user.name
     });
@@ -2041,7 +2094,7 @@ export default function ScreenRecorder() {
       const uploadedVideoData = { $id: result.data?.videoId, title: videoTitle.trim() || getDefaultTitle() };
       setUploadedVideo(uploadedVideoData);
       
-      console.log('上传成功，录制状态在内存中管理');
+      console.log('Upload successful, recording state managed in memory');
       
       // 在后台自动生成缩略图
       if (recordingState.recordedBlob && uploadedVideoData.$id) {
@@ -2060,7 +2113,8 @@ export default function ScreenRecorder() {
   };
 
   return (
-    <div className="space-y-4">
+    <TooltipProvider>
+      <div className="space-y-4">
       {/* Recording Controls */}
       {!recordingState.isRecording && !recordingState.recordedBlob && (
         <Card>
@@ -2069,10 +2123,10 @@ export default function ScreenRecorder() {
           {/* 第一行：录制质量和录制源 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="select-container">
-              <Label className="text-sm font-medium mb-3 block">{t.recording.recordingQuality}</Label>
+              <Label className="text-sm font-medium mb-3 block">{RECORDING.recordingQuality}</Label>
               <Select value={quality} onValueChange={(value) => setQuality(value as RecordingQuality)}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder={t.recording.selectRecordingQuality} />
+                  <SelectValue placeholder={RECORDING.selectRecordingQuality} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="720p">720p (1280x720)</SelectItem>
@@ -2082,7 +2136,7 @@ export default function ScreenRecorder() {
             </div>
             
             <div className="select-container">
-              <Label className="text-sm font-medium mb-3 block">{t.recording.recordingSource}</Label>
+              <Label className="text-sm font-medium mb-3 block">{RECORDING.recordingSource}</Label>
               <Select 
                 value={source === 'camera-only' ? 'camera-only' : screenSource} 
                 onValueChange={(value) => {
@@ -2099,7 +2153,7 @@ export default function ScreenRecorder() {
                 }}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder={t.recording.selectRecordingSource} />
+                  <SelectValue placeholder={RECORDING.selectRecordingSource} />
                 </SelectTrigger>
                 <SelectContent>
                   {(() => {
@@ -2113,10 +2167,10 @@ export default function ScreenRecorder() {
                             <div className="w-full">
                               <div className="flex items-center">
                                 <Monitor className="h-4 w-4 mr-2 flex-shrink-0" />
-                                <span className="font-medium">{t.recording.entireScreen}</span>
+                                <span className="font-medium">{RECORDING.entireScreen}</span>
                               </div>
                               <div className="text-xs text-muted-foreground mt-1">
-                                {t.recording.entireScreenDesc}
+                                {RECORDING.entireScreenDesc}
                               </div>
                             </div>
                           </SelectItem>
@@ -2124,10 +2178,10 @@ export default function ScreenRecorder() {
                             <div className="w-full">
                               <div className="flex items-center">
                                 <Square className="h-4 w-4 mr-2 flex-shrink-0" />
-                                <span className="font-medium">{t.recording.applicationWindow}</span>
+                                <span className="font-medium">{RECORDING.applicationWindow}</span>
                               </div>
                               <div className="text-xs text-muted-foreground mt-1">
-                                {t.recording.applicationWindowDesc}
+                                {RECORDING.applicationWindowDesc}
                               </div>
                             </div>
                           </SelectItem>
@@ -2135,10 +2189,10 @@ export default function ScreenRecorder() {
                             <div className="w-full">
                               <div className="flex items-center">
                                 <Globe className="h-4 w-4 mr-2 flex-shrink-0" />
-                                <span className="font-medium">{t.recording.browserTab}</span>
+                                <span className="font-medium">{RECORDING.browserTab}</span>
                               </div>
                               <div className="text-xs text-muted-foreground mt-1">
-                                {t.recording.browserTabDesc}
+                                {RECORDING.browserTabDesc}
                               </div>
                             </div>
                           </SelectItem>
@@ -2146,10 +2200,10 @@ export default function ScreenRecorder() {
                             <div className="w-full">
                               <div className="flex items-center">
                                 <Camera className="h-4 w-4 mr-2 flex-shrink-0" />
-                                <span className="font-medium">{t.recording.cameraOnly}</span>
+                                <span className="font-medium">{RECORDING.cameraOnly}</span>
                               </div>
                               <div className="text-xs text-muted-foreground mt-1">
-                                {t.recording.cameraOnlyDesc}
+                                {RECORDING.cameraOnlyDesc}
                               </div>
                             </div>
                           </SelectItem>
@@ -2163,10 +2217,10 @@ export default function ScreenRecorder() {
                             <div className="w-full">
                               <div className="flex items-center">
                                 <Monitor className="h-4 w-4 mr-2 flex-shrink-0" />
-                                <span className="font-medium">{t.recording.systemSettings}</span>
+                                <span className="font-medium">{RECORDING.systemSettings}</span>
                               </div>
                               <div className="text-xs text-muted-foreground mt-1">
-                                {t.recording.systemSettingsDesc}
+                                {RECORDING.systemSettingsDesc}
                               </div>
                             </div>
                           </SelectItem>
@@ -2174,10 +2228,10 @@ export default function ScreenRecorder() {
                             <div className="w-full">
                               <div className="flex items-center">
                                 <Camera className="h-4 w-4 mr-2 flex-shrink-0" />
-                                <span className="font-medium">{t.recording.cameraOnly}</span>
+                                <span className="font-medium">{RECORDING.cameraOnly}</span>
                               </div>
                               <div className="text-xs text-muted-foreground mt-1">
-                                {t.recording.cameraOnlyDesc}
+                                {RECORDING.cameraOnlyDesc}
                               </div>
                             </div>
                           </SelectItem>
@@ -2197,16 +2251,16 @@ export default function ScreenRecorder() {
               <div className="flex items-center space-x-2">
                 {includeAudio ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
                 <div className="flex flex-col">
-                  <Label>{t.recording.openMicrophone}</Label>
+                  <Label>{RECORDING.openMicrophone}</Label>
                   <p className="text-xs text-muted-foreground">
-                    {t.recording.microphoneDescription}
+                    {RECORDING.microphoneDescription}
                   </p>
                 </div>
-                {/* 麦克风状态指示器 */}
+                {/* Microphone status indicator */}
                 {includeAudio && (
                   <div 
                     className="w-2 h-2 bg-green-500 rounded-full animate-pulse"
-                    title={t.recording.microphoneEnabled}
+                    title={RECORDING.microphoneEnabled}
                   ></div>
                 )}
               </div>
@@ -2214,15 +2268,58 @@ export default function ScreenRecorder() {
                 checked={includeAudio}
                 onCheckedChange={async (checked) => {
                   if (checked) {
-                    // 用户开启麦克风时立即申请权限
-                    try {
-                      await navigator.mediaDevices.getUserMedia({ audio: true });
-                      setIncludeAudio(true);
-
-                    } catch (error) {
-                      console.error('麦克风权限申请失败:', error);
-
+                    // Check if we're in an iframe first
+                    if (isInIframe()) {
+                      const shouldOpenNewWindow = confirm(
+                        DEVICES.iframeMediaBlocked + '\n\nWould you like to open this page in a new window?'
+                      );
+                      if (shouldOpenNewWindow) {
+                        openInNewWindow();
+                      }
                       setIncludeAudio(false);
+                      return;
+                    }
+                    
+                    // Check if media access is blocked (no secure context)
+                    if (isMediaAccessBlocked()) {
+                      alert('Microphone access requires a secure connection (HTTPS). Please use HTTPS or localhost.');
+                      setIncludeAudio(false);
+                      return;
+                    }
+                    
+                    // Request microphone permission when user enables it
+                    try {
+                      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                      // Stop the stream immediately after getting permission
+                      stream.getTracks().forEach(track => track.stop());
+                      setIncludeAudio(true);
+                      console.log('Microphone permission granted successfully');
+                    } catch (error) {
+                      console.error('Microphone permission request failed:', error);
+                      setIncludeAudio(false);
+                      
+                      // Show user-friendly error message
+                      let errorMessage: string = PERMISSIONS.microphoneDenied;
+                      if (error instanceof DOMException) {
+                        switch (error.name) {
+                          case 'NotAllowedError':
+                            errorMessage = 'Microphone access denied. Please allow microphone access in your browser settings and try again.';
+                            break;
+                          case 'NotFoundError':
+                            errorMessage = PERMISSIONS.microphoneNotFound;
+                            break;
+                          case 'NotReadableError':
+                            errorMessage = 'Microphone is being used by another application. Please close other applications using the microphone and try again.';
+                            break;
+                          default:
+                            errorMessage = `Microphone error: ${error.message}`;
+                        }
+                      }
+                      
+                      // Show alert with error message
+                      if (typeof window !== 'undefined') {
+                        alert(errorMessage);
+                      }
                     }
                   } else {
                     setIncludeAudio(false);
@@ -2230,17 +2327,17 @@ export default function ScreenRecorder() {
                 }}
               />
       
-      {/* Firefox专用CSS - 只显示画中画按钮 */}
+      {/* Firefox specific CSS - Only show picture-in-picture button */}
       <style jsx global>{`
-        /* Firefox 媒体控件全面隐藏策略 */
+        /* Firefox media controls complete hiding strategy */
         .firefox-pip-video {
           position: relative !important;
           background: #000 !important;
         }
         
-        /* 通过多重方式隐藏 Firefox 原生控件 */
+        /* Hide Firefox native controls through multiple methods */
         .firefox-pip-video[controls] {
-          /* 尝试隐藏整个控制栏 */
+          /* Try to hide the entire control bar */
         }
         
         .firefox-pip-video::-moz-media-controls {
@@ -2254,7 +2351,7 @@ export default function ScreenRecorder() {
           -moz-appearance: none !important;
         }
         
-        /* Firefox 控件面板隐藏 */
+        /* Hide Firefox control panel */
         .firefox-pip-video::-moz-media-controls-panel {
           visibility: hidden !important;
           opacity: 0 !important;
@@ -2262,7 +2359,7 @@ export default function ScreenRecorder() {
           display: none !important;
         }
         
-        /* 隐藏播放/暂停按钮 */
+        /* Hide play/pause buttons */
         .firefox-pip-video::-moz-media-controls-play-button,
         .firefox-pip-video::-moz-media-controls-overlay-play-button {
           visibility: hidden !important;
@@ -2271,7 +2368,7 @@ export default function ScreenRecorder() {
           display: none !important;
         }
         
-        /* 隐藏时间控件 */
+        /* Hide time controls */
         .firefox-pip-video::-moz-media-controls-scrubber,
         .firefox-pip-video::-moz-media-controls-time-display,
         .firefox-pip-video::-moz-media-controls-current-time,
@@ -2282,7 +2379,7 @@ export default function ScreenRecorder() {
           display: none !important;
         }
         
-        /* 隐藏音量控件 */
+        /* Hide volume controls */
         .firefox-pip-video::-moz-media-controls-volume-control,
         .firefox-pip-video::-moz-media-controls-mute-button,
         .firefox-pip-video::-moz-media-controls-volume-slider {
@@ -2292,7 +2389,7 @@ export default function ScreenRecorder() {
           display: none !important;
         }
         
-        /* 隐藏全屏按钮 */
+        /* Hide fullscreen button */
         .firefox-pip-video::-moz-media-controls-fullscreen-button {
           visibility: hidden !important;
           opacity: 0 !important;
@@ -2300,7 +2397,7 @@ export default function ScreenRecorder() {
           display: none !important;
         }
         
-        /* Firefox 最新版本的控件结构 */
+        /* Firefox latest version control structure */
         .firefox-pip-video video::-moz-media-controls,
         .firefox-pip-video::-moz-media-controls-button-panel,
         .firefox-pip-video::-moz-media-controls-statusbar {
@@ -2310,7 +2407,7 @@ export default function ScreenRecorder() {
           height: 0 !important;
         }
         
-        /* Firefox 130+ 新控件选择器 */
+        /* Firefox 130+ new control selectors */
         .firefox-pip-video div[role="group"],
         .firefox-pip-video div[class*="control"],
         .firefox-pip-video button:not([title*="picture"]):not([title*="Picture"]) {
@@ -2319,7 +2416,7 @@ export default function ScreenRecorder() {
           display: none !important;
         }
         
-        /* 显示并优化画中画按钮 - Firefox */
+        /* Show and optimize picture-in-picture button - Firefox */
         .firefox-pip-video::-moz-media-controls-picture-in-picture-button,
         .firefox-pip-video button[title*="picture"],
         .firefox-pip-video button[title*="Picture"] {
@@ -2343,7 +2440,7 @@ export default function ScreenRecorder() {
           transform: scale(1.05) !important;
         }
         
-        /* 隐藏 Firefox 覆盖层和其他元素 */
+        /* Hide Firefox overlay and other elements */
         .firefox-pip-video::-moz-media-controls-overlay {
           visibility: hidden !important;
           opacity: 0 !important;
@@ -2351,14 +2448,14 @@ export default function ScreenRecorder() {
           display: none !important;
         }
         
-        /* 隐藏其他可能的控件 */
+        /* Hide other possible controls */
         .firefox-pip-video::-moz-media-controls > *:not(button[title*="Picture-in-Picture"]):not([aria-label*="Picture-in-Picture"]) {
           visibility: hidden !important;
           opacity: 0 !important;
           display: none !important;
         }
         
-        /* 兼容 WebKit 浏览器（如果Firefox使用WebKit引擎） */
+        /* Compatible with WebKit browsers (if Firefox uses WebKit engine) */
         .firefox-pip-video::-webkit-media-controls {
           visibility: hidden !important;
           opacity: 0 !important;
@@ -2429,15 +2526,15 @@ export default function ScreenRecorder() {
                   )}
                 </div>
                 <div className="flex flex-col">
-                  <Label>{t.subtitles.enableSubtitles || '开启字幕'}</Label>
-                  {t.subtitles.subtitleDescription && (
+                  <Label>{SUBTITLES.enableSubtitles}</Label>
+                  {SUBTITLES.subtitleDescription && (
                     <p className="text-xs text-muted-foreground">
-                      {t.subtitles.subtitleDescription}
+                      {SUBTITLES.subtitleDescription}
                     </p>
                   )}
                   {!includeAudio && (
                     <span className="text-xs text-muted-foreground">
-                      {t.subtitles.needMicrophoneForSubtitles || '需要开启麦克风才能生成字幕'}
+                      {SUBTITLES.needMicrophoneForSubtitles}
                     </span>
                   )}
                 </div>
@@ -2445,7 +2542,7 @@ export default function ScreenRecorder() {
                 {subtitleState.isListening && (
                   <div 
                     className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"
-                    title={t.subtitles.listeningForSpeech || '正在监听语音'}
+                    title={SUBTITLES.listeningForSpeech}
                   ></div>
                 )}
               </div>
@@ -2480,19 +2577,19 @@ export default function ScreenRecorder() {
               <div className="flex items-center space-x-2">
                 {includeCamera ? <Camera className="h-4 w-4" /> : <CameraOff className="h-4 w-4" />}
                 <div className="flex flex-col">
-                  <Label>{t.recording.enableCamera}</Label>
-                  {/* 不支持摄像头的提示 */}
+                  <Label>{RECORDING.enableCamera}</Label>
+                  {/* Camera not supported notification */}
                   {(screenSource === 'window' || screenSource === 'browser') && source !== 'camera-only' && (
                     <span className="text-xs text-muted-foreground">
-                      {screenSource === 'window' ? t.recording.windowNotSupportCamera : t.recording.browserTabNotSupportCamera}
+                      {screenSource === 'window' ? RECORDING.windowNotSupportCamera : RECORDING.browserTabNotSupportCamera}
                     </span>
                   )}
                 </div>
-                {/* 摄像头状态指示器 */}
+                {/* Camera status indicator */}
                 {includeCamera && cameraPreviewStream && (
                   <div 
                     className="w-2 h-2 bg-green-500 rounded-full animate-pulse"
-                    title={t.recording.cameraEnabled}
+                    title={RECORDING.cameraEnabled}
                   ></div>
                 )}
               </div>
@@ -2500,31 +2597,72 @@ export default function ScreenRecorder() {
                 <Switch
                   checked={includeCamera}
                   onCheckedChange={async (checked) => {
-                    // 当选择仅录制摄像头时，不允许关闭摄像头
+                    // When only camera recording is selected, don't allow turning off camera
                     if (source === 'camera-only' && !checked) {
-                      return; // 不允许关闭
+                      return; // Don't allow turning off
                     }
                     
                     if (checked) {
-                      // 用户开启摄像头时立即申请权限
+                      // Check if we're in an iframe first
+                      if (isInIframe()) {
+                        const shouldOpenNewWindow = confirm(
+                          DEVICES.iframeMediaBlocked + '\n\nWould you like to open this page in a new window?'
+                        );
+                        if (shouldOpenNewWindow) {
+                          openInNewWindow();
+                        }
+                        setIncludeCamera(false);
+                        return;
+                      }
+                      
+                      // Check if media access is blocked (no secure context)
+                      if (isMediaAccessBlocked()) {
+                        alert('Camera access requires a secure connection (HTTPS). Please use HTTPS or localhost.');
+                        setIncludeCamera(false);
+                        return;
+                      }
+                      
+                      // Request camera permission when user enables it
                       try {
                         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                        // 立即停止测试流，实际流将在startCameraPreview中获取
+                        // Stop test stream immediately, actual stream will be obtained in startCameraPreview
                         stream.getTracks().forEach(track => track.stop());
                         setIncludeCamera(true);
-
+                        console.log('Camera permission granted successfully');
                       } catch (error) {
-                        console.error('摄像头权限申请失败:', error);
-
+                        console.error('Camera permission request failed:', error);
                         setIncludeCamera(false);
+                        
+                        // Show user-friendly error message
+                        let errorMessage: string = PERMISSIONS.cameraDenied;
+                        if (error instanceof DOMException) {
+                          switch (error.name) {
+                            case 'NotAllowedError':
+                              errorMessage = 'Camera access denied. Please allow camera access in your browser settings and try again.';
+                              break;
+                            case 'NotFoundError':
+                              errorMessage = PERMISSIONS.cameraNotFound;
+                              break;
+                            case 'NotReadableError':
+                              errorMessage = 'Camera is being used by another application. Please close other applications using the camera and try again.';
+                              break;
+                            default:
+                              errorMessage = `Camera error: ${error.message}`;
+                          }
+                        }
+                        
+                        // Show alert with error message
+                        if (typeof window !== 'undefined') {
+                          alert(errorMessage);
+                        }
                       }
                     } else {
                       setIncludeCamera(false);
                     }
                   }}
                   disabled={
-                    source === 'camera-only' || // 仅录制摄像头时禁用切换
-                    (screenSource === 'window' || screenSource === 'browser') // 应用窗口和浏览器标签页不支持摄像头
+                    source === 'camera-only' || // Disable switching when only recording camera
+                    (screenSource === 'window' || screenSource === 'browser') // Application windows and browser tabs don't support camera
                   }
                 />
               </div>
@@ -2535,7 +2673,7 @@ export default function ScreenRecorder() {
               <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm font-medium">
-                    {t.subtitles.subtitleLanguage || '字幕语言'}
+                    {SUBTITLES.subtitleLanguage}
                   </Label>
                   <Select
                     value={subtitleState.language}
@@ -2556,16 +2694,16 @@ export default function ScreenRecorder() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="zh-CN">中文</SelectItem>
-                      <SelectItem value="en-US">English</SelectItem>
-                      <SelectItem value="ja-JP">日本語</SelectItem>
-                      <SelectItem value="ko-KR">한국어</SelectItem>
+                      <SelectItem value="zh-CN">Chinese (Simplified)</SelectItem>
+                      <SelectItem value="en-US">English (US)</SelectItem>
+                      <SelectItem value="ja-JP">Japanese</SelectItem>
+                      <SelectItem value="ko-KR">Korean</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 
                 <div className="text-xs text-muted-foreground">
-                  {t.subtitles.subtitleInfo || '字幕将在录制时实时生成，并可在录制结束后导出。'}
+                  {SUBTITLES.subtitleInfo}
                 </div>
               </div>
             )}
@@ -2575,7 +2713,7 @@ export default function ScreenRecorder() {
           <div className="pt-4">
             <Button onClick={startRecording} className="w-full" size="lg">
               <Circle className="h-5 w-5 mr-2 fill-current" />
-              {t.recording.start}
+              {RECORDING.start}
             </Button>
           </div>
             </div>
@@ -2602,19 +2740,19 @@ export default function ScreenRecorder() {
           
           if (pipSupport.browser === 'Firefox') {
             // Firefox也支持点击视频启动画中画，同时保留控件中的画中画按钮
-            console.log('Firefox点击视频尝试启动画中画');
+            console.log('Firefox click video to try starting picture-in-picture');
             // 继续执行下面的逻辑，不return
           }
           
           e.preventDefault();
           if (cameraPreviewStream && !document.pictureInPictureElement && !isPiPRequesting) {
-            console.log(`${pipSupport.browser}点击视频尝试启动画中画`);
+            console.log(`${pipSupport.browser} click video to try starting picture-in-picture`);
             
             if (pipSupport.supported && typeof cameraPreviewRef.current?.requestPictureInPicture === 'function') {
               try {
                 setIsPiPRequestingWithTimeout(true);
                 await cameraPreviewRef.current.requestPictureInPicture();
-                console.log(`${pipSupport.browser}点击视频启动画中画成功`);
+                console.log(`${pipSupport.browser} click video picture-in-picture started successfully`);
 
               } catch (error: any) {
                 console.error(`${pipSupport.browser}点击视频启动失败:`, error);
@@ -2633,7 +2771,7 @@ export default function ScreenRecorder() {
             }
           }
         }}
-        onLoadedData={() => console.log('视频数据加载完成')}
+        onLoadedData={() => console.log('Video data loading completed')}
         onCanPlay={() => console.log('视频可以播放')}
         onError={(e) => console.error('视频元素错误:', e)}
         disablePictureInPicture={detectPiPSupport().browser !== 'Firefox' && detectPiPSupport().browser !== 'Chrome'} // 只为Firefox和Chrome启用画中画
@@ -2723,7 +2861,7 @@ export default function ScreenRecorder() {
                     isNearTimeLimit ? 'bg-orange-500' : 'bg-primary'
                   }`}></div>
                   <span className="font-medium">
-                    {recordingState.isPaused ? t.recording.paused : t.recording.recordingStatus}
+                    {recordingState.isPaused ? RECORDING.paused : RECORDING.recordingStatus}
                   </span>
                 </div>
                 <span className={`font-mono text-lg ${
@@ -2749,7 +2887,7 @@ export default function ScreenRecorder() {
                 )}
                 <Button size="sm" onClick={stopRecording}>
                   <StopCircle className="h-4 w-4 mr-1" />
-                  {t.recording.stop}
+                  {RECORDING.stop}
                 </Button>
               </div>
             </div>
@@ -2771,7 +2909,7 @@ export default function ScreenRecorder() {
                 </div>
                 {isNearTimeLimit && (
                   <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 text-center">
-                    {t.recording.recordingWillStopAt()}
+                    {RECORDING.recordingWillStopAt()}
                   </p>
                 )}
               </div>
@@ -2782,13 +2920,13 @@ export default function ScreenRecorder() {
               <div className="bg-black/80 rounded-lg p-3 min-h-[60px]">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs text-blue-400 font-medium">
-                    {t.subtitles.liveSubtitles || '实时字幕'}
+                    {SUBTITLES.liveSubtitles}
                   </span>
                   {subtitleState.isListening && (
                     <div className="flex items-center space-x-1">
                       <div className="w-1 h-1 bg-blue-400 rounded-full animate-pulse"></div>
                       <span className="text-xs text-blue-400">
-                        {t.subtitles.listening || '监听中'}
+                        {SUBTITLES.listening}
                       </span>
                     </div>
                   )}
@@ -2816,7 +2954,7 @@ export default function ScreenRecorder() {
                   
                   {!subtitleState.isListening && subtitleState.segments.length === 0 && !subtitleState.currentText && (
                     <p className="text-gray-500 text-center text-xs">
-                      {t.subtitles.waitingForSpeech || '等待语音输入...'}
+                      {SUBTITLES.waitingForSpeech}
                     </p>
                   )}
                 </div>
@@ -2838,17 +2976,17 @@ export default function ScreenRecorder() {
               <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-destructive/20 flex items-center justify-center">
                 <span className="text-destructive text-xl">⚠️</span>
               </div>
-              <h3 className="font-medium text-destructive mb-2">录制出现错误</h3>
+              <h3 className="font-medium text-destructive mb-2">Recording Error</h3>
               <p className="text-sm text-muted-foreground mb-4">
                 {recordingError}
               </p>
               <div className="space-y-2">
                 <div className="text-xs text-muted-foreground">
-                  <p>建议解决方案：</p>
+                  <p>Suggested Solutions:</p>
                   <ul className="text-left mt-2 space-y-1">
-                    <li>• 检查浏览器权限设置</li>
-                    <li>• 确保选择了正确的录制源</li>
-                    <li>• 重新开始录制</li>
+                    <li>• Check browser permission settings</li>
+                    <li>• Ensure the correct recording source is selected</li>
+                    <li>• Restart the recording</li>
                   </ul>
                 </div>
                 <Button 
@@ -2858,7 +2996,7 @@ export default function ScreenRecorder() {
                   }}
                   className="mt-4"
                 >
-                  重新录制
+                  Retry Recording
                 </Button>
               </div>
             </div>
@@ -2872,9 +3010,9 @@ export default function ScreenRecorder() {
           <CardContent className="px-6 py-1">
             <div className="space-y-4">
               <div className="text-center">
-                <h3 className="font-medium">{t.recording.recordingComplete}</h3>
+                <h3 className="font-medium">{RECORDING.recordingComplete}</h3>
                 <p className="text-sm text-muted-foreground">
-                  {t.recording.duration}: {formatDuration(recordingState.duration)}
+                  {RECORDING.duration}: {formatDuration(recordingState.duration)}
                 </p>
               </div>
               
@@ -2894,7 +3032,7 @@ export default function ScreenRecorder() {
               {/* Video Title Input */}
               <div>
                 <Label htmlFor="videoTitle" className="text-sm font-medium mb-2 block">
-                  {t.recording.videoTitle}
+                  {RECORDING.videoTitle}
                 </Label>
                 <Input
                   id="videoTitle"
@@ -2910,10 +3048,10 @@ export default function ScreenRecorder() {
                 <div className="flex items-center justify-between">
                   <div>
                     <Label className="text-sm font-medium">
-                      {t.recording.publicVideo}
+                      {RECORDING.publicVideo}
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      {isVideoPublic ? t.recording.publicVideoDesc : t.recording.privateVideoDesc}
+                      {isVideoPublic ? RECORDING.publicVideoDesc : RECORDING.privateVideoDesc}
                     </p>
                   </div>
                   <Switch
@@ -2925,10 +3063,10 @@ export default function ScreenRecorder() {
                 <div className="flex items-center justify-between">
                   <div>
                     <Label className="text-sm font-medium">
-                      {t.publish.publishToDiscovery}
+                      {VIDEOS.publishToDiscovery}
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      {isVideoPublished ? t.publish.publishedDescription : t.publish.unpublishedDescription}
+                      {isVideoPublished ? PUBLISH.publishedDescription : PUBLISH.unpublishedDescription}
                     </p>
                   </div>
                   <Switch
@@ -2943,39 +3081,34 @@ export default function ScreenRecorder() {
               <div className="flex flex-wrap gap-2 justify-center">
                 <Button variant="outline" onClick={downloadRecording}>
                   <Download className="h-4 w-4 mr-2" />
-                  {t.recording.download}
+                  {RECORDING.download}
                 </Button>
                 
-                {/* Upload button - functional for both logged-in users and guests */}
+                {/* Upload button - temporarily disabled */}
                 {user ? (
-                  <Button variant="outline" onClick={uploadToAppwrite} disabled={isUploading}>
-                    {isUploading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-                        {t.recording.uploading}
-                      </>
-                    ) : (
-                      <>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="outline" disabled={true}>
                         <Upload className="h-4 w-4 mr-2" />
-                        {t.recording.upload}
-                      </>
-                    )}
-                  </Button>
+                        {RECORDING.upload}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {RECORDING.uploadNotSupported}
+                    </TooltipContent>
+                  </Tooltip>
                 ) : (
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      console.log('点击登录上传按钮，当前录制状态:', {
-                        hasBlob: !!recordingState.recordedBlob,
-                        blobSize: recordingState.recordedBlob?.size,
-                        duration: recordingState.duration
-                      });
-                      setShowLoginModal(true);
-                    }}
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    {t.guest.loginPrompt}
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="outline" disabled={true}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        {RECORDING.upload}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {RECORDING.uploadNotSupported}
+                    </TooltipContent>
+                  </Tooltip>
                 )}
                 
                 {/* 字幕下载按钮 */}
@@ -3001,7 +3134,7 @@ export default function ScreenRecorder() {
               
               <div className="text-center">
                 <Button onClick={startNewRecording}>
-                  {t.recording.startNewRecording}
+                  {RECORDING.startNewRecording}
                 </Button>
               </div>
             </div>
@@ -3015,7 +3148,7 @@ export default function ScreenRecorder() {
           <CardContent className="px-6 py-1">
             <div className="space-y-4">
               <div className="text-center">
-                <h3 className="font-medium text-green-600">{t.recording.uploadSuccess}</h3>
+                <h3 className="font-medium text-green-600">{RECORDING.uploadSuccess}</h3>
                 <p className="text-sm text-muted-foreground">
                   {uploadedVideo.title}
                 </p>
@@ -3036,7 +3169,7 @@ export default function ScreenRecorder() {
               
               {/* Share URL Display */}
               <div>
-                <Label className="text-sm font-medium mb-2 block">{t.recording.shareLink}</Label>
+                <Label className="text-sm font-medium mb-2 block">{RECORDING.shareLink}</Label>
                 <div className="flex space-x-2">
                   <Input
                     readOnly
@@ -3057,14 +3190,14 @@ export default function ScreenRecorder() {
               <div className="flex flex-wrap gap-2 justify-center">
                 <Button variant="outline" onClick={downloadRecording}>
                   <Download className="h-4 w-4 mr-2" />
-                  {t.recording.download}
+                  {RECORDING.download}
                 </Button>
                 <Button 
                   variant="outline" 
                   onClick={() => shareVideo(uploadedVideo)}
                 >
                   <Share2 className="h-4 w-4 mr-2" />
-                  {t.recording.shareVideo}
+                  {RECORDING.shareVideo}
                 </Button>
                 <Button 
                   variant="outline"
@@ -3074,7 +3207,7 @@ export default function ScreenRecorder() {
                   }}
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
-                  {t.recording.viewVideo}
+                  {RECORDING.viewVideo}
                 </Button>
                 
                 {/* 字幕下载按钮 */}
@@ -3100,7 +3233,7 @@ export default function ScreenRecorder() {
               
               <div className="text-center">
                 <Button onClick={startNewRecording}>
-                  {t.recording.startNewRecording}
+                  {RECORDING.startNewRecording}
                 </Button>
               </div>
             </div>
@@ -3118,6 +3251,7 @@ export default function ScreenRecorder() {
         }}
       />
 
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }

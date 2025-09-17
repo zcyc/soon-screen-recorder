@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { type Video } from '@/lib/database';
-import { useI18n } from '@/lib/i18n';
+import { DASHBOARD, VIDEOS } from '@/lib/constants';
 import { generatePlaceholderThumbnail } from '@/lib/video-utils';
 import { 
   getUserVideosAction, 
@@ -47,7 +47,7 @@ interface VideoGalleryProps {
 
 export default function VideoGallery({ showPublic = false, onError }: VideoGalleryProps) {
   const { user } = useAuth();
-  const { t } = useI18n();
+  // Removed useI18n, using constants directly
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -151,7 +151,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
     setIsVideoPlaying(false); // Reset playing state
     
     // Increment view count
-    if (showPublic || (user && user.$id !== video.userId)) {
+    if (showPublic || (user && user.id.toString() !== video.userId)) {
       await incrementVideoViewsAction(video.$id);
     }
   };
@@ -174,18 +174,18 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
       try {
         await navigator.share({
           title: video.title,
-          text: `观看 ${video.title}`,
+          text: `Watch ${video.title}`,
           url: shareUrl,
         });
-        // 原生分享成功，不显示消息
+        // Native share successful, don't show message
       } catch (error) {
-        // 用户取消分享或其他错误，不作任何操作
+        // User cancelled share or other error, do nothing
         if (error instanceof Error && error.name !== 'AbortError') {
-          console.log('分享取消或失败:', error.message);
+          console.log('Share cancelled or failed:', error.message);
         }
       }
     } else {
-      // 浏览器不支持原生分享，显示提示消息
+      // Browser doesn't support native share, show message
 
     }
   };
@@ -194,10 +194,10 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
     const shareLink = `${window.location.origin}/share/${video.$id}`;
     try {
       await navigator.clipboard.writeText(shareLink);
-      // 成功复制，可以在这里添加成功提示
+      // Successfully copied, can add success message here
     } catch (error) {
-      console.error('复制失败:', error);
-      // 复制失败，可以在这里添加失败提示
+      console.error('Copy failed:', error);
+      // Copy failed, can add failure message here
     }
   };
 
@@ -213,14 +213,14 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
         document.body.removeChild(link);
       }
     } catch (error) {
-      console.error('下载失败:', error);
+      console.error('Download failed:', error);
     }
   };
 
   const handleDeleteClick = (video: Video) => {
     openDeleteModal({
       title: video.title,
-      description: t.videos.deleteConfirmation,
+      description: VIDEOS.deleteConfirmation,
       onConfirm: () => handleDeleteConfirm(video.$id)
     });
   };
@@ -238,7 +238,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
       }
     } catch (error: any) {
       console.error('Error deleting video:', error);
-      // 这里可以添加错误提示
+      // Can add error message here
     } finally {
       setDeletingVideoId(null);
     }
@@ -295,7 +295,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         {!showPublic && (
           <h2 className="text-2xl font-bold">
-            {t.dashboard.myVideos}
+            {DASHBOARD.myVideos}
           </h2>
         )}
         
@@ -303,7 +303,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder={t.videos.searchPlaceholder}
+            placeholder={VIDEOS.searchPlaceholder}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 w-64"
@@ -315,7 +315,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
       {filteredVideos.length === 0 && (
         <div className="text-center py-12">
           <div className="text-muted-foreground mb-4">
-            {searchQuery ? t.dashboard.noMatchingVideos : showPublic ? t.dashboard.noPublicVideos : t.dashboard.noVideosYet}
+            {searchQuery ? DASHBOARD.noMatchingVideos : showPublic ? DASHBOARD.noPublicVideos : DASHBOARD.noVideosYet}
           </div>
 
         </div>
@@ -327,7 +327,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
           <VideoCardWithUrl
             key={video.$id}
             video={video}
-            isOwner={Boolean(!showPublic && user && user.$id === video.userId)}
+            isOwner={Boolean(!showPublic && user && user.id.toString() === video.userId)}
             showPublic={showPublic}
             onVideoClick={handleVideoClick}
             onShare={handleShare}
@@ -341,7 +341,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
             deletingVideoId={deletingVideoId}
             updatingPrivacyId={updatingPrivacyId}
             updatingPublishId={updatingPublishId}
-            t={t}
+            // Removed t prop, VideoCardWithUrl should use constants directly
           />
         ))}
       </div>
@@ -389,7 +389,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
             <div className="p-4">
               <div className="relative aspect-video bg-black rounded-md overflow-hidden">
                 {!isVideoPlaying ? (
-                  // 显示缩略图和播放按钮
+                  // Show thumbnail and play button
                   <>
                     <img
                       className="w-full h-full object-cover"
@@ -407,7 +407,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
                     </div>
                   </>
                 ) : (
-                  // 只有在点击播放后才加载视频
+                  // Only load video after clicking play
                   <VideoPlayerModal
                     fileId={selectedVideo.fileId}
                     isPlaying={isVideoPlaying}
@@ -419,15 +419,15 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
               
               <div className="mt-4 flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
-                  <p>{t.videos.created}: {formatDate(selectedVideo.$createdAt)}</p>
-                  <p>{t.videos.duration}: {formatDuration(selectedVideo.duration)}</p>
-                  <p>{t.videos.quality}: {selectedVideo.quality}</p>
-                  <p>{t.videos.views}: {selectedVideo.views}</p>
+                  <p>{VIDEOS.created}: {formatDate(selectedVideo.$createdAt)}</p>
+                  <p>{VIDEOS.duration}: {formatDuration(selectedVideo.duration)}</p>
+                  <p>{VIDEOS.quality}: {selectedVideo.quality}</p>
+                  <p>{VIDEOS.views}: {selectedVideo.views}</p>
                 </div>
                 
                 <div className="flex space-x-2">
-                  {/* 用户自己的视频 - 显示所有按钮 */}
-                  {(!showPublic && user && user.$id === selectedVideo.userId) && (
+                  {/* User's own video - show all buttons */}
+                  {(!showPublic && user && user.id.toString() === selectedVideo.userId) && (
                     <>
                       <Button
                         variant="outline"
@@ -442,7 +442,7 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
                         ) : (
                           <Globe className="h-4 w-4 mr-2" />
                         )}
-                        {selectedVideo.isPublic ? t.videos.makePrivate : t.videos.makePublic}
+                        {selectedVideo.isPublic ? VIDEOS.makePrivate : VIDEOS.makePublic}
                       </Button>
                       
                       <Button
@@ -458,28 +458,28 @@ export default function VideoGallery({ showPublic = false, onError }: VideoGalle
                         ) : (
                           <Rss className="h-4 w-4 mr-2" />
                         )}
-                        {selectedVideo.isPublish ? t.publish.removeFromDiscovery : t.publish.publishToDiscovery}
+                        {selectedVideo.isPublish ? VIDEOS.removeFromDiscovery : VIDEOS.publishToDiscovery}
                       </Button>
                     </>
                   )}
                   
-                  {/* 分享按钮 - 所有情况都显示 */}
+                  {/* Share button - shown in all cases */}
                   <Button variant="outline" onClick={() => handleShare(selectedVideo)}>
                     <Share className="h-4 w-4 mr-2" />
-                    {t.videos.share}
+                    {VIDEOS.share}
                   </Button>
                   
-                  {/* 复制链接按钮 - 所有情况都显示 */}
+                  {/* Copy link button - shown in all cases */}
                   <Button variant="outline" onClick={() => handleCopyShareLink(selectedVideo)}>
                     <Copy className="h-4 w-4 mr-2" />
-                    {t.videos.copyLink}
+                    {VIDEOS.copyLink}
                   </Button>
                   
-                  {/* 下载按钮 - 仅私有页面显示 */}
+                  {/* Download button - only shown on private page */}
                   {!showPublic && (
                     <Button variant="outline" onClick={() => handleDownload(selectedVideo)}>
                       <Download className="h-4 w-4 mr-2" />
-                      {t.videos.download}
+                      {VIDEOS.download}
                     </Button>
                   )}
                 </div>

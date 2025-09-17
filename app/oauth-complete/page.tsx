@@ -2,26 +2,26 @@
 
 import { useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useI18n } from '@/lib/i18n';
+import { AUTH } from '@/lib/constants';
 
 export default function OAuthCompletePage() {
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
-  const { t } = useI18n();
+  // Removed useI18n, using AUTH constants directly
 
   useEffect(() => {
     if (window.opener) {
       if (error) {
-        // 如果有错误，通知父窗口错误信息
+        // If there's an error, notify parent window of error information
         console.log('OAuth: Notifying parent window of error:', error);
-        let errorMessage = t.auth.authenticationFailed;
+        let errorMessage: string = AUTH.authenticationFailed;
         
         switch (error) {
           case 'registration_disabled':
-            errorMessage = t.auth.registrationDisabled;
+            errorMessage = AUTH.registrationDisabled;
             break;
           case 'oauth_failed':
-            errorMessage = t.auth.authenticationFailed;
+            errorMessage = AUTH.authenticationFailed;
             break;
           default:
             errorMessage = `OAuth error: ${error}`;
@@ -33,18 +33,18 @@ export default function OAuthCompletePage() {
           error: errorMessage 
         }, window.location.origin);
       } else {
-        // 通知父窗口OAuth已成功完成
+        // Notify parent window that OAuth has completed successfully
         console.log('OAuth: Notifying parent window of success');
         window.opener.postMessage({ type: 'OAUTH_SUCCESS' }, window.location.origin);
       }
       
-      // 短暂延迟后关闭窗口
+      // Close window after short delay
       setTimeout(() => {
         console.log('OAuth: Closing popup window');
         window.close();
       }, 500);
     } else {
-      // 如果不是在弹窗中打开，重定向到主页或登录页
+      // If not opened in popup, redirect to main page or login page
       if (error) {
         console.log('OAuth: Not in popup, redirecting to sign-in with error');
         window.location.href = `/sign-in?error=${error}`;
@@ -60,9 +60,9 @@ export default function OAuthCompletePage() {
       <div className="text-center space-y-4">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
         {error ? (
-          <p className="text-sm text-destructive">{t.auth.authenticationFailedClosing}</p>
+          <p className="text-sm text-destructive">{AUTH.authenticationFailedClosing}</p>
         ) : (
-          <p className="text-sm text-muted-foreground">{t.auth.loginSuccessfulClosing}</p>
+          <p className="text-sm text-muted-foreground">{AUTH.loginSuccessfulClosing}</p>
         )}
       </div>
     </div>

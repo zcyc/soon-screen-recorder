@@ -6,8 +6,8 @@ import { activityService, ActivityType } from "@/lib/services/activity-service";
 import { headers } from "next/headers";
 
 /**
- * OAuth 回调处理
- * 根据 Appwrite 官方文档实现
+ * OAuth callback handler
+ * Implemented according to Appwrite official documentation
  */
 export async function GET(request: Request) {
   try {
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
       url: url.toString()
     });
 
-    // 检查必需参数
+    // Check required parameters
     if (!userId || !secret) {
       console.error('OAuth callback missing parameters:', { userId: !!userId, secret: !!secret });
       const headersList = await headers();
@@ -31,36 +31,36 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${redirectOrigin}/sign-in?error=oauth_incomplete`);
     }
 
-    // 使用 Admin Client 创建会话
+    // Create session using Admin Client
     const { account, users } = await createAdminClient();
     console.log('OAuth: Creating session with Admin Client');
     
     let session: any;
     
-    // 检查注册是否被禁用
+    // Check if registration is disabled
     if (!registrationConfig.enableRegistration) {
       try {
-        // 先创建会话来检查用户是否存在
+        // First create session to check if user exists
         session = await account.createSession(userId, secret);
         
-        // 获取用户信息检查创建时间
+        // Get user info to check creation time
         const user = await users.get(userId);
         const userCreationTime = new Date(user.$createdAt).getTime();
         const sessionCreationTime = new Date(session.$createdAt).getTime();
         const timeDiff = Math.abs(sessionCreationTime - userCreationTime);
         
-        // 如果用户和会话创建时间相近（小于5分钟），认为是新注册
-        if (timeDiff < 300000) { // 5分钟
+        // If user and session creation times are close (less than 5 minutes), consider it a new registration
+        if (timeDiff < 300000) { // 5 minutes
           console.log('OAuth: New user registration detected and registration disabled');
           
-          // 删除刚创建的会话
+          // Delete the newly created session
           try {
             await account.deleteSession(session.$id);
           } catch (sessionError) {
             console.warn('OAuth: Failed to delete session:', sessionError);
           }
           
-          // 删除新用户
+          // Delete the new user
           try {
             await users.delete(userId);
             console.log('OAuth: New user deleted due to registration disabled');
@@ -76,10 +76,10 @@ export async function GET(request: Request) {
         }
         
         console.log('OAuth: Existing user login allowed');
-        // 会话已创建，继续正常流程
+        // Session already created, continue normal flow
       } catch (error) {
         console.error('OAuth: Error checking user registration status:', error);
-        // 如果检查失败，为了安全起见，阻止登录
+        // If check fails, block login for security reasons
         const headersList = await headers();
         const redirectOrigin = headersList.get('host') 
           ? `https://${headersList.get('host')}` 
@@ -87,12 +87,12 @@ export async function GET(request: Request) {
         return NextResponse.redirect(`${redirectOrigin}/oauth-complete?error=registration_disabled`);
       }
     } else {
-      // 注册允许，正常创建会话
+      // Registration allowed, create session normally
       session = await account.createSession(userId, secret);
       console.log('OAuth: Session created successfully');
     }
     
-    // 确保会话存在才设置cookie
+    // Only set cookie if session exists
     if (!session) {
       console.error('OAuth: Session not created');
       const headersList = await headers();
@@ -102,7 +102,7 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${redirectOrigin}/oauth-complete?error=registration_disabled`);
     }
 
-    // 设置会话 cookie
+    // Set session cookie
     const cookieStore = await cookies();
     cookieStore.set("appwrite-session", session.secret, {
       path: "/",
@@ -114,14 +114,14 @@ export async function GET(request: Request) {
 
     console.log('OAuth: Session cookie set');
 
-    // 记录登录活动
+    // Record login activity
     try {
       const headersList = await headers();
       const ipAddress = headersList.get('x-forwarded-for')?.split(',')[0] || 
                        headersList.get('x-real-ip') || 
                        '0.0.0.0';
       
-      // 检测 OAuth 提供商类型（通过 referer 或者其他方式）
+      // Detect OAuth provider type (via referer or other methods)
       const referer = headersList.get('referer') || '';
       let oauthProvider = 'OAuth';
       if (referer.includes('github.com')) {
@@ -140,10 +140,10 @@ export async function GET(request: Request) {
       console.log('OAuth: Activity logged successfully for:', oauthProvider);
     } catch (activityError) {
       console.warn('OAuth: Failed to log activity:', activityError);
-      // 不让活动记录失败影响登录流程
+      // Don't let activity logging failure affect login flow
     }
 
-    // 重定向到OAuth完成页面 - 用于处理弹窗关闭
+    // Redirect to OAuth completion page - for handling popup closure
     const headersList = await headers();
     const redirectOrigin = headersList.get('host') 
       ? `https://${headersList.get('host')}` 
@@ -155,7 +155,7 @@ export async function GET(request: Request) {
   } catch (error: any) {
     console.error('OAuth callback error:', error);
     
-    // 清理可能设置的无效 cookie
+    // Clean up potentially invalid cookies
     try {
       const cookieStore = await cookies();
       cookieStore.delete("appwrite-session");
@@ -169,7 +169,7 @@ export async function GET(request: Request) {
       ? `https://${headersList.get('host')}` 
       : url.origin;
     
-    // 在catch块中也重定向到oauth-complete页面以便正确关闭弹窗
+    // Also redirect to oauth-complete page in catch block to properly close popup
     return NextResponse.redirect(`${redirectOrigin}/oauth-complete?error=oauth_session_failed`);
   }
 }

@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { VideoRecord, VideoReaction } from '@/lib/database';
 import { useAuth } from '@/contexts/auth-context';
-import { useI18n } from '@/lib/i18n';
+import { SHARE } from '@/lib/constants';
 import ShareVideoPlayer from '@/components/share-video-player';
 import { 
   getVideoByIdAction, 
@@ -35,7 +35,7 @@ export default function SharePage() {
   const params = useParams();
   const videoId = params.videoId as string;
   const { user } = useAuth();
-  const { t } = useI18n();
+  // Removed useI18n, using SHARE constants directly
   
   const [video, setVideo] = useState<VideoRecord | null>(null);
   const [reactions, setReactions] = useState<VideoReaction[]>([]);
@@ -45,17 +45,17 @@ export default function SharePage() {
   const [showSubtitles, setShowSubtitles] = useState(true);
 
   const emojis = [
-    // 正面反馈
-    { emoji: '👍', icon: ThumbsUp, label: t.share.like },
-    { emoji: '❤️', icon: Heart, label: t.share.love },
-    { emoji: '😊', icon: Smile, label: t.share.happy },
-    { emoji: '👏', icon: ThumbsUp, label: t.share.applause },
-    { emoji: '⭐', icon: Star, label: t.share.awesome },
-    // 负面反馈
-    { emoji: '👎', icon: ThumbsDown, label: t.share.dislike },
-    { emoji: '😕', icon: Frown, label: t.share.confused },
-    { emoji: '😴', icon: Meh, label: t.share.boring },
-    { emoji: '😞', icon: Frown, label: t.share.disappointed },
+    // Positive feedback
+    { emoji: '👍', icon: ThumbsUp, label: SHARE.like },
+    { emoji: '❤️', icon: Heart, label: SHARE.love },
+    { emoji: '😊', icon: Smile, label: SHARE.happy },
+    { emoji: '👏', icon: ThumbsUp, label: SHARE.applause },
+    { emoji: '⭐', icon: Star, label: SHARE.awesome },
+    // Negative feedback
+    { emoji: '👎', icon: ThumbsDown, label: SHARE.dislike },
+    { emoji: '😕', icon: Frown, label: SHARE.confused },
+    { emoji: '😴', icon: Meh, label: SHARE.boring },
+    { emoji: '😞', icon: Frown, label: SHARE.disappointed },
   ];
 
   useEffect(() => {
@@ -90,8 +90,8 @@ export default function SharePage() {
       }
       
       const videoData = result.data;
-      if (!videoData.isPublic && (!user || user.$id !== videoData.userId)) {
-        setError(t.share.privateVideoError);
+      if (!videoData.isPublic && (!user || user.id.toString() !== videoData.userId)) {
+        setError(SHARE.privateVideoError);
         return;
       }
       setVideo(videoData);
@@ -111,7 +111,7 @@ export default function SharePage() {
       }
     } catch (error: any) {
       console.error('Failed to load video:', error);
-      setError(error.message || t.share.videoNotFoundDesc);
+      setError(error.message || SHARE.videoNotFoundDesc);
     } finally {
       setLoading(false);
     }
@@ -163,7 +163,7 @@ export default function SharePage() {
   };
 
   const hasUserReacted = (emoji: string) => {
-    return user && reactions.some(r => r.emoji === emoji && r.userId === user.$id);
+    return user && reactions.some(r => r.emoji === emoji && r.userId === user.id.toString());
   };
 
   const formatDuration = (seconds: number): string => {
@@ -198,7 +198,7 @@ export default function SharePage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">{t.share.loading}</p>
+          <p className="mt-4 text-muted-foreground">{SHARE.loading}</p>
         </div>
       </div>
     );
@@ -209,12 +209,12 @@ export default function SharePage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <Play className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-          <h1 className="text-2xl font-bold mb-2">{t.share.videoNotFound}</h1>
+          <h1 className="text-2xl font-bold mb-2">{SHARE.videoNotFound}</h1>
           <p className="text-muted-foreground mb-4">
-            {error || t.share.videoNotFoundDesc}
+            {error || SHARE.videoNotFoundDesc}
           </p>
           <Button onClick={() => window.location.href = '/'}>
-            {t.share.backToHome}
+            {SHARE.backToHome}
           </Button>
         </div>
       </div>
@@ -232,7 +232,7 @@ export default function SharePage() {
                 fileId={video.fileId}
                 subtitleUrl={subtitleUrl}
                 title={video.title}
-                thumbnailUrl={video.thumbnailUrl} // 传递缩略图 URL
+                thumbnailUrl={video.thumbnailUrl} // Pass thumbnail URL
                 className="w-full rounded-t-lg"
               />
             </CardContent>
@@ -251,12 +251,12 @@ export default function SharePage() {
                       onClick={() => setShowSubtitles(!showSubtitles)}
                     >
                       <span className="text-xs font-bold mr-2">CC</span>
-                      {showSubtitles ? t.subtitles?.hideSubtitles || '隐藏字幕' : t.subtitles?.showSubtitles || '显示字幕'}
+                      {showSubtitles ? 'Hide Subtitles' : 'Show Subtitles'}
                     </Button>
                   )}
                   <Button variant="outline" onClick={handleDownload}>
                     <Download className="h-4 w-4 mr-2" />
-                    {t.share.download}
+                    {SHARE.download}
                   </Button>
                 </div>
               </div>
@@ -269,7 +269,7 @@ export default function SharePage() {
                 </div>
                 <div className="flex items-center">
                   <Eye className="h-4 w-4 mr-1" />
-                  {video.views} {t.share.views}
+                  {video.views} {SHARE.views}
                 </div>
                 <div className="flex items-center">
                   <Clock className="h-4 w-4 mr-1" />
@@ -282,14 +282,14 @@ export default function SharePage() {
                 {subtitleUrl && (
                   <Badge variant="outline" className="flex items-center space-x-1">
                     <span className="text-xs font-bold">CC</span>
-                    <span>{t.subtitles?.enableSubtitles || '字幕'}</span>
+                    <span>Subtitles</span>
                   </Badge>
                 )}
               </div>
 
               {/* Reactions */}
               <div className="border-t pt-4">
-                <h3 className="text-lg font-semibold mb-3">{t.share.reactions}</h3>
+                <h3 className="text-lg font-semibold mb-3">{SHARE.reactions}</h3>
                 <div className="flex space-x-2 mb-4">
                   {emojis.map(({ emoji, icon: Icon, label }) => {
                     const count = getReactionCount(emoji);
@@ -303,7 +303,7 @@ export default function SharePage() {
                         onClick={user ? () => handleReaction(emoji) : undefined}
                         disabled={!user}
                         className="flex items-center space-x-1"
-                        title={user ? label : t.share.signInToReact}
+                        title={user ? label : SHARE.signInToReact}
                       >
                         <span>{emoji}</span>
                         {count > 0 && <span className="text-xs">{count}</span>}
@@ -315,7 +315,7 @@ export default function SharePage() {
                 {/* Recent Reactions */}
                 {reactions.length > 0 && (
                   <div>
-                    <h4 className="text-sm font-medium mb-2">{t.share.recentReactions}</h4>
+                    <h4 className="text-sm font-medium mb-2">{SHARE.recentReactions}</h4>
                     <div className="flex flex-wrap gap-2">
                       {reactions.slice(0, 10).map((reaction) => (
                         <div
@@ -328,7 +328,7 @@ export default function SharePage() {
                       ))}
                       {reactions.length > 10 && (
                         <span className="text-xs text-muted-foreground">
-                          {t.share.andMore.replace('{count}', (reactions.length - 10).toString())}
+                          {SHARE.andMore.replace('{count}', (reactions.length - 10).toString())}
                         </span>
                       )}
                     </div>
@@ -339,14 +339,14 @@ export default function SharePage() {
                 {!user && (
                   <div className="mt-4 p-3 bg-muted/50 rounded-lg text-center">
                     <p className="text-sm text-muted-foreground mb-3">
-                      {t.share.signInToReact}
+                      {SHARE.signInToReact}
                     </p>
                     <div className="space-x-2">
                       <Button asChild variant="outline" size="sm">
-                        <a href="/sign-in">{t.share.signIn}</a>
+                        <a href="/sign-in">{SHARE.signIn}</a>
                       </Button>
                       <Button asChild size="sm">
-                        <a href="/sign-up">{t.share.signUp}</a>
+                        <a href="/sign-up">{SHARE.signUp}</a>
                       </Button>
                     </div>
                   </div>

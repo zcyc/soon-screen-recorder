@@ -7,10 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { X, Github, Chrome } from 'lucide-react';
-import { useI18n } from '@/lib/i18n';
+import { AUTH } from '@/lib/constants';
 import { registrationConfig } from '@/lib/config';
 import { useAuth } from '@/contexts/auth-context';
-import { signInWithEmailPassword, signInWithGithub, signInWithGoogle } from '@/lib/auth/client-auth';
+import { signInWithEmailPassword, signInWithGithub, signInWithGoogle } from '@/lib/auth/client-auth-local';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -19,10 +19,10 @@ interface LoginModalProps {
 }
 
 export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
-  const { t } = useI18n();
+  // Removed useI18n, using AUTH constants directly
   const { refreshUser } = useAuth();
-  // Don't allow signup mode if registration is disabled
-  const [isSignUp, setIsSignUp] = useState(false && registrationConfig.enableRegistration);
+  // Enable signup mode with local authentication
+  const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -32,18 +32,73 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
     password: ''
   });
 
+  // Field-level error states
+  const [fieldErrors, setFieldErrors] = useState({
+    name: '',
+    email: '',
+    password: ''
+  });
+
   if (!isOpen) return null;
 
+  // Field validation functions
+  const validateEmail = (email: string): string => {
+    if (!email.trim()) return 'Email is required';
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return 'Please enter a valid email address';
+    return '';
+  };
+
+  const validatePassword = (password: string): string => {
+    if (!password) return 'Password is required';
+    if (password.length < 6) return 'Password must be at least 6 characters long';
+    return '';
+  };
+
+  const validateName = (name: string): string => {
+    if (!name.trim()) return 'Full name is required';
+    if (name.trim().length < 2) return 'Name must be at least 2 characters long';
+    return '';
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [e.target.name]: e.target.value
+      [name]: value
     }));
-    setError(''); // Clear error when user types
+    
+    // Clear general error when user types
+    setError('');
+    
+    // Clear field-specific error when user types
+    setFieldErrors(prev => ({
+      ...prev,
+      [name]: ''
+    }));
+  };
+
+  const validateForm = (): boolean => {
+    const errors = {
+      name: isSignUp ? validateName(formData.name) : '',
+      email: validateEmail(formData.email),
+      password: validatePassword(formData.password)
+    };
+
+    setFieldErrors(errors);
+
+    // Return true if no errors
+    return !errors.email && !errors.password && (!isSignUp || !errors.name);
   };
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate form before submission
+    if (!validateForm()) {
+      return; // Stop if validation fails
+    }
+    
     setIsLoading(true);
     setError('');
 
@@ -55,23 +110,23 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
       );
       
       if (!result.success) {
-        setError(result.error || t.auth.errorOccurred);
+        setError(result.error || AUTH.errorOccurred);
       } else {
-        // 登录成功 - 不刷新页面，只更新状态
-        console.log('邮箱登录成功，更新认证状态');
+        // Login successful - don't refresh page, only update state
+        console.log('Email login successful, updating authentication state');
         
-        // 刷新用户状态
+        // Refresh user state
         await refreshUser();
         
-        // 等待片刻让认证状态更新
+        // Wait a moment for authentication state to update
         setTimeout(() => {
           onSuccess?.();
           onClose();
-          console.log('登录模态已关闭，用户状态已更新');
+          console.log('Login modal closed, user state updated');
         }, 100);
       }
     } catch (error: any) {
-      setError(error.message || t.auth.errorOccurred);
+      setError(error.message || AUTH.errorOccurred);
     } finally {
       setIsLoading(false);
     }
@@ -84,12 +139,12 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
     try {
       const result = await signInWithGithub();
       if (!result.success) {
-        setError(result.error || t.auth.githubLoginFailed);
+        setError(result.error || AUTH.githubLoginFailed);
       } else if (result.url) {
-        // 在新窗口中打开GitHub登录
+        // Open GitHub login in new window
         const popup = window.open(result.url, 'github-login', 'width=500,height=600,scrollbars=yes,resizable=yes');
         
-        // 监听来自弹窗的消息
+        // Listen for messages from popup
         const messageListener = (event: MessageEvent) => {
           if (event.origin === window.location.origin) {
             if (event.data.type === 'OAUTH_SUCCESS') {
@@ -97,29 +152,29 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
               window.removeEventListener('message', messageListener);
               clearInterval(checkClosed);
               
-              // 登录成功处理 - 不刷新页面
-              console.log('GitHub OAuth 登录成功，更新认证状态');
+              // Login success handling - don't refresh page
+              console.log('GitHub OAuth login successful, updating authentication state');
               setTimeout(async () => {
                 await refreshUser();
                 onSuccess?.();
                 onClose();
-                console.log('GitHub 登录模态已关闭，用户状态已更新');
+                console.log('GitHub login modal closed, user state updated');
               }, 500);
             } else if (event.data.type === 'OAUTH_ERROR') {
               console.log('GitHub OAuth error message received:', event.data.error);
               window.removeEventListener('message', messageListener);
               clearInterval(checkClosed);
               
-              // 显示错误信息
-              setError(event.data.error || t.auth.githubLoginFailed);
+              // Show error message
+              setError(event.data.error || AUTH.githubLoginFailed);
               setIsLoading(false);
             }
           }
         };
         
-        // messageListener 已在上面的 wrappedMessageListener 中添加
+        // messageListener already added in wrappedMessageListener above
         
-        // 备用检查：监听窗口关闭（防止消息未收到）
+        // Backup check: listen for window close (prevent messages not received)
         let hasReceivedMessage = false;
         
         const originalMessageListener = messageListener;
@@ -136,25 +191,25 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
             clearInterval(checkClosed);
             window.removeEventListener('message', wrappedMessageListener);
             
-            // 只有在没有收到消息时才检查登录状态
+            // Only check login status when no message is received
             if (!hasReceivedMessage) {
-              console.log('GitHub OAuth 弹窗关闭且未收到消息，检查登录状态');
+              console.log('GitHub OAuth popup closed without receiving message, checking login status');
               setTimeout(async () => {
                 await refreshUser();
-                // 检查是否有用户登录（通过简单的API调用）
+                // Check if user is logged in (through simple API call)
                 try {
                   const response = await fetch('/api/user');
                   if (response.ok) {
                     onSuccess?.();
                     onClose();
-                    console.log('GitHub 登录处理完成，用户状态已更新');
+                    console.log('GitHub login processing completed, user state updated');
                   } else {
                     setIsLoading(false);
-                    console.log('GitHub OAuth 弹窗关闭但未登录成功');
+                    console.log('GitHub OAuth popup closed but login not successful');
                   }
                 } catch (error) {
                   setIsLoading(false);
-                  console.log('GitHub OAuth 检查登录状态失败');
+                  console.log('GitHub OAuth login status check failed');
                 }
               }, 1000);
             }
@@ -162,7 +217,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
         }, 1000);
       }
     } catch (error: any) {
-      setError(error.message || t.auth.githubLoginFailed);
+      setError(error.message || AUTH.githubLoginFailed);
     } finally {
       setIsLoading(false);
     }
@@ -177,10 +232,10 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
       if (!result.success) {
         setError(result.error || 'Google login failed');
       } else if (result.url) {
-        // 在新窗口中打开Google登录
+        // Open Google login in new window
         const popup = window.open(result.url, 'google-login', 'width=500,height=600,scrollbars=yes,resizable=yes');
         
-        // 监听来自弹窗的消息
+        // Listen for messages from popup
         const messageListener = (event: MessageEvent) => {
           if (event.origin === window.location.origin) {
             if (event.data.type === 'OAUTH_SUCCESS') {
@@ -188,29 +243,29 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
               window.removeEventListener('message', messageListener);
               clearInterval(checkClosed);
               
-              // 登录成功处理 - 不刷新页面
-              console.log('Google OAuth 登录成功，更新认证状态');
+              // Login success handling - don't refresh page
+              console.log('Google OAuth login successful, updating authentication state');
               setTimeout(async () => {
                 await refreshUser();
                 onSuccess?.();
                 onClose();
-                console.log('Google 登录模态已关闭，用户状态已更新');
+                console.log('Google login modal closed, user state updated');
               }, 500);
             } else if (event.data.type === 'OAUTH_ERROR') {
               console.log('Google OAuth error message received:', event.data.error);
               window.removeEventListener('message', messageListener);
               clearInterval(checkClosed);
               
-              // 显示错误信息
+              // Show error message
               setError(event.data.error || 'Google login failed');
               setIsLoading(false);
             }
           }
         };
         
-        // messageListener 已在上面的 wrappedMessageListener 中添加
+        // messageListener already added in wrappedMessageListener above
         
-        // 备用检查：监听窗口关闭（防止消息未收到）
+        // Backup check: listen for window close (prevent messages not received)
         let hasReceivedMessage = false;
         
         const originalMessageListener = messageListener;
@@ -227,25 +282,25 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
             clearInterval(checkClosed);
             window.removeEventListener('message', wrappedMessageListener);
             
-            // 只有在没有收到消息时才检查登录状态
+            // Only check login status when no message is received
             if (!hasReceivedMessage) {
-              console.log('Google OAuth 弹窗关闭且未收到消息，检查登录状态');
+              console.log('Google OAuth popup closed without receiving message, checking login status');
               setTimeout(async () => {
                 await refreshUser();
-                // 检查是否有用户登录（通过简单的API调用）
+                // Check if user is logged in (through simple API call)
                 try {
                   const response = await fetch('/api/user');
                   if (response.ok) {
                     onSuccess?.();
                     onClose();
-                    console.log('Google 登录处理完成，用户状态已更新');
+                    console.log('Google login processing completed, user state updated');
                   } else {
                     setIsLoading(false);
-                    console.log('Google OAuth 弹窗关闭但未登录成功');
+                    console.log('Google OAuth popup closed but login not successful');
                   }
                 } catch (error) {
                   setIsLoading(false);
-                  console.log('Google OAuth 检查登录状态失败');
+                  console.log('Google OAuth login status check failed');
                 }
               }, 1000);
             }
@@ -261,7 +316,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
 
   const modalContent = (
     <div 
-      className="fixed top-0 left-0 right-0 bottom-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      className="fixed top-0 left-0 right-0 bottom-0 bg-black/60 dark:bg-black/70 flex items-center justify-center z-50 p-4"
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -274,87 +329,111 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
         zIndex: 9999
       }}
     >
-      <div className="bg-background rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <Card className="border-0 shadow-none">
+      <div className="bg-card dark:bg-card rounded-lg shadow-2xl border border-border dark:border-border w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <Card className="border-0 shadow-none bg-transparent">
           <CardHeader className="relative">
             <button 
               onClick={onClose}
-              className="absolute right-4 top-4 p-2 hover:bg-muted rounded-full transition-colors"
+              className="absolute right-4 top-4 p-2 hover:bg-muted hover:bg-opacity-80 rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/50"
               disabled={isLoading}
             >
-              <X className="h-4 w-4" />
+              <X className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
             </button>
             <CardTitle className="text-center">
-              {isSignUp ? t.auth.createSoonAccount : t.auth.signInToSoon}
+              {isSignUp ? AUTH.createSoonAccount : AUTH.signInToSoon}
             </CardTitle>
             <p className="text-sm text-muted-foreground text-center">
-              {isSignUp ? t.auth.signUpDescription : t.auth.signInDescription}
+              {isSignUp ? AUTH.signUpDescription : AUTH.signInDescription}
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
             {error && (
-              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
-                <p className="text-sm text-destructive">{error}</p>
+              <div className="bg-destructive/10 dark:bg-destructive/20 border border-destructive/30 dark:border-destructive/40 rounded-lg p-3 shadow-sm">
+                <p className="text-sm text-destructive dark:text-red-300">{error}</p>
               </div>
             )}
 
-            <form onSubmit={handleEmailSignIn} className="space-y-4">
+            <form onSubmit={handleEmailSignIn} className="space-y-4" noValidate>
               {isSignUp && (
                 <div className="space-y-2">
-                  <Label htmlFor="name">{t.auth.fullName}</Label>
+                  <Label htmlFor="name">{AUTH.fullName}</Label>
                   <Input
                     id="name"
                     name="name"
                     type="text"
-                    placeholder={t.auth.enterFullName}
+                    placeholder={AUTH.enterFullName}
                     value={formData.name}
                     onChange={handleInputChange}
-                    required={isSignUp}
                     disabled={isLoading}
+                    className={fieldErrors.name ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50 dark:bg-red-950/20' : ''}
                   />
+                  {fieldErrors.name && (
+                    <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+                      <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {fieldErrors.name}
+                    </p>
+                  )}
                 </div>
               )}
               
               <div className="space-y-2">
-                <Label htmlFor="email">{t.auth.email}</Label>
+                <Label htmlFor="email">{AUTH.email}</Label>
                 <Input
                   id="email"
                   name="email"
                   type="email"
-                  placeholder={t.auth.enterEmail}
+                  placeholder={AUTH.enterEmail}
                   value={formData.email}
                   onChange={handleInputChange}
-                  required
                   disabled={isLoading}
+                  className={fieldErrors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50 dark:bg-red-950/20' : ''}
                 />
+                {fieldErrors.email && (
+                  <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {fieldErrors.email}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">{t.auth.password}</Label>
+                <Label htmlFor="password">{AUTH.password}</Label>
                 <Input
                   id="password"
                   name="password"
                   type="password"
-                  placeholder={t.auth.enterPassword}
+                  placeholder={AUTH.enterPassword}
                   value={formData.password}
                   onChange={handleInputChange}
-                  required
                   disabled={isLoading}
+                  className={fieldErrors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50 dark:bg-red-950/20' : ''}
                 />
+                {fieldErrors.password && (
+                  <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {fieldErrors.password}
+                  </p>
+                )}
               </div>
 
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? t.auth.loading : (isSignUp ? t.auth.signUp : t.auth.signIn)}
+                {isLoading ? AUTH.loading : (isSignUp ? AUTH.signUp : AUTH.signIn)}
               </Button>
             </form>
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
+                <span className="w-full border-t border-border" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  {t.auth.orContinueWith}
+                <span className="bg-card dark:bg-card px-2 text-muted-foreground">
+                  {AUTH.orContinueWith}
                 </span>
               </div>
             </div>
@@ -380,36 +459,42 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
               </Button>
             </div>
 
-            {/* Only show signup toggle if registration is enabled */}
-            {registrationConfig.enableRegistration && (
-              <div className="text-center text-sm">
-                {isSignUp ? (
-                  <>
-                    {t.auth.alreadyHaveAccount}{' '}
-                    <button
-                      type="button"
-                      className="text-primary hover:underline"
-                      onClick={() => setIsSignUp(false)}
-                      disabled={isLoading}
-                    >
-                      {t.auth.signInToExistingAccount}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    {t.auth.newToSoon}{' '}
-                    <button
-                      type="button"
-                      className="text-primary hover:underline"
-                      onClick={() => setIsSignUp(true)}
-                      disabled={isLoading}
-                    >
-                      {t.auth.createAccount}
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
+            {/* Show signup toggle with local authentication */}
+            <div className="text-center text-sm">
+              {isSignUp ? (
+                <>
+                  {AUTH.alreadyHaveAccount}{' '}
+                  <button
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={() => {
+                      setIsSignUp(false);
+                      setFieldErrors({ name: '', email: '', password: '' });
+                      setError('');
+                    }}
+                    disabled={isLoading}
+                  >
+                    {AUTH.signInToExistingAccount}
+                  </button>
+                </>
+              ) : (
+                <>
+                  {AUTH.newToSoon}{' '}
+                  <button
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={() => {
+                      setIsSignUp(true);
+                      setFieldErrors({ name: '', email: '', password: '' });
+                      setError('');
+                    }}
+                    disabled={isLoading}
+                  >
+                    {AUTH.createAccount}
+                  </button>
+                </>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

@@ -69,15 +69,17 @@ export async function getUserVideosAction(): Promise<ActionResult> {
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return { error: 'User not authenticated' };
+      // Return empty videos instead of error for unauthenticated users
+      console.log('User not authenticated, returning empty videos');
+      return { success: true, data: [] };
     }
 
     const videos = await getUserVideos(user.$id);
-    
     return { success: true, data: videos };
   } catch (error: any) {
     console.error('Get user videos error:', error);
-    return { error: error.message || 'Failed to fetch videos' };
+    // Return empty videos on any error (including auth issues)
+    return { success: true, data: [] };
   }
 }
 
@@ -85,11 +87,11 @@ export async function getUserVideosAction(): Promise<ActionResult> {
 export async function getPublicVideosAction(): Promise<ActionResult> {
   try {
     const videos = await getPublicVideos();
-    
     return { success: true, data: videos };
   } catch (error: any) {
     console.error('Get public videos error:', error);
-    return { error: error.message || 'Failed to fetch public videos' };
+    // Return empty videos on any error
+    return { success: true, data: [] };
   }
 }
 

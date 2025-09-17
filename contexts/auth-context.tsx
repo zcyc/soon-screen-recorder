@@ -1,10 +1,14 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User } from '../lib/auth/server-auth';
-import { getCurrentUserAction, verifySessionAction } from '@/app/actions/user-actions';
-import { signIn, signUp, signOut } from '@/app/(login)/actions';
-import { createOAuth2SessionAction } from '@/app/actions/user-actions';
+import { getCurrentUser, signOut as localSignOut } from '@/lib/auth/client-auth-local';
+
+interface User {
+  id: number;
+  email: string;
+  name: string;
+  created_at: string;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -28,21 +32,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkUserSession = async () => {
     try {
-      // First try to get current user
-      const result = await getCurrentUserAction();
+      // Get current user from local auth
+      const result = await getCurrentUser();
       
-      if (result.success && result.data) {
-        setUser(result.data);
-        
-        // If we got a user but we're on a login page, might be an OAuth callback
-        if (typeof window !== 'undefined') {
-          const isLoginPage = window.location.pathname.includes('sign-in') || 
-                             window.location.pathname.includes('sign-up');
-          if (isLoginPage && !window.location.search.includes('error')) {
-            // Successful OAuth callback, redirect to dashboard
-            window.location.href = '/dashboard';
-          }
-        }
+      if (result.success && result.user) {
+        setUser(result.user);
       } else {
         setUser(null);
       }
@@ -67,47 +61,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const loginWithGitHub = async () => {
+    // GitHub OAuth is not available with local authentication
+    throw new Error('GitHub login is not available in the current preview version. Please use email login.');
+  };
+
+  const logout = async () => {
     try {
-      const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
-      const redirectUrl = `${baseUrl}/auth/callback`;
-      const failureUrl = `${baseUrl}/auth/callback?error=oauth_failed`;
-      
-      console.log('AuthContext: Initiating GitHub OAuth with:', { redirectUrl, failureUrl });
-      
-      const result = await createOAuth2SessionAction('github', redirectUrl, failureUrl);
-      
-      if (result.error) {
-        throw new Error(result.error);
-      }
-      
-      // OAuth redirect will handle the rest
+      await localSignOut();
+      setUser(null);
     } catch (error) {
-      console.error('GitHub OAuth initiation failed:', error);
+      console.error('Logout failed:', error);
       throw error;
     }
   };
 
-  const logout = async () => {
-    // Note: This function is kept for backward compatibility
-    // The actual logout should be handled by form actions
-    throw new Error('Please use the logout form action instead');
-  };
-
   const refreshUser = async () => {
     try {
-      console.log('AuthContext: refreshUser 被调用');
-      const result = await getCurrentUserAction();
-      console.log('AuthContext: getCurrentUserAction 结果:', result);
+      console.log('AuthContext: refreshUser called');
+      const result = await getCurrentUser();
+      console.log('AuthContext: getCurrentUser result:', result);
       
-      if (result.success && result.data) {
-        console.log('AuthContext: 设置用户状态:', {
-          userId: result.data.$id,
-          userName: result.data.name,
-          userEmail: result.data.email
+      if (result.success && result.user) {
+        console.log('AuthContext: setting user state:', {
+          userId: result.user.id,
+          userName: result.user.name,
+          userEmail: result.user.email
         });
-        setUser(result.data);
+        setUser(result.user);
       } else {
-        console.log('AuthContext: 清除用户状态，原因:', result.error || '未知');
+        console.log('AuthContext: clearing user state, reason:', result.error || 'unknown');
         setUser(null);
       }
     } catch (error) {

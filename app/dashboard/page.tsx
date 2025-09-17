@@ -6,28 +6,28 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Video } from 'lucide-react';
-import { useI18n } from '@/lib/i18n';
+
 import ScreenRecorder from '@/components/screen-recorder';
 import VideoGalleryWrapper from '@/components/video-gallery-wrapper';
 
 export default function DashboardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const { t } = useI18n();
+  // Removed useI18n as this is a redirect page
 
-  // 重定向到主页，因为现在主页已经集成了所有功能
+  // Redirect to home page as it now integrates all features
   useEffect(() => {
     if (!loading) {
-      router.replace('/'); // 使用 replace 避免在浏览器历史中留下记录
+      router.replace('/'); // Use replace to avoid leaving record in browser history
     }
   }, [loading, router]);
 
-  // 显示加载状态，然后重定向
+  // Show loading state, then redirect
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
       <div className="text-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-        <p className="mt-4 text-muted-foreground">跳转中...</p>
+        <p className="mt-4 text-muted-foreground">Redirecting...</p>
       </div>
     </div>
   );

@@ -104,6 +104,22 @@
     backface-visibility: hidden;
     -webkit-transform: translateZ(0);
   }
+  
+  /* Clickable element utilities */
+  .clickable {
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+  }
+  
+  .clickable:hover {
+    opacity: 0.8;
+  }
+  
+  .clickable:disabled,
+  .clickable[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
 }
 
 /* Prevent FOUC and optimize theme transitions */
@@ -171,7 +187,7 @@
   .dark {
     --background: var(--dark-background);
     --foreground: var(--dark-foreground);
-    --card: var(--dark-card);
+    --card: 240 6% 10%; /* Slightly lighter than background for better contrast */
     --card-foreground: 0 0% 98%;
     --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
@@ -185,7 +201,7 @@
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: var(--dark-border);
+    --border: 240 3.7% 15.9%; /* Enhanced border visibility */
     --input: 240 3.7% 15.9%;
     --ring: 240 5% 64.9%;
   }

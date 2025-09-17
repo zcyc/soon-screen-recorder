@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Video, LogOut, User as UserIcon } from 'lucide-react';
-import { useI18n } from '@/lib/i18n';
+import { Video, LogOut, User as UserIcon, ExternalLink } from 'lucide-react';
+import { APP_NAME, NAV } from '@/lib/constants';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +18,7 @@ import ThemeControls from '@/components/theme-controls';
 import { logoutAction } from '@/app/actions/user-actions';
 import { useRouter } from 'next/navigation';
 import LoginModal from '@/components/login-modal';
+import { isInIframe, openInNewWindow } from '@/lib/iframe-detector';
 
 
 
@@ -26,7 +27,7 @@ function UserMenu() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const { user, refreshUser } = useAuth();
-  const { t } = useI18n();
+
   const router = useRouter();
 
   async function handleSignOut() {
@@ -57,7 +58,7 @@ function UserMenu() {
           isOpen={showLoginModal}
           onClose={() => setShowLoginModal(false)}
           onSuccess={() => {
-            console.log('Header: 登录成功!');
+            console.log('Header: Login successful!');
           }}
         />
       </>
@@ -112,7 +113,7 @@ function UserMenu() {
           <button type="submit" className="flex w-full">
             <DropdownMenuItem className="w-full flex-1 cursor-pointer">
               <LogOut className="mr-2 h-4 w-4" />
-              <span>{t.nav.signOut}</span>
+              <span>{NAV.signOut}</span>
             </DropdownMenuItem>
           </button>
         </form>
@@ -121,33 +122,61 @@ function UserMenu() {
   );
 }
 
+function IframeWarning() {
+  const [inIframe, setInIframe] = useState(false);
+
+  useEffect(() => {
+    setInIframe(isInIframe());
+  }, []);
+
+  if (!inIframe) return null;
+
+  return (
+    <div className="bg-amber-500/10 border border-amber-500/20 rounded-md px-3 py-1 flex items-center space-x-2">
+      <span className="text-xs text-amber-700 dark:text-amber-300">
+        Embedded mode - Some features may be limited
+      </span>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={openInNewWindow}
+        className="h-6 px-2 text-xs border-amber-500/30 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10"
+      >
+        <ExternalLink className="h-3 w-3 mr-1" />
+        Open Full
+      </Button>
+    </div>
+  );
+}
+
 export default function Header() {
   const { user } = useAuth();
-  const { t } = useI18n();
+
   return (
     <header className="border-b border-border bg-background sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
         <div className="flex items-center space-x-6">
           <Link href="/" className="flex items-center">
             <Video className="h-6 w-6 text-primary" />
-            <span className="ml-2 text-xl font-semibold text-foreground">{t.appName}</span>
+            <span className="ml-2 text-xl font-semibold text-foreground">{APP_NAME}</span>
           </Link>
           <nav className="flex items-center space-x-4">
             <Link
               href="/"
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
-              {t.nav.record}
+              {NAV.record}
             </Link>
             <Link
               href="/discover"
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
-              {t.nav.discover}
+              {NAV.discover}
             </Link>
           </nav>
         </div>
         <div className="header-user-menu flex items-center space-x-4">
+          <IframeWarning />
           <ThemeControls />
           <UserMenu />
         </div>

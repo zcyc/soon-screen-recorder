@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useI18n } from '@/lib/i18n';
+import { FOOTER } from '@/lib/constants';
 
 export default function Footer() {
-  const { t } = useI18n();
+  // Removed useI18n, using FOOTER constants directly
 
   return (
     <footer className="bg-background border-t mt-auto">
@@ -12,7 +12,7 @@ export default function Footer() {
         <div className="flex flex-col items-center gap-2 text-center">
           {/* Copyright */}
           <div className="text-sm text-muted-foreground">
-            {t.footer.copyright} {t.footer.allRightsReserved}
+            {FOOTER.copyright} {FOOTER.allRightsReserved}
           </div>
           
           {/* Navigation Links */}
@@ -21,13 +21,13 @@ export default function Footer() {
               href="/terms-of-service" 
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              {t.footer.termsOfService}
+              {FOOTER.termsOfService}
             </Link>
             <Link 
               href="/privacy-policy" 
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              {t.footer.privacyPolicy}
+              {FOOTER.privacyPolicy}
             </Link>
           </div>
         </div>

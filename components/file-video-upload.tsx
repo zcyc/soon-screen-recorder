@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Upload, Video, CheckCircle, AlertTriangle, Info } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { useI18n } from '@/lib/i18n';
+import { FILE_UPLOAD, PUBLISH } from '@/lib/constants';
 import { uploadVideoFileAction } from '@/app/actions/video-actions';
 
 import { getFileUrlAction, uploadFileAction, updateVideoThumbnailAction } from '@/app/actions/video-actions';
@@ -21,7 +21,7 @@ import { handleVideoError, isSafariCompatibilityIssue } from '@/lib/video-error-
 
 export default function FileVideoUpload() {
   const { user } = useAuth();
-  const { t } = useI18n();
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPending, startTransition] = useTransition();
   const [videoTitle, setVideoTitle] = useState('');
@@ -39,14 +39,14 @@ export default function FileVideoUpload() {
     fileInputRef.current?.click();
   };
 
-  // 后台缩略图生成函数
+  // Background thumbnail generation function
   const generateThumbnailInBackground = async (videoId: string, videoFile: File) => {
     try {
       
       const browser = detectBrowser();
       console.log(`🎨 Starting thumbnail generation for video ${videoId} in ${browser.name}`);
       
-      // 生成缩略图 blob
+      // Generate thumbnail blob
       const thumbnailBlob = await generateVideoThumbnailBlob(videoFile, {
         width: 320,
         height: 180,
@@ -58,7 +58,7 @@ export default function FileVideoUpload() {
       
       console.log('📷 Thumbnail blob generated, size:', thumbnailBlob.size);
       
-      // 将 Blob 转换为 File 并上传
+      // Convert Blob to File and upload
       const thumbnailFile = new File([thumbnailBlob], `thumbnail-${videoId}.jpg`, {
         type: 'image/jpeg'
       });
@@ -71,7 +71,7 @@ export default function FileVideoUpload() {
       
       console.log('🔄 Thumbnail uploaded, updating video record...');
       
-      // 更新视频记录的缩略图 URL
+      // Update video record thumbnail URL
       const updateResult = await updateVideoThumbnailAction(videoId, uploadResult.data.url);
       
       if (!updateResult.success) {
@@ -91,14 +91,14 @@ export default function FileVideoUpload() {
 
     // Validate file type
     if (!file.type.startsWith('video/')) {
-      alert(t.fileUpload.invalidFileType);
+      alert(FILE_UPLOAD.invalidFileType);
       return;
     }
 
     // Validate file size (1000MB limit)
     const maxSize = 1000 * 1024 * 1024; // 1000MB
     if (file.size > maxSize) {
-      alert(t.fileUpload.fileSizeExceeded);
+      alert(FILE_UPLOAD.fileSizeExceeded);
       return;
     }
 
@@ -110,11 +110,11 @@ export default function FileVideoUpload() {
     setFormatWarning(null);
     
     if (!formatSupported) {
-      const warningMsg = `当前浏览器 (${browser.name}) 可能不完全支持 ${file.type} 格式。建议使用: ${recommendations.preferred.join(', ')}`;
+      const warningMsg = `Current browser (${browser.name}) may not fully support ${file.type} format. Recommended: ${recommendations.preferred.join(', ')}`;
       setFormatWarning(warningMsg);
       console.warn('🚫 Video format compatibility issue:', warningMsg);
     } else if (recommendations.avoid.includes(file.type)) {
-      const warningMsg = `当前格式 ${file.type} 在 ${browser.name} 中可能存在兼容性问题。建议转换为: ${recommendations.preferred.join(', ')}`;
+      const warningMsg = `Current format ${file.type} may have compatibility issues in ${browser.name}. Recommended to convert to: ${recommendations.preferred.join(', ')}`;
       setFormatWarning(warningMsg);
       console.warn('⚠️ Video format warning:', warningMsg);
     } else {
@@ -175,7 +175,7 @@ export default function FileVideoUpload() {
         };
         setUploadedVideo(uploadedVideoData);
         
-        // 在后台自动生成缩略图
+        // Automatically generate thumbnail in background
         if (selectedVideoFile && uploadedVideoData.$id) {
           generateThumbnailInBackground(uploadedVideoData.$id, selectedVideoFile);
         }
@@ -188,9 +188,9 @@ export default function FileVideoUpload() {
         // Provide user-friendly error message with suggestions
         let errorMessage = videoError.message;
         if (isSafariCompatibilityIssue(videoError)) {
-          errorMessage += ` (Safari兼容性问题：${videoError.suggestions[0]})`;
+          errorMessage += ` (Safari compatibility issue: ${videoError.suggestions[0]})`;
         } else if (videoError.suggestions.length > 0) {
-          errorMessage += ` 建议: ${videoError.suggestions[0]}`;
+          errorMessage += ` Suggestion: ${videoError.suggestions[0]}`;
         }
         
         setError(errorMessage);
@@ -214,7 +214,7 @@ export default function FileVideoUpload() {
     return (
       <Card>
         <CardContent className="p-6 text-center">
-          <p className="text-muted-foreground">请登录后上传视频</p>
+          <p className="text-muted-foreground">Please log in to upload videos</p>
         </CardContent>
       </Card>
     );
@@ -225,7 +225,7 @@ export default function FileVideoUpload() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Upload className="h-5 w-5" />
-          文件视频上传
+File Video Upload
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -235,15 +235,15 @@ export default function FileVideoUpload() {
             <div className="flex items-center gap-2 mb-2">
               <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                浏览器兼容性信息
+                Browser Compatibility Information
               </span>
             </div>
             <div className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-              <p>当前浏览器: {browserInfo.name} {browserInfo.version}</p>
-              <p>推荐格式: {getVideoFormatRecommendations().preferred.join(', ')}</p>
+              <p>Current Browser: {browserInfo.name} {browserInfo.version}</p>
+              <p>Recommended Formats: {getVideoFormatRecommendations().preferred.join(', ')}</p>
               {browserInfo.isSafari && (
                 <p className="text-amber-700 dark:text-amber-300">
-                  🍎 Safari用户：WebM格式可能存在兼容性问题，建议使用MP4格式
+                  🍎 Safari Users: WebM format may have compatibility issues, MP4 format is recommended
                 </p>
               )}
             </div>
@@ -256,7 +256,7 @@ export default function FileVideoUpload() {
             <div className="flex items-center gap-2 mb-2">
               <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               <span className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                格式兼容性警告
+                Format Compatibility Warning
               </span>
             </div>
             <p className="text-sm text-amber-800 dark:text-amber-200">{formatWarning}</p>
@@ -267,10 +267,10 @@ export default function FileVideoUpload() {
         {!uploadedVideo && (
           <div className="space-y-4">
             <div>
-              <Label htmlFor="video-title">视频标题</Label>
+              <Label htmlFor="video-title">Video Title</Label>
               <Input
                 id="video-title"
-                placeholder="输入视频标题（可选）"
+                placeholder="Enter video title (optional)"
                 value={videoTitle}
                 onChange={(e) => setVideoTitle(e.target.value)}
                 disabled={isPending}
@@ -285,7 +285,7 @@ export default function FileVideoUpload() {
                   onCheckedChange={setIsPublic}
                   disabled={isPending}
                 />
-                <Label htmlFor="public-video">设为公开视频</Label>
+                <Label htmlFor="public-video">Set as Public Video</Label>
               </div>
 
               <div className="flex items-center space-x-2">
@@ -295,7 +295,7 @@ export default function FileVideoUpload() {
                   onCheckedChange={setIsPublish}
                   disabled={isPending}
                 />
-                <Label htmlFor="publish-video">{t.publish.publishToDiscovery}</Label>
+                <Label htmlFor="publish-video">{PUBLISH.publishToDiscovery}</Label>
               </div>
             </div>
 
@@ -319,12 +319,12 @@ export default function FileVideoUpload() {
                 {isPending ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    {t.fileUpload.uploading} ({uploadProgress}%)
+                    {FILE_UPLOAD.uploading} ({uploadProgress}%)
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
                     <Upload className="h-4 w-4" />
-                    {t.fileUpload.selectVideoFile}
+                    {FILE_UPLOAD.selectVideoFile}
                   </div>
                 )}
               </Button>
@@ -347,9 +347,9 @@ export default function FileVideoUpload() {
             </div>
 
             <div className="text-sm text-muted-foreground space-y-1">
-              <p>• 支持的格式: MP4, WebM, AVI, MOV 等</p>
-              <p>• {t.fileUpload.maxFileSize}</p>
-              <p>• 上传后将自动生成缩略图</p>
+              <p>• Supported formats: MP4, WebM, AVI, MOV, etc.</p>
+              <p>• {FILE_UPLOAD.maxFileSize}</p>
+              <p>• Thumbnails will be automatically generated after upload</p>
             </div>
           </div>
         )}
@@ -359,7 +359,7 @@ export default function FileVideoUpload() {
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-green-600">
               <CheckCircle className="h-5 w-5" />
-              <span className="font-medium">视频上传成功！</span>
+              <span className="font-medium">Video uploaded successfully!</span>
             </div>
             
             <div className="bg-green-50 p-4 rounded-lg space-y-2">
@@ -368,9 +368,9 @@ export default function FileVideoUpload() {
                 <span className="font-medium">{uploadedVideo.title}</span>
               </div>
               <p className="text-sm text-green-700">
-                ✅ 视频已保存到您的媒体库<br/>
-                ✅ 可以在视频列表中查看<br/>
-✅ 缩略图处理中
+                ✅ Video saved to your media library<br/>
+                ✅ Can be viewed in video list<br/>
+✅ Thumbnail processing
               </p>
               
 
@@ -387,7 +387,7 @@ export default function FileVideoUpload() {
               variant="outline"
               className="w-full"
             >
-              继续上传更多视频
+Upload More Videos
             </Button>
           </div>
         )}

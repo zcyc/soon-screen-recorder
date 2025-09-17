@@ -29,7 +29,7 @@ interface OptimizedVideoCardProps {
   deletingVideoId: string | null;
   updatingPrivacyId: string | null;
   updatingPublishId: string | null;
-  t: any; // i18n translations
+
 }
 
 export default function OptimizedVideoCard({
@@ -48,17 +48,16 @@ export default function OptimizedVideoCard({
   formatDuration,
   deletingVideoId,
   updatingPrivacyId,
-  updatingPublishId,
-  t
+  updatingPublishId
 }: OptimizedVideoCardProps) {
-  // 完全不使用动态缩略图生成，避免加载视频
+  // Completely avoid using dynamic thumbnail generation to avoid loading videos
   const getThumbnailSrc = () => {
-    // 1. Try database thumbnail URL first (如果存在)
+    // 1. Try database thumbnail URL first (if exists)
     if (video.thumbnailUrl) {
       return video.thumbnailUrl;
     }
     
-    // 2. 直接使用占位图，不生成动态缩略图
+    // 2. Use placeholder image directly, don't generate dynamic thumbnails
     return generatePlaceholderThumbnail(320, 180, video.title);
   };
 
@@ -142,12 +141,12 @@ export default function OptimizedVideoCard({
                 {video.isPublic ? (
                   <>
                     <Globe className="h-3 w-3 mr-1" />
-                    {t.videos.public}
+                    Public
                   </>
                 ) : (
                   <>
                     <Lock className="h-3 w-3 mr-1" />
-                    {t.videos.private}
+                    Private
                   </>
                 )}
               </Badge>
@@ -156,7 +155,7 @@ export default function OptimizedVideoCard({
                   variant="outline"
                   className="text-xs px-2 py-0.5 border-blue-300 text-blue-700 bg-blue-50"
                 >
-                  发现
+                  Discover
                 </Badge>
               )}
             </div>
