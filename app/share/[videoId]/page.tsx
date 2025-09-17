@@ -35,7 +35,6 @@ export default function SharePage() {
   const params = useParams();
   const videoId = params.videoId as string;
   const { user } = useAuth();
-  // Removed useI18n, using SHARE constants directly
   
   const [video, setVideo] = useState<VideoRecord | null>(null);
   const [reactions, setReactions] = useState<VideoReaction[]>([]);

@@ -47,7 +47,6 @@ interface VideoGalleryProps {
 
 export default function VideoGallery({ showPublic = false, onError }: VideoGalleryProps) {
   const { user } = useAuth();
-  // Removed useI18n, using constants directly
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');

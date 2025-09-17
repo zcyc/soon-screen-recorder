@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { useTheme } from '@/contexts/theme-context';
 export default function ThemeControls() {
   const [mounted, setMounted] = useState(false);
-  // Removed language-related state and i18n hooks
   
   // Theme context variables
   let mode, actualMode, toggleMode;

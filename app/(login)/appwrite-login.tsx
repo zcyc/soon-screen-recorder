@@ -26,7 +26,7 @@ const GoogleIcon = ({ className }: { className?: string }) => (
 
 function LoginForm({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
   const { user, refreshUser } = useAuth();
-  // Removed useI18n, using AUTH constants directly
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/dashboard';

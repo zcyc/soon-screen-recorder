@@ -13,7 +13,6 @@ import VideoGalleryWrapper from '@/components/video-gallery-wrapper';
 export default function DashboardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  // Removed useI18n as this is a redirect page
 
   // Redirect to home page as it now integrates all features
   useEffect(() => {

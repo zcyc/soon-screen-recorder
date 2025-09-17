@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { FOOTER } from '@/lib/constants';
 
 export default function Footer() {
-  // Removed useI18n, using FOOTER constants directly
 
   return (
     <footer className="bg-background border-t mt-auto">

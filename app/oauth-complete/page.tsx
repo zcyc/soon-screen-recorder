@@ -7,7 +7,6 @@ import { AUTH } from '@/lib/constants';
 export default function OAuthCompletePage() {
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
-  // Removed useI18n, using AUTH constants directly
 
   useEffect(() => {
     if (window.opener) {

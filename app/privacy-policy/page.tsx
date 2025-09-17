@@ -3,7 +3,6 @@
 import { PRIVACY } from '@/lib/constants';
 
 export default function PrivacyPolicyPage() {
-  // Removed useI18n, using PRIVACY constants directly
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">

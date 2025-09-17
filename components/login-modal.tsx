@@ -19,7 +19,6 @@ interface LoginModalProps {
 }
 
 export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
-  // Removed useI18n, using AUTH constants directly
   const { refreshUser } = useAuth();
   // Enable signup mode with local authentication
   const [isSignUp, setIsSignUp] = useState(false);
