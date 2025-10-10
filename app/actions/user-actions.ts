@@ -1,11 +1,11 @@
 'use server';
 
-import { getCurrentUser, verifySession, updatePreferences, createOAuth2Session, login, logout, createAccount, handleOAuthCallback, extractOAuthCallbackData } from '@/lib/auth/server-auth';
+import { getCurrentUser } from '@/lib/auth/server-auth-local';
+import { verifySession, updatePreferences, createOAuth2Session, handleOAuthCallback, extractOAuthCallbackData } from '@/lib/auth/server-auth';
+import { signInUser, registerUser, signOutUser } from '@/lib/auth/local-auth';
 import { cookies } from 'next/headers';
-import { signOutUser } from '@/lib/auth/local-auth';
 import { activityService, ActivityType } from '@/lib/services/activity-service';
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 
 export type ActionResult = {
@@ -64,7 +64,25 @@ export async function updateUserPreferencesAction(preferences: Record<string, an
 // Login user
 export async function loginAction(email: string, password: string): Promise<ActionResult> {
   try {
-    await login(email, password);
+    const result = await signInUser(email, password);
+    
+    if (!result.success) {
+      return { error: result.error || 'Invalid email or password' };
+    }
+    
+    if (!result.token) {
+      return { error: 'No token received' };
+    }
+    
+    // 设置 HTTP-only cookie
+    const cookieStore = await cookies();
+    cookieStore.set('auth-token', result.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+      path: '/',
+    });
     
     revalidatePath('/dashboard');
     
@@ -78,11 +96,25 @@ export async function loginAction(email: string, password: string): Promise<Acti
 // Register user
 export async function registerAction(email: string, password: string, name: string): Promise<ActionResult> {
   try {
-    // Create account
-    await createAccount(email, password, name);
+    const result = await registerUser(email, password, name);
     
-    // Auto login
-    await login(email, password);
+    if (!result.success) {
+      return { error: result.error || 'Failed to register user' };
+    }
+    
+    if (!result.token) {
+      return { error: 'No token received' };
+    }
+    
+    // 设置 HTTP-only cookie
+    const cookieStore = await cookies();
+    cookieStore.set('auth-token', result.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+      path: '/',
+    });
     
     revalidatePath('/dashboard');
     
@@ -96,21 +128,20 @@ export async function registerAction(email: string, password: string, name: stri
 // Logout user
 export async function logoutAction(): Promise<ActionResult> {
   try {
-    // Local JWT logout logic
     const cookieStore = await cookies();
     const token = cookieStore.get('auth-token')?.value;
     
     if (token) {
-      // Clear session in database
+      // 清除数据库中的会话
       await signOutUser(token);
     }
     
-    // Clear cookie
+    // 清除 cookie
     cookieStore.set('auth-token', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 0 // Expire immediately
+      maxAge: 0 // 立即过期
     });
     
     revalidatePath('/');
@@ -118,18 +149,6 @@ export async function logoutAction(): Promise<ActionResult> {
     return { success: true };
   } catch (error: any) {
     console.error('Logout error:', error);
-    // Clear cookie even if logout fails
-    try {
-      const cookieStore = await cookies();
-      cookieStore.set('auth-token', '', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 0
-      });
-    } catch (cookieError) {
-      console.error('Cookie clear error:', cookieError);
-    }
     return { success: true }; // Return success even if error to ensure logout UX
   }
 }
